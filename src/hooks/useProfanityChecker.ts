@@ -1,12 +1,18 @@
 import { useState } from 'react';
-import { checkProfanity, CheckProfanityResult } from '../filters/profanityFilter';
+import { Filter, CheckProfanityResult } from '../filters/Filter';
+import { Language } from '../types/Language';
 
-export const useProfanityChecker = (language: string = 'en') => {
+interface ProfanityCheckerConfig {
+  languages?: Language[];
+  allLanguages?: boolean;
+}
+
+export const useProfanityChecker = (config?: ProfanityCheckerConfig) => {
   const [result, setResult] = useState<CheckProfanityResult | null>(null);
+  const filter = new Filter(config);
 
   const checkText = (text: string) => {
-    const result = checkProfanity(text, language);
-    setResult(result);
+    setResult(filter.checkProfanity(text));
   };
 
   return {
