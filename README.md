@@ -1,2 +1,128 @@
 # Glin Profanity
 Glin-Profanity is a lightweight and efficient npm package designed to detect and filter profane language in text inputs across multiple languages. Whether you’re building a chat application, a comment section, or any platform where user-generated content is involved, Glin-Profanity helps you maintain a clean and respectful environment.
+
+## Installation
+
+To install Glin-Profanity, use npm:
+
+```bash
+npm install glin-profanity
+```
+
+## Usage
+
+### Basic Usage
+
+Here's a simple example of how to use Glin-Profanity in a React application:
+
+```typescript
+import React, { useState } from 'react';
+import { useProfanityChecker, Language } from 'glin-profanity';
+
+const App: React.FC = () => {
+  const [text, setText] = useState('');
+  const [checkAllLanguages, setCheckAllLanguages] = useState(false);
+  const { result, checkText } = useProfanityChecker(
+    checkAllLanguages ? { allLanguages: true } : { languages: ['english', 'french'] }
+  );
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setText(e.target.value);
+  };
+
+  const handleCheck = () => {
+    checkText(text);
+  };
+
+  return (
+    <div>
+      <h1>Welcome to Glin-Profanity</h1>
+      <input type="text" value={text} onChange={handleChange} />
+      <button onClick={handleCheck}>Check Profanity</button>
+      <div>
+        <label>
+          <input
+            type="checkbox"
+            checked={checkAllLanguages}
+            onChange={(e) => setCheckAllLanguages(e.target.checked)}
+          />
+          Check All Languages
+        </label>
+      </div>
+      {result && (
+        <div>
+          <p>Contains Profanity: {result.containsProfanity ? 'Yes' : 'No'}</p>
+          {result.containsProfanity && (
+            <p>Profane Words: {result.profaneWords.join(', ')}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
+```
+
+## API
+
+### `Filter` Class
+
+#### Constructor
+
+```typescript
+new Filter(config?: { languages?: Language[]; allLanguages?: boolean });
+```
+
+- `config`: An optional configuration object.
+  - `languages`: An array of languages to check for profanities.
+  - `allLanguages`: A boolean indicating whether to check for all languages.
+
+#### Methods
+
+##### `isProfane`
+
+Checks if a given text contains profanities.
+
+```typescript
+isProfane(value: string): boolean;
+```
+
+- `value`: The text to check.
+- Returns: `boolean` - `true` if the text contains profanities, `false` otherwise.
+
+##### `checkProfanity`
+
+Returns details about profanities found in the text.
+
+```typescript
+checkProfanity(text: string): CheckProfanityResult;
+```
+
+- `text`: The text to check.
+- Returns: `CheckProfanityResult`
+  - `containsProfanity`: `boolean` - `true` if the text contains profanities, `false` otherwise.
+  - `profaneWords`: `string[]` - An array of profane words found in the text.
+
+### `useProfanityChecker` Hook
+
+A custom React hook for using the profanity checker.
+
+#### Parameters
+
+- `config`: An optional configuration object.
+  - `languages`: An array of languages to check for profanities.
+  - `allLanguages`: A boolean indicating whether to check for all languages.
+
+#### Return Value
+
+- `result`: The result of the profanity check.
+- `checkText`: A function to check a given text for profanities.
+
+```typescript
+const { result, checkText } = useProfanityChecker(config);
+```
+
+## License
+
+MIT License
