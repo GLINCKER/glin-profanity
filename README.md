@@ -125,4 +125,12 @@ const { result, checkText } = useProfanityChecker(config);
 
 ## License
 
-MIT License
+This software is also available under the GLINCKER LLC proprietary license. The proprietary license allows for use, modification, and distribution of the software with certain restrictions and conditions as set forth by GLINCKER LLC.
+
+You are free to use this software for reference and educational purposes. However, any commercial use, distribution, or modification outside the terms of the MIT License requires explicit permission from GLINCKER LLC. 
+
+By using the software in any form, you agree to adhere to the terms of both the MIT License and the GLINCKER LLC proprietary license, where applicable. If there is any conflict between the terms of the MIT License and the GLINCKER LLC proprietary license, the terms of the GLINCKER LLC proprietary license shall prevail.
+
+### MIT License
+
+GLIN PROFANITY is [MIT licensed](./LICENSE).
