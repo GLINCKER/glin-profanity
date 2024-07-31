@@ -1,0 +1,13 @@
+# Files to ingore prettier to format
+
+/dist
+/build
+
+# Eslint files
+.eslintignore
+.eslintrc.js
+
+#commit files
+changelog.config.js
+commitlint.config.js
+/.husky
