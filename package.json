@@ -7,7 +7,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "webpack serve --mode development",
-    "build": "webpack --mode production"
+    "build": "webpack --mode production", 
+    "prepare": "husky install",
+    "commit": "git-cz", 
+    "lint": "eslint ."
   },
   "keywords": [],
   "author": "",
@@ -17,6 +20,8 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@commitlint/cli": "^17.7.1",
+    "@commitlint/config-conventional": "^17.7.0",
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.2",
     "@babel/preset-react": "^7.24.7",
@@ -32,10 +37,19 @@
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react": "^7.35.0",
     "html-webpack-plugin": "^5.6.0",
+    "husky": "^8.0.3", 
     "prettier": "^3.3.3",
     "typescript": "^5.5.4",
     "webpack": "^5.93.0",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^5.0.4"
-  }
+    "webpack-dev-server": "^5.0.4",
+    "git-cz": "^4.9.0",
+    "lint-staged": "^15.2.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  } 
 }
