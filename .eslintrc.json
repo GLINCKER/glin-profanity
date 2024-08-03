@@ -3,8 +3,7 @@
     "extends": [
       "eslint:recommended",
       "plugin:react/recommended",
-      "plugin:@typescript-eslint/recommended",
-      "plugin:prettier/recommended"
+      "plugin:@typescript-eslint/recommended", 
     ],
     "plugins": ["react", "@typescript-eslint"],
     "env": {
@@ -23,9 +22,6 @@
       "react": {
         "version": "detect"
       }
-    },
-    "rules": {
-      "prettier/prettier": "error"
     }
   }
   

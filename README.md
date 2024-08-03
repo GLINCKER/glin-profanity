@@ -1,3 +1,4 @@
+
 # Glin Profanity
 Glin-Profanity is a lightweight and efficient npm package designed to detect and filter profane language in text inputs across multiple languages. Whether you’re building a chat application, a comment section, or any platform where user-generated content is involved, Glin-Profanity helps you maintain a clean and respectful environment.
 
@@ -8,7 +9,11 @@ To install Glin-Profanity, use npm:
 ```bash
 npm install glin-profanity
 ```
+OR
 
+```bash
+yarn add glin-profanity
+```
 ## Usage
 
 ### Basic Usage
@@ -71,12 +76,25 @@ export default App;
 #### Constructor
 
 ```typescript
-new Filter(config?: { languages?: Language[]; allLanguages?: boolean });
+new Filter(config?: { 
+  languages?: Language[]; 
+  allLanguages?: boolean;
+  caseSensitive?: boolean;
+  wordBoundaries?: boolean;
+  customWords?: string[];
+  replaceWith?: string;
+  severityLevels?: boolean;
+});
 ```
 
 - `config`: An optional configuration object.
   - `languages`: An array of languages to check for profanities.
   - `allLanguages`: A boolean indicating whether to check for all languages.
+  - `caseSensitive`: A boolean indicating whether the profanity check should be case-sensitive.
+  - `wordBoundaries`: A boolean indicating whether to consider word boundaries when checking for profanities.
+  - `customWords`: An array of custom words to include in the profanity check.
+  - `replaceWith`: A string to replace profane words with.
+  - `severityLevels`: A boolean indicating whether to include severity levels for profane words.
 
 #### Methods
 
@@ -103,6 +121,8 @@ checkProfanity(text: string): CheckProfanityResult;
 - Returns: `CheckProfanityResult`
   - `containsProfanity`: `boolean` - `true` if the text contains profanities, `false` otherwise.
   - `profaneWords`: `string[]` - An array of profane words found in the text.
+  - `processedText`: `string` - The text with profane words replaced (if `replaceWith` is specified).
+  - `severityMap`: `{ [word: string]: number }` - A map of profane words to their severity levels (if `severityLevels` is specified).
 
 ### `useProfanityChecker` Hook
 
@@ -113,14 +133,21 @@ A custom React hook for using the profanity checker.
 - `config`: An optional configuration object.
   - `languages`: An array of languages to check for profanities.
   - `allLanguages`: A boolean indicating whether to check for all languages.
+  - `caseSensitive`: A boolean indicating whether the profanity check should be case-sensitive.
+  - `wordBoundaries`: A boolean indicating whether to consider word boundaries when checking for profanities.
+  - `customWords`: An array of custom words to include in the profanity check.
+  - `replaceWith`: A string to replace profane words with.
+  - `severityLevels`: A boolean indicating whether to include severity levels for profane words.
+  - `customActions`: A function to execute custom actions when profanity is detected.
 
 #### Return Value
 
 - `result`: The result of the profanity check.
 - `checkText`: A function to check a given text for profanities.
+- `checkTextAsync`: A function to check a given text for profanities asynchronously.
 
 ```typescript
-const { result, checkText } = useProfanityChecker(config);
+const { result, checkText, checkTextAsync } = useProfanityChecker(config);
 ```
 
 ## License

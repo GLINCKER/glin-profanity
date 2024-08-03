@@ -7,17 +7,23 @@ interface FilterConfig {
   caseSensitive?: boolean;
   wordBoundaries?: boolean;
   customWords?: string[];
+  replaceWith?: string;
+  severityLevels?: boolean;
 }
 
 class Filter {
-  private words: Set<string>;
+  private words: Map<string, number>;
   private caseSensitive: boolean;
   private wordBoundaries: boolean;
+  private replaceWith?: string;
+  private severityLevels: boolean;
 
   constructor(config?: FilterConfig) {
     let words: string[] = [];
     this.caseSensitive = config?.caseSensitive ?? false;
     this.wordBoundaries = config?.wordBoundaries ?? true;
+    this.replaceWith = config?.replaceWith;
+    this.severityLevels = config?.severityLevels ?? false;
 
     if (config?.allLanguages) {
       for (const lang in dictionary) {
@@ -39,15 +45,18 @@ class Filter {
       words = [...words, ...config.customWords];
     }
 
-    this.words = new Set<string>(words);
+    this.words = new Map(words.map(word => [word, 1])); // Default severity level is 1
+  }
+
+  private getRegex(word: string): RegExp {
+    const flags = this.caseSensitive ? 'g' : 'gi';
+    const boundary = this.wordBoundaries ? '\\b' : '';
+    return new RegExp(`${boundary}${word.replace(/(\W)/g, '\\$1')}${boundary}`, flags);
   }
 
   isProfane(value: string): boolean {
-    const flags = this.caseSensitive ? 'g' : 'gi';
-    for (const word of this.words) {
-      const boundary = this.wordBoundaries ? '\\b' : '';
-      const wordExp = new RegExp(`${boundary}${word.replace(/(\W)/g, '\\$1')}${boundary}`, flags);
-      if (wordExp.test(value)) return true;
+    for (const word of this.words.keys()) {
+      if (this.getRegex(word).test(value)) return true;
     }
     return false;
   }
@@ -55,16 +64,27 @@ class Filter {
   checkProfanity(text: string): CheckProfanityResult {
     const words = text.split(/\s+/);
     const profaneWords: string[] = [];
+    const severityMap: { [word: string]: number } = {};
 
     for (const word of words) {
-      if (this.isProfane(word)) {
+      if (this.words.has(word.toLowerCase())) {
         profaneWords.push(word);
+        severityMap[word] = this.words.get(word.toLowerCase())!;
+      }
+    }
+
+    let processedText = text;
+    if (this.replaceWith) {
+      for (const word of profaneWords) {
+        processedText = processedText.replace(this.getRegex(word), this.replaceWith);
       }
     }
 
     return {
       containsProfanity: profaneWords.length > 0,
       profaneWords,
+      processedText: this.replaceWith ? processedText : undefined,
+      severityMap: this.severityLevels ? severityMap : undefined,
     };
   }
 }
