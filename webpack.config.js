@@ -2,10 +2,13 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
-  entry: './src/index.ts',
+  entry: './src/index.ts', 
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.js'
+    filename: 'index.js',
+    libraryTarget: 'umd',   
+    globalObject: 'this',
+    library: 'Glin-profanity'  
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js']
@@ -15,9 +18,7 @@ module.exports = {
       {
         test: /\.tsx?$/,
         exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader'
-        }
+        use: 'babel-loader'
       }
     ]
   },
