@@ -1,16 +1,23 @@
 import dictionary from '../data/dictionary';
-import { Language } from '../types/Language';
+import { Language, CheckProfanityResult } from '../types/types';
 
-interface CheckProfanityResult {
-  containsProfanity: boolean;
-  profaneWords: string[];
+interface FilterConfig {
+  languages?: Language[];
+  allLanguages?: boolean;
+  caseSensitive?: boolean;
+  wordBoundaries?: boolean;
+  customWords?: string[];
 }
 
 class Filter {
   private words: Set<string>;
+  private caseSensitive: boolean;
+  private wordBoundaries: boolean;
 
-  constructor(config?: { languages?: Language[]; allLanguages?: boolean }) {
+  constructor(config?: FilterConfig) {
     let words: string[] = [];
+    this.caseSensitive = config?.caseSensitive ?? false;
+    this.wordBoundaries = config?.wordBoundaries ?? true;
 
     if (config?.allLanguages) {
       for (const lang in dictionary) {
@@ -27,12 +34,19 @@ class Filter {
         });
       }
     }
+
+    if (config?.customWords) {
+      words = [...words, ...config.customWords];
+    }
+
     this.words = new Set<string>(words);
   }
 
   isProfane(value: string): boolean {
+    const flags = this.caseSensitive ? 'g' : 'gi';
     for (const word of this.words) {
-      const wordExp = new RegExp(`\\b${word.replace(/(\W)/g, '\\$1')}\\b`, 'gi');
+      const boundary = this.wordBoundaries ? '\\b' : '';
+      const wordExp = new RegExp(`${boundary}${word.replace(/(\W)/g, '\\$1')}${boundary}`, flags);
       if (wordExp.test(value)) return true;
     }
     return false;
@@ -43,16 +57,16 @@ class Filter {
     const profaneWords: string[] = [];
 
     for (const word of words) {
-      if (this.words.has(word.toLowerCase())) {
+      if (this.isProfane(word)) {
         profaneWords.push(word);
       }
     }
 
     return {
       containsProfanity: profaneWords.length > 0,
-      profaneWords
+      profaneWords,
     };
   }
 }
 
-export { Filter, CheckProfanityResult };
+export { Filter };
