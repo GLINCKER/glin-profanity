@@ -9,7 +9,7 @@ build/
 
 # TypeScript compiled output
 *.tsbuildinfo
-
+!src/index.d.ts
 # Logs
 logs/
 *.log
