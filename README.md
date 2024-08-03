@@ -84,6 +84,8 @@ new Filter(config?: {
   customWords?: string[];
   replaceWith?: string;
   severityLevels?: boolean;
+  ignoreWords?: string[];
+  logProfanity?: boolean;
 });
 ```
 
@@ -95,6 +97,8 @@ new Filter(config?: {
   - `customWords`: An array of custom words to include in the profanity check.
   - `replaceWith`: A string to replace profane words with.
   - `severityLevels`: A boolean indicating whether to include severity levels for profane words.
+  - `ignoreWords`: An array of words to ignore in the profanity check.
+  - `logProfanity`: A boolean indicating whether to log detected profane words.
 
 #### Methods
 
@@ -138,6 +142,8 @@ A custom React hook for using the profanity checker.
   - `customWords`: An array of custom words to include in the profanity check.
   - `replaceWith`: A string to replace profane words with.
   - `severityLevels`: A boolean indicating whether to include severity levels for profane words.
+  - `ignoreWords`: An array of words to ignore in the profanity check.
+  - `logProfanity`: A boolean indicating whether to log detected profane words.
   - `customActions`: A function to execute custom actions when profanity is detected.
 
 #### Return Value
