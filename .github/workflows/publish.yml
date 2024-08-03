@@ -26,6 +26,8 @@ jobs:
       run: npm run build
 
     - name: Publish to npm
-      run: npm publish
+      run: |
+        cd packages/glin-profanity
+        npm publish
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
