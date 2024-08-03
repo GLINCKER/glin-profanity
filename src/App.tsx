@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProfanityChecker } from './hooks/useProfanityChecker';
+import { useProfanityChecker } from 'glin-profanity';
 
 const App: React.FC = () => {
   const [text, setText] = useState('');
@@ -56,7 +56,7 @@ const App: React.FC = () => {
 
   return (
     <div>
-      <h1>Welcome to Glin-Profanity</h1>
+      <h1>Welcome to Glin-Profanity Tool Testing</h1>
       <input 
         type="text" 
         value={text} 
