@@ -83,9 +83,9 @@ new Filter(config?: {
   wordBoundaries?: boolean;
   customWords?: string[];
   replaceWith?: string;
-  severityLevels?: boolean;
+  severityLevels?: boolean; 
   ignoreWords?: string[];
-  logProfanity?: boolean;
+  logProfanity?: boolean; 
 });
 ```
 
@@ -96,9 +96,9 @@ new Filter(config?: {
   - `wordBoundaries`: A boolean indicating whether to consider word boundaries when checking for profanities.
   - `customWords`: An array of custom words to include in the profanity check.
   - `replaceWith`: A string to replace profane words with.
-  - `severityLevels`: A boolean indicating whether to include severity levels for profane words.
+  - `severityLevels`: A boolean indicating whether to include severity levels for profane words. 
   - `ignoreWords`: An array of words to ignore in the profanity check.
-  - `logProfanity`: A boolean indicating whether to log detected profane words.
+  - `logProfanity`: A boolean indicating whether to log detected profane words. 
 
 #### Methods
 
@@ -141,9 +141,9 @@ A custom React hook for using the profanity checker.
   - `wordBoundaries`: A boolean indicating whether to consider word boundaries when checking for profanities.
   - `customWords`: An array of custom words to include in the profanity check.
   - `replaceWith`: A string to replace profane words with.
-  - `severityLevels`: A boolean indicating whether to include severity levels for profane words.
+  - `severityLevels`: A boolean indicating whether to include severity levels for profane words. 
   - `ignoreWords`: An array of words to ignore in the profanity check.
-  - `logProfanity`: A boolean indicating whether to log detected profane words.
+  - `logProfanity`: A boolean indicating whether to log detected profane words. 
   - `customActions`: A function to execute custom actions when profanity is detected.
 
 #### Return Value

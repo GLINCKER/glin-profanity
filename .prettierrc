@@ -1,0 +1,15 @@
+{
+  "singleQuote": true,
+  "doubleQuote": true,
+  "useTabs": false,
+  "overrides": [
+    {
+      "files": "*.yaml",
+      "options": {
+        "tadWidth": 2,
+        "printWidth": 40,
+        "singleQuote": true
+      }
+    }
+  ]
+}
