@@ -9,7 +9,11 @@ To install Glin-Profanity, use npm:
 ```bash
 npm install glin-profanity
 ```
+OR
 
+```bash
+yarn add glin-profanity
+```
 ## Usage
 
 ### Basic Usage
