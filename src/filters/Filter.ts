@@ -8,7 +8,9 @@ interface FilterConfig {
   wordBoundaries?: boolean;
   customWords?: string[];
   replaceWith?: string;
-  severityLevels?: boolean;
+  severityLevels?: boolean; 
+  ignoreWords?: string[];
+  logProfanity?: boolean; 
 }
 
 class Filter {
@@ -16,14 +18,18 @@ class Filter {
   private caseSensitive: boolean;
   private wordBoundaries: boolean;
   private replaceWith?: string;
-  private severityLevels: boolean;
+  private severityLevels: boolean; 
+  private ignoreWords: Set<string>;
+  private logProfanity: boolean; 
 
   constructor(config?: FilterConfig) {
     let words: string[] = [];
     this.caseSensitive = config?.caseSensitive ?? false;
     this.wordBoundaries = config?.wordBoundaries ?? true;
     this.replaceWith = config?.replaceWith;
-    this.severityLevels = config?.severityLevels ?? false;
+    this.severityLevels = config?.severityLevels ?? false; 
+    this.ignoreWords = new Set(config?.ignoreWords?.map(word => word.toLowerCase()) || []);
+    this.logProfanity = config?.logProfanity ?? false; 
 
     if (config?.allLanguages) {
       for (const lang in dictionary) {
@@ -55,8 +61,8 @@ class Filter {
   }
 
   isProfane(value: string): boolean {
-    for (const word of this.words.keys()) {
-      if (this.getRegex(word).test(value)) return true;
+    for (const word of this.words.keys()) { 
+      if (!this.ignoreWords.has(word.toLowerCase()) && this.getRegex(word).test(value)) return true; 
     }
     return false;
   }
@@ -66,13 +72,17 @@ class Filter {
     const profaneWords: string[] = [];
     const severityMap: { [word: string]: number } = {};
 
-    for (const word of words) {
-      if (this.words.has(word.toLowerCase())) {
+    for (const word of words) { 
+      if (this.words.has(word.toLowerCase()) && !this.ignoreWords.has(word.toLowerCase())) { 
         profaneWords.push(word);
         severityMap[word] = this.words.get(word.toLowerCase())!;
       }
     }
-
+ 
+    if (this.logProfanity && profaneWords.length > 0) {
+      console.log(`Profane words detected: ${profaneWords.join(', ')}`);
+    }
+ 
     let processedText = text;
     if (this.replaceWith) {
       for (const word of profaneWords) {
