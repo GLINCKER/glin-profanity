@@ -1,9 +1,7 @@
 {
-    "packages": [
-      "packages/*"
-    ],
-    "version": "independent",
-    "npmClient": "npm",
-    "useWorkspaces": true
-  }
-  
+  "packages": ["packages/*"],
+  "version": "independent",
+  "npmClient": "npm",
+  "useWorkspaces": true,
+  "ignoreChanges": ["**/glin-profanity/**"]
+}
