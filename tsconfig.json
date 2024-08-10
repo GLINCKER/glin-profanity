@@ -9,9 +9,9 @@
     "baseUrl": "./",
     "paths": {
       "glin-profanity": ["packages/glin-profanity/src"]
-    }, 
+    },
     "resolveJsonModule": true,
-    "esModuleInterop": true, 
+    "esModuleInterop": true,
     "downlevelIteration": true
   },
   "include": ["src/**/*", "packages/**/*"]

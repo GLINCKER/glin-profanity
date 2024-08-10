@@ -11,3 +11,4 @@
 changelog.config.js
 commitlint.config.js
 /.husky
+/.nx/workspace-data
