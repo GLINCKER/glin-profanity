@@ -1,6 +1,6 @@
 {
     "name": "glin-profanity",
-    "version": "1.1.5",
+    "version": "1.1.6",
     "description": "Glin-Profanity is a lightweight and efficient npm package designed to detect and filter profane language in text inputs across multiple languages. Whether you’re building a chat application, a comment section, or any platform where user-generated content is involved, Glin-Profanity helps you maintain a clean and respectful environment.",
     "main": "lib/index.js",
     "types": "lib/index.d.ts",
@@ -8,7 +8,8 @@
         "build": "tsc -p tsconfig.json"
     },
     "files": [
-        "lib"
+        "lib",
+        "README.md"
     ],
     "repository": {
         "type": "git",
