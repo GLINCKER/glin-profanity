@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProfanityChecker } from './hooks/useProfanityChecker';
+import { useProfanityChecker } from 'glin-profanity';
 
 const App: React.FC = () => {
   const [text, setText] = useState('');
@@ -56,7 +56,7 @@ const App: React.FC = () => {
 
   return (
     <div>
-      <h1>Welcome to Glin-Profanity</h1>
+      <h1>Welcome to Glin-Profanity Tool Testing</h1>
       <input 
         type="text" 
         value={text} 
@@ -129,7 +129,23 @@ const App: React.FC = () => {
         <div style={{ marginTop: '20px' }}>
           <p>Contains Profanity: <strong>{result.containsProfanity ? 'Yes' : 'No'}</strong></p>
           {result.containsProfanity && (
-            <p>Profane Words: <strong>{result.profaneWords.join(', ')}</strong></p>
+            <>
+              <h3>Profane Words and Severity Levels:</h3>  
+<ul>
+  {result.profaneWords.map((word, index) => (
+    <li key={index}>
+      {word} - Severity Level: {result.severityMap ? result.severityMap[word] : result.severityMap[word]}
+    </li>
+  ))}
+</ul>
+{result.processedText && (
+  <div>
+    <h3>Processed Text:</h3>
+    <p>{result.processedText}</p>
+  </div>
+)}
+
+            </>
           )}
         </div>
       )}

@@ -1,27 +1,18 @@
 {
   "compilerOptions": {
-    "target": "es2015",
-    "module": "commonjs",
-    "lib": [
-      "dom",
-      "es2015"
-    ],
-    "jsx": "react",
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
     "moduleResolution": "node",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "target": "es5",
+    "lib": ["es6", "dom"],
+    "declaration": true,
+    "sourceMap": true,
+    "jsx": "react",
+    "baseUrl": "./",
+    "paths": {
+      "glin-profanity": ["packages/glin-profanity/src"]
+    },
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true
+    "esModuleInterop": true,
+    "downlevelIteration": true
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*", "packages/**/*"]
 }
