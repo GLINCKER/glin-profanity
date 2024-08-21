@@ -90,7 +90,7 @@ jobs:
       - name: Fetch PR Template
         id: pr_template
         run: |
-          TEMPLATE_PATH=$(find .github -name "PULL_REQUEST_TEMPLATE.md")
+          TEMPLATE_PATH=$(find .github -name "pull_request_template.md")
           echo "PR_TEMPLATE=$(cat $TEMPLATE_PATH)" >> $GITHUB_ENV
 
       - name: Compare PR Description with Template
