@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+  push:
+    branches:
+      - main
+      - 'release/*'
+      - 'develop/*'
+      - 'feature/*'
+
+jobs:
+  lint:
+    name: Lint Codebase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: npm run lint
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [14, 16, 18]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Cache Node.js modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Tests
+        run: npm test
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+  pr-template-check:
+    name: Validate PR Template Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Fetch PR Description
+        id: pr
+        run: echo "PR_BODY=$(gh pr view ${{ github.event.pull_request.number }} --json body --jq '.body')" >> $GITHUB_ENV
+
+      - name: Fetch PR Template
+        id: pr_template
+        run: |
+          TEMPLATE_PATH=$(find .github -name "PULL_REQUEST_TEMPLATE.md")
+          echo "PR_TEMPLATE=$(cat $TEMPLATE_PATH)" >> $GITHUB_ENV
+
+      - name: Compare PR Description with Template
+        run: |
+          if [[ "${{ env.PR_BODY }}" == "${{ env.PR_TEMPLATE }}" ]]; then
+            echo "PR description is too similar to the template. Please provide more detailed information."
+            exit 1
+          else
+            echo "PR description differs from the template."
+          fi
+
+      - name: Fail if PR description is empty
+        run: |
+          if [[ -z "${{ env.PR_BODY }}" ]]; then
+            echo "PR description is empty. Please provide a detailed description."
+            exit 1
+          fi
+
+      - name: Check if PR is ready for review
+        run: |
+          if [[ "${{ github.event.pull_request.draft }}" == "true" ]]; then
+            echo "PR is still a draft. Please mark it as ready for review when done."
+            exit 1
+          fi
+
+      - name: Complete PR template check
+        run: echo "PR template compliance check completed successfully."

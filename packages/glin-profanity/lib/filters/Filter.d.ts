@@ -20,7 +20,11 @@ declare class Filter {
     private logProfanity;
     constructor(config?: FilterConfig);
     private getRegex;
+    private isFuzzyMatch;
+    private isMergedMatch;
+    private evaluateSeverity;
     isProfane(value: string): boolean;
+    checkProfanityInSentence(text: string): CheckProfanityResult;
     checkProfanity(text: string): CheckProfanityResult;
 }
 export { Filter };

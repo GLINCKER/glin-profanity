@@ -28,44 +28,96 @@ class Filter {
         if (config === null || config === void 0 ? void 0 : config.customWords) {
             words = [...words, ...config.customWords];
         }
-        this.words = new Map(words.map(word => [word, 1])); // Default severity level is 1
+        this.words = new Map(words.map(word => [word.toLowerCase(), 1])); // Store words in lowercase
     }
     getRegex(word) {
         const flags = this.caseSensitive ? 'g' : 'gi';
         const boundary = this.wordBoundaries ? '\\b' : '';
         return new RegExp(`${boundary}${word.replace(/(\W)/g, '\\$1')}${boundary}`, flags);
     }
+    isFuzzyMatch(word, text) {
+        const pattern = `${word.split('').join('[^a-zA-Z]*')}`;
+        const regex = new RegExp(pattern, this.caseSensitive ? 'g' : 'gi');
+        return regex.test(text);
+    }
+    isMergedMatch(word, text) {
+        const pattern = `${word}`;
+        const regex = new RegExp(pattern, this.caseSensitive ? 'g' : 'gi');
+        return regex.test(text);
+    }
+    evaluateSeverity(word, text) {
+        if (this.getRegex(word).test(text)) {
+            return 1; // Exact match
+        }
+        else if (this.isFuzzyMatch(word, text)) {
+            return 2; // Fuzzy match
+        }
+        else if (this.isMergedMatch(word, text)) {
+            return 3; // Merged word match
+        }
+        return undefined; // No match or irrelevant match
+    }
     isProfane(value) {
         for (const word of this.words.keys()) {
-            if (!this.ignoreWords.has(word.toLowerCase()) && this.getRegex(word).test(value))
+            if (!this.ignoreWords.has(word.toLowerCase()) && this.evaluateSeverity(word, value) !== undefined)
                 return true;
         }
         return false;
     }
-    checkProfanity(text) {
+    checkProfanityInSentence(text) {
         const words = text.split(/\s+/);
         const profaneWords = [];
         const severityMap = {};
         for (const word of words) {
-            if (this.words.has(word.toLowerCase()) && !this.ignoreWords.has(word.toLowerCase())) {
-                profaneWords.push(word);
-                severityMap[word] = this.words.get(word.toLowerCase());
+            for (const dictWord of this.words.keys()) {
+                const severity = this.evaluateSeverity(dictWord, word);
+                if (severity !== undefined && !this.ignoreWords.has(dictWord.toLowerCase())) {
+                    profaneWords.push(word);
+                    severityMap[word] = severity; // Use the actual word found in text as the key
+                }
             }
-        }
-        if (this.logProfanity && profaneWords.length > 0) {
-            console.log(`Profane words detected: ${profaneWords.join(', ')}`);
         }
         let processedText = text;
         if (this.replaceWith) {
             for (const word of profaneWords) {
-                processedText = processedText.replace(this.getRegex(word), this.replaceWith);
+                processedText = processedText.replace(new RegExp(word, 'gi'), this.replaceWith);
             }
         }
         return {
             containsProfanity: profaneWords.length > 0,
             profaneWords,
             processedText: this.replaceWith ? processedText : undefined,
-            severityMap: this.severityLevels ? severityMap : undefined,
+            severityMap: Object.keys(severityMap).length > 0 ? severityMap : undefined, // Only return if there are valid severities
+        };
+    }
+    checkProfanity(text) {
+        const words = text.split(/\s+/);
+        const profaneWords = [];
+        const severityMap = {};
+        // Check each word individually
+        for (const word of words) {
+            for (const dictWord of this.words.keys()) {
+                const severity = this.evaluateSeverity(dictWord, word);
+                if (severity !== undefined && !this.ignoreWords.has(dictWord.toLowerCase())) {
+                    profaneWords.push(word);
+                    severityMap[word] = severity; // Use the actual word found in text as the key
+                }
+            }
+        }
+        const sentenceResult = this.checkProfanityInSentence(text);
+        profaneWords.push(...sentenceResult.profaneWords);
+        Object.assign(severityMap, sentenceResult.severityMap);
+        let processedText = text;
+        if (this.replaceWith) {
+            for (const word of profaneWords) {
+                processedText = processedText.replace(new RegExp(word, 'gi'), this.replaceWith);
+            }
+        }
+        return {
+            containsProfanity: profaneWords.length > 0,
+            profaneWords: Array.from(new Set(profaneWords)),
+            processedText: this.replaceWith ? processedText : undefined,
+            severityMap: Object.keys(severityMap).length > 0 ? severityMap : undefined,
         };
     }
 }

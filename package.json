@@ -1,6 +1,6 @@
 {
   "name": "glin-profanity",
-  "version": "1.1.5",
+  "version": "1.1.7",
   "description": "Monorepo for Glin-Profanity packages",
   "private": true,
   "workspaces": [
@@ -12,7 +12,8 @@
     "publish": "lerna publish",
     "prepare": "husky install",
     "commit": "git-cz",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,7 @@
   "author": "gdsks",
   "license": "ISC",
   "dependencies": {
+    "glin-profanity": "^1.1.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -45,9 +47,11 @@
     "babel-loader": "^9.1.3",
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.35.0",
+    "gh": "^2.0.0",
     "git-cz": "^4.9.0",
     "html-webpack-plugin": "^5.6.0",
     "husky": "^8.0.3",
+    "jest": "^27.0.0",
     "lerna": "^8.1.8",
     "lint-staged": "^15.2.0",
     "prettier": "^3.3.3",

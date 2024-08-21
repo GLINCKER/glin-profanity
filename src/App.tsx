@@ -129,7 +129,23 @@ const App: React.FC = () => {
         <div style={{ marginTop: '20px' }}>
           <p>Contains Profanity: <strong>{result.containsProfanity ? 'Yes' : 'No'}</strong></p>
           {result.containsProfanity && (
-            <p>Profane Words: <strong>{result.profaneWords.join(', ')}</strong></p>
+            <>
+              <h3>Profane Words and Severity Levels:</h3>  
+<ul>
+  {result.profaneWords.map((word, index) => (
+    <li key={index}>
+      {word} - Severity Level: {result.severityMap ? result.severityMap[word] : result.severityMap[word]}
+    </li>
+  ))}
+</ul>
+{result.processedText && (
+  <div>
+    <h3>Processed Text:</h3>
+    <p>{result.processedText}</p>
+  </div>
+)}
+
+            </>
           )}
         </div>
       )}
