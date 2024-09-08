@@ -1,3 +1,5 @@
+// src/filters/Filter.ts
+
 import dictionary from '../data/dictionary';
 import { Language, CheckProfanityResult } from '../types/types';
 
