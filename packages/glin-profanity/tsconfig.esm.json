@@ -1,0 +1,11 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+      "outDir": "./lib/esm",
+      "module": "ES6",
+      "target": "es2015",
+      "declaration": true
+    },
+    "include": ["src/**/*"]
+  }
+  
