@@ -6,6 +6,7 @@ yarn.lock
 # Output directories
 dist/
 build/
+packages/glin-profanity/lib/*
 
 # TypeScript compiled output
 *.tsbuildinfo
