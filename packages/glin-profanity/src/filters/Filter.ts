@@ -1,5 +1,5 @@
 // src/filters/Filter.ts
-
+import globalWhitelistData from '../data/globalWhitelist.json';
 import dictionary from '../data/dictionary';
 import { Language, CheckProfanityResult } from '../types/types';
 
@@ -10,9 +10,10 @@ interface FilterConfig {
   wordBoundaries?: boolean;
   customWords?: string[];
   replaceWith?: string;
-  severityLevels?: boolean; 
+  severityLevels?: boolean;
   ignoreWords?: string[];
-  logProfanity?: boolean; 
+  logProfanity?: boolean;
+  globalWhitelist?: string[];
 }
 
 class Filter {
@@ -20,18 +21,23 @@ class Filter {
   private caseSensitive: boolean;
   private wordBoundaries: boolean;
   private replaceWith?: string;
-  private severityLevels: boolean; 
+  private severityLevels: boolean;
   private ignoreWords: Set<string>;
-  private logProfanity: boolean; 
+  private logProfanity: boolean;
+  private globalWhitelist: Set<string>;
 
   constructor(config?: FilterConfig) {
     let words: string[] = [];
     this.caseSensitive = config?.caseSensitive ?? false;
     this.wordBoundaries = config?.wordBoundaries ?? true;
     this.replaceWith = config?.replaceWith;
-    this.severityLevels = config?.severityLevels ?? false; 
+    this.severityLevels = config?.severityLevels ?? false;
     this.ignoreWords = new Set(config?.ignoreWords?.map(word => word.toLowerCase()) || []);
-    this.logProfanity = config?.logProfanity ?? false; 
+    this.logProfanity = config?.logProfanity ?? false;
+
+    const jsonWhitelist = globalWhitelistData.whitelist.map(word => word.toLowerCase());
+    const mergedWhitelist = [...jsonWhitelist, ...(config?.globalWhitelist ?? [])];
+    this.globalWhitelist = new Set(mergedWhitelist);
 
     if (config?.allLanguages) {
       for (const lang in dictionary) {
@@ -58,11 +64,11 @@ class Filter {
 
   private getRegex(word: string): RegExp {
     const flags = this.caseSensitive ? 'g' : 'gi';
-    const boundary = this.wordBoundaries ? '\\b' : ''; 
+    const boundary = this.wordBoundaries ? '\\b' : '';
     return new RegExp(`${boundary}${word.replace(/(\W)/g, '\\$1')}${boundary}`, flags);
   }
 
-  private isFuzzyMatch(word: string, text: string): boolean { 
+  private isFuzzyMatch(word: string, text: string): boolean {
     const pattern = `${word.split('').join('[^a-zA-Z]*')}`;
     const regex = new RegExp(pattern, this.caseSensitive ? 'g' : 'gi');
     return regex.test(text);
@@ -86,8 +92,10 @@ class Filter {
   }
 
   isProfane(value: string): boolean {
-    for (const word of this.words.keys()) { 
-      if (!this.ignoreWords.has(word.toLowerCase()) && this.evaluateSeverity(word, value) !== undefined) return true; 
+    for (const word of this.words.keys()) {
+      if (!this.ignoreWords.has(word.toLowerCase()) && !this.globalWhitelist.has(word.toLowerCase()) && this.evaluateSeverity(word, value) !== undefined) {
+        return true;
+      }
     }
     return false;
   }
@@ -97,7 +105,7 @@ class Filter {
     const profaneWords: string[] = [];
     const severityMap: { [word: string]: number } = {};
 
-    for (const word of words) { 
+    for (const word of words) {
       for (const dictWord of this.words.keys()) {
         const severity = this.evaluateSeverity(dictWord, word);
         if (severity !== undefined && !this.ignoreWords.has(dictWord.toLowerCase())) {
@@ -137,7 +145,7 @@ class Filter {
         }
       }
     }
- 
+
     const sentenceResult = this.checkProfanityInSentence(text);
     profaneWords.push(...sentenceResult.profaneWords);
     Object.assign(severityMap, sentenceResult.severityMap);
@@ -151,9 +159,9 @@ class Filter {
 
     return {
       containsProfanity: profaneWords.length > 0,
-      profaneWords: Array.from(new Set(profaneWords)),  
+      profaneWords: Array.from(new Set(profaneWords)),
       processedText: this.replaceWith ? processedText : undefined,
-      severityMap: Object.keys(severityMap).length > 0 ? severityMap : undefined,  
+      severityMap: Object.keys(severityMap).length > 0 ? severityMap : undefined,
     };
   }
 }

@@ -1,57 +1,63 @@
 {
-    "name": "glin-profanity",
-    "version": "1.1.8",
-    "description": "Glin-Profanity is a lightweight and efficient npm package designed to detect and filter profane language in text inputs across multiple languages. Whether you’re building a chat application, a comment section, or any platform where user-generated content is involved, Glin-Profanity helps you maintain a clean and respectful environment.",
-    "main": "lib/cjs/index.js",         
-    "module": "lib/esm/index.js",       
-    "types": "lib/index.d.ts",          
-    "exports": {
-      ".": {
-        "require": "./lib/cjs/index.js",   
-        "import": "./lib/esm/index.js"     
+  "name": "glin-profanity",
+  "version": "1.1.9",
+  "description": "Glin-Profanity is a lightweight and efficient npm package designed to detect and filter profane language in text inputs across multiple languages. Whether you’re building a chat application, a comment section, or any platform where user-generated content is involved, Glin-Profanity helps you maintain a clean and respectful environment.",
+  "main": "lib/cjs/index.js",
+  "module": "lib/esm/index.js",
+  "types": "lib/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./lib/cjs/index.d.ts",
+        "default": "./lib/cjs/index.js"
+      },
+      "import": {
+        "types": "./lib/esm/index.d.ts",
+        "default": "./lib/esm/index.js"
       }
-    },
-    "files": [
-      "lib",
-      "README.md"
-    ],
-    "scripts": {
-      "build:cjs": "tsc -p tsconfig.commonjs.json",
-      "build:esm": "tsc -p tsconfig.esm.json",
-      "build": "npm run build:cjs && npm run build:esm"
-    },
-    "repository": {
-      "type": "git",
-      "url": "https://github.com/GLINCKER/glin-profanity"
-    },
-    "homepage": "https://www.glincker.com/tools/glin-profanity",
-    "keywords": [
-        "profanity",
-        "curse",
-        "react-profanity",
-        "glin-profanity",
-        "glincker",
-        "glin",
-        "bad",
-        "badword",
-        "profanity-cleaner",
-        "swearword",
-        "profanity-filter",
-        "badword-filter",
-        "badword-detection",
-        "badword-detect",
-        "checker",
-        "filter",
-        "detection",
-        "detect",
-        "profane",
-        "profane-language",
-        "profane-word",
-        "profane-word-filter",
-        "profane-word-detection",
-        "moderation",
-        "moderate"
-    ],
-    "author": "gdsks",
-    "license": "ISC"
+    }
+  },
+  "files": [
+    "lib",
+    "README.md"
+  ],
+  "scripts": {
+    "build:cjs": "tsc -p tsconfig.commonjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build": "npm run build:cjs && npm run build:esm"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GLINCKER/glin-profanity"
+  },
+  "homepage": "https://www.glincker.com/tools/glin-profanity",
+  "keywords": [
+    "profanity",
+    "curse",
+    "react-profanity",
+    "glin-profanity",
+    "glincker",
+    "glin",
+    "bad",
+    "badword",
+    "profanity-cleaner",
+    "swearword",
+    "profanity-filter",
+    "badword-filter",
+    "badword-detection",
+    "badword-detect",
+    "checker",
+    "filter",
+    "detection",
+    "detect",
+    "profane",
+    "profane-language",
+    "profane-word",
+    "profane-word-filter",
+    "profane-word-detection",
+    "moderation",
+    "moderate"
+  ],
+  "author": "gdsks",
+  "license": "ISC"
 }
