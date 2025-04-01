@@ -1,169 +1,146 @@
 
-# Glin Profanity
-Glin-Profanity is a lightweight and efficient npm package designed to detect and filter profane language in text inputs across multiple languages. Whether you’re building a chat application, a comment section, or any platform where user-generated content is involved, Glin-Profanity helps you maintain a clean and respectful environment.
+# 🔥 Glin-Profanity
 
-## Installation
+Glin-Profanity is a modern, lightweight, and multilingual profanity filtering package built for **React**, **JavaScript/TypeScript** projects, and any Node.js application.
+It now supports detection of **obfuscated, fuzzy, merged, and chat-style profanities**.
 
-To install Glin-Profanity, use npm:
+---
 
+## 🚀 Features
+
+- ✅ **Multi-language profanity detection**
+- ✅ **Highly customizable configuration**
+- ✅ **Word boundary detection**
+- ✅ **Obfuscated profanity detection** (`f*ck`, `fuuuuck`, `shiiiit` → detected)
+- ✅ **Fuzzy matching with tolerance control**
+- ✅ **Common slangs, abbreviations & modern profanities**
+- ✅ **Custom word dictionary support**
+- ✅ **React Hook & Filter class APIs**
+- ✅ **Severity levels for detected words**
+- ✅ **Whitelist override & custom callbacks**
+- ✅ **Lightweight & fast**
+
+---
+
+## 📥 Installation
+
+Using NPM:
 ```bash
 npm install glin-profanity
 ```
-OR
 
+Using Yarn:
 ```bash
 yarn add glin-profanity
 ```
-## Usage
 
-### Basic Usage
+---
 
-Here's a simple example of how to use Glin-Profanity in a React application:
+## ⚙️ Usage
 
-```typescript
+### Basic React Hook Example
+
+```tsx
 import React, { useState } from 'react';
-import { useProfanityChecker, Language } from 'glin-profanity';
+import { useProfanityChecker } from 'glin-profanity';
 
-const App: React.FC = () => {
+const App = () => {
   const [text, setText] = useState('');
-  const [checkAllLanguages, setCheckAllLanguages] = useState(false);
-  const { result, checkText } = useProfanityChecker(
-    checkAllLanguages ? { allLanguages: true } : { languages: ['english', 'french'] }
-  );
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setText(e.target.value);
-  };
-
-  const handleCheck = () => {
-    checkText(text);
-  };
+  const { result, checkText } = useProfanityChecker({
+    languages: ['english'],
+    severityLevels: true,
+  });
 
   return (
     <div>
-      <h1>Welcome to Glin-Profanity</h1>
-      <input type="text" value={text} onChange={handleChange} />
-      <button onClick={handleCheck}>Check Profanity</button>
-      <div>
-        <label>
-          <input
-            type="checkbox"
-            checked={checkAllLanguages}
-            onChange={(e) => setCheckAllLanguages(e.target.checked)}
-          />
-          Check All Languages
-        </label>
-      </div>
+      <input value={text} onChange={(e) => setText(e.target.value)} />
+      <button onClick={() => checkText(text)}>Check</button>
       {result && (
-        <div>
-          <p>Contains Profanity: {result.containsProfanity ? 'Yes' : 'No'}</p>
-          {result.containsProfanity && (
-            <p>Profane Words: {result.profaneWords.join(', ')}</p>
-          )}
-        </div>
+        <p>{result.containsProfanity ? 'Profanity Detected' : 'Clean'}</p>
       )}
     </div>
   );
 };
-
-export default App;
 ```
 
-## API
+---
 
-### `Filter` Class
+### Advanced Options
 
-#### Constructor
-
-```typescript
-new Filter(config?: { 
-  languages?: Language[]; 
-  allLanguages?: boolean;
-  caseSensitive?: boolean;
-  wordBoundaries?: boolean;
-  customWords?: string[];
-  replaceWith?: string;
-  severityLevels?: boolean; 
-  ignoreWords?: string[];
-  logProfanity?: boolean; 
+```ts
+const { result, checkText } = useProfanityChecker({
+  allLanguages: true,
+  allowObfuscatedMatch: true,
+  fuzzyToleranceLevel: 0.7,
+  wordBoundaries: false,
+  severityLevels: true,
+  customWords: ['foo', 'bar'],
+  replaceWith: '****',
+  logProfanity: true,
 });
 ```
 
-- `config`: An optional configuration object.
-  - `languages`: An array of languages to check for profanities.
-  - `allLanguages`: A boolean indicating whether to check for all languages.
-  - `caseSensitive`: A boolean indicating whether the profanity check should be case-sensitive.
-  - `wordBoundaries`: A boolean indicating whether to consider word boundaries when checking for profanities.
-  - `customWords`: An array of custom words to include in the profanity check.
-  - `replaceWith`: A string to replace profane words with.
-  - `severityLevels`: A boolean indicating whether to include severity levels for profane words. 
-  - `ignoreWords`: An array of words to ignore in the profanity check.
-  - `logProfanity`: A boolean indicating whether to log detected profane words. 
+---
 
-#### Methods
+## 🧩 API Reference
 
-##### `isProfane`
+### `useProfanityChecker(config)`
 
-Checks if a given text contains profanities.
+| Option                  | Type           | Description                                                   |
+|------------------------|---------------|---------------------------------------------------------------|
+| `languages`            | `Language[]`  | Array of languages to check                                   |
+| `allLanguages`        | `boolean`     | Check all supported languages                                 |
+| `caseSensitive`      | `boolean`     | Enable case-sensitive matching                                |
+| `wordBoundaries`    | `boolean`     | Match full words only                                         |
+| `allowObfuscatedMatch` | `boolean`   | Detect obfuscated profanities (e.g. `f*ck`, `fuuuuck`)        |
+| `fuzzyToleranceLevel` | `number`      | Fuzzy match tolerance (0.5 - 1)                               |
+| `customWords`        | `string[]`    | Add your own profane words                                    |
+| `replaceWith`        | `string`      | Replace profane words with this string                        |
+| `severityLevels`    | `boolean`     | Include severity scores (Exact, Fuzzy, Merged)                |
+| `ignoreWords`      | `string[]`    | Whitelisted words to ignore                                   |
+| `logProfanity`     | `boolean`     | Enable logging of detected profanities                        |
+| `customActions`    | `(result) => void` | Callback after detection                                  |
 
-```typescript
-isProfane(value: string): boolean;
-```
+---
 
-- `value`: The text to check.
-- Returns: `boolean` - `true` if the text contains profanities, `false` otherwise.
+## 🎯 Severity Levels
 
-##### `checkProfanity`
+Each detected word will have an optional severity score:
+| Level | Meaning             |
+|------:|:--------------------|
+|   1  | Exact Match         |
+|   2  | Fuzzy Match         |
+|   3  | Merged/Obfuscated   |
 
-Returns details about profanities found in the text.
+---
 
-```typescript
-checkProfanity(text: string): CheckProfanityResult;
-```
+## 🗂️ Dictionary
 
-- `text`: The text to check.
-- Returns: `CheckProfanityResult`
-  - `containsProfanity`: `boolean` - `true` if the text contains profanities, `false` otherwise.
-  - `profaneWords`: `string[]` - An array of profane words found in the text.
-  - `processedText`: `string` - The text with profane words replaced (if `replaceWith` is specified).
-  - `severityMap`: `{ [word: string]: number }` - A map of profane words to their severity levels (if `severityLevels` is specified).
+Glin-Profanity includes an optimized, cleaned profanity list:
+- Base words
+- Derivatives like `fucker`, `motherfucker`
+- Modern slangs (`simp`, `hoe`, `wtf`)
+- Obfuscated forms (`f*ck`, `a$$`, `sh!t`)
+- Racist, sexual, abusive, and derogatory terms
 
-### `useProfanityChecker` Hook
+You can override or extend this list using `customWords`.
 
-A custom React hook for using the profanity checker.
+---
 
-#### Parameters
+## 🔗 License
 
-- `config`: An optional configuration object.
-  - `languages`: An array of languages to check for profanities.
-  - `allLanguages`: A boolean indicating whether to check for all languages.
-  - `caseSensitive`: A boolean indicating whether the profanity check should be case-sensitive.
-  - `wordBoundaries`: A boolean indicating whether to consider word boundaries when checking for profanities.
-  - `customWords`: An array of custom words to include in the profanity check.
-  - `replaceWith`: A string to replace profane words with.
-  - `severityLevels`: A boolean indicating whether to include severity levels for profane words. 
-  - `ignoreWords`: An array of words to ignore in the profanity check.
-  - `logProfanity`: A boolean indicating whether to log detected profane words. 
-  - `customActions`: A function to execute custom actions when profanity is detected.
+This software is dual-licensed:
 
-#### Return Value
+- MIT License ([See License](./LICENSE))
+- GLINCKER LLC Proprietary License (For Commercial Use)
 
-- `result`: The result of the profanity check.
-- `checkText`: A function to check a given text for profanities.
-- `checkTextAsync`: A function to check a given text for profanities asynchronously.
+You are free to use this library under MIT for non-commercial or educational purposes.
+For commercial use and distribution, please refer to the proprietary license terms of **GLINCKER LLC**.
 
-```typescript
-const { result, checkText, checkTextAsync } = useProfanityChecker(config);
-```
+---
 
-## License
+## 🙌 Credits
 
-This software is also available under the GLINCKER LLC proprietary license. The proprietary license allows for use, modification, and distribution of the software with certain restrictions and conditions as set forth by GLINCKER LLC.
+Maintained by **GLINCKER LLC** | [glincker.com](https://glincker.com)
 
-You are free to use this software for reference and educational purposes. However, any commercial use, distribution, or modification outside the terms of the MIT License requires explicit permission from GLINCKER LLC. 
-
-By using the software in any form, you agree to adhere to the terms of both the MIT License and the GLINCKER LLC proprietary license, where applicable. If there is any conflict between the terms of the MIT License and the GLINCKER LLC proprietary license, the terms of the GLINCKER LLC proprietary license shall prevail.
-
-### MIT License
-
-GLIN PROFANITY is [MIT licensed](./LICENSE).
+---

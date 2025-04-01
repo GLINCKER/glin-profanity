@@ -1,9 +1,15 @@
 // src/types/types.ts
+export enum SeverityLevel {
+  Exact = 1,
+  Fuzzy = 2,
+  Merged = 3,
+}
+
 export interface CheckProfanityResult {
   containsProfanity: boolean;
   profaneWords: string[];
   processedText?: string;
-  severityMap?: { [word: string]: number };
+  severityMap?: { [word: string]: SeverityLevel };
 }
 export type Language =
   | 'arabic'
