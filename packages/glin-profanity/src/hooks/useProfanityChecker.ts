@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Filter } from '../filters/Filter';
 import { CheckProfanityResult, Language } from '../types/types';
 import globalWhitelistData from '../data/globalWhitelist.json';
@@ -11,17 +11,35 @@ interface ProfanityCheckerConfig {
   customWords?: string[];
   replaceWith?: string;
   severityLevels?: boolean;
+  allowObfuscatedMatch?: boolean;
+  fuzzyToleranceLevel?: number;
   customActions?: (result: CheckProfanityResult) => void;
 }
 
 export const useProfanityChecker = (config?: ProfanityCheckerConfig) => {
   const [result, setResult] = useState<CheckProfanityResult | null>(null);
-  const filterConfig = {
-    ...config,
-    globalWhitelist: globalWhitelistData.whitelist,  
-  };
 
-  const filter = new Filter(filterConfig);
+  const filterConfig = useMemo(() => {
+    const effectiveConfig = {
+      ...config,
+      ignoreWords: globalWhitelistData.whitelist,
+      fuzzyToleranceLevel: config?.fuzzyToleranceLevel ?? 0.8, // default fallback
+    };
+
+    // Optional - warn developer
+    if (
+      effectiveConfig.allowObfuscatedMatch &&
+      effectiveConfig.wordBoundaries
+    ) {
+      console.warn(
+        '[Glin-Profanity] Obfuscated match enabled → wordBoundaries will be ignored internally.',
+      );
+    }
+
+    return effectiveConfig;
+  }, [config]);
+
+  const filter = useMemo(() => new Filter(filterConfig), [filterConfig]);
 
   const checkText = (text: string) => {
     const checkResult = filter.checkProfanity(text);
@@ -42,9 +60,12 @@ export const useProfanityChecker = (config?: ProfanityCheckerConfig) => {
     });
   };
 
+  const reset = () => setResult(null);
+
   return {
     result,
     checkText,
     checkTextAsync,
+    reset,
   };
 };
