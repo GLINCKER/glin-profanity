@@ -56,7 +56,7 @@
 
 > A multilingual profanity detection and filtering engine for modern applications — by [GLINCKER](https://glincker.com)
  
-[![Glin Profanity Preview](./../assets/glin-profanity-preview.png)](https://glincker.com/tools/profanity-checker)
+[![Glin Profanity Preview](./../assets/glin-profanity-preview.png)](https://www.glincker.com/tools/glin-profanity)
 
 ---
 
