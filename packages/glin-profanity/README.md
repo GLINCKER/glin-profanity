@@ -1,15 +1,19 @@
 <p align="center">
-  <img src="../../assets/glinr-logo.png" alt="Glin Profanity Logo" width="120" />
+  <a href="https://glincker.com/tools/profanity-checker" target="_blank">
+    <img src="../../assets/glinr-logo.png" alt="Glin Profanity" width="40" />
+    <span style="font-size: 32px; font-weight: bold; vertical-align: middle; margin-left: 10px;">Glin Profanity</span>
+  </a>
 </p>
 
-<h1 align="center">Glin Profanity</h1>
-  
 <p align="center">
   <strong>A multilingual profanity detection and filtering engine for modern applications — by <a href="https://glincker.com">GLINCKER</a></strong>
 </p>
 <p align="center">
-[![Try Live Demo](https://img.shields.io/badge/🚀%20Try%20Live%20Demo-online-blue)](https://glincker.com/tools/profanity-checker)
+  <a href="https://glincker.com/tools/profanity-checker">
+    <img src="https://img.shields.io/badge/🚀%20Try%20Live%20Demo-online-blue" alt="Try Live Demo" />
+  </a>
 </p>
+
 
 <p align="center">
   <a href="https://www.npmjs.com/package/glin-profanity">
@@ -30,8 +34,8 @@
 
 
 > A multilingual profanity detection and filtering engine for modern applications — by [GLINCKER](https://glincker.com)
-
-![Glin Profanity Preview](../../assets/glin-profanity-preview.png)
+ 
+[![Glin Profanity Preview](./../assets/glin-profanity-preview.png)](https://glincker.com/tools/profanity-checker)
 
 ---
 
@@ -219,6 +223,17 @@ A custom React hook for using the profanity checker.
 ```typescript
 const { result, checkText, checkTextAsync } = useProfanityChecker(config);
 ```
+
+## Note 
+⚠️ Glin-Profanity is a best-effort tool. Language evolves, and no filter is perfect. Always supplement with human moderation for high-risk platforms.
+
+## 🛠 Use Cases
+
+- 🔐 Chat moderation in messaging apps
+- 🧼 Comment sanitization for blogs or forums
+- 🕹️ Game lobbies & multiplayer chats
+- 🤖 AI content filters before processing input
+
 
 ## License
 
