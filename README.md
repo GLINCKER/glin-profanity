@@ -16,21 +16,40 @@
     <img src="https://img.shields.io/badge/🚀%20Try%20Live%20Demo-online-blue" alt="Try Live Demo" />
   </a>
 </p>
-
 <p align="center">
   <a href="https://www.npmjs.com/package/glin-profanity">
     <img src="https://img.shields.io/npm/v/glin-profanity" alt="NPM Version" />
   </a>
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License" />
-  <img src="https://img.shields.io/github/actions/workflow/status/GLINCKER/glin-profanity/ci.yml" alt="CI Status" />
-  <img src="https://img.shields.io/npm/dw/glin-profanity" alt="Weekly Downloads" />
-  <img src="https://img.shields.io/github/issues/GLINCKER/glin-profanity" alt="Open Issues" />
-  <img src="https://img.shields.io/github/issues-pr/GLINCKER/glin-profanity" alt="Open PRs" />
-  <img src="https://img.shields.io/github/last-commit/GLINCKER/glin-profanity" alt="Last Commit" />
-  <img src="https://img.shields.io/github/stars/GLINCKER/glin-profanity" alt="GitHub Stars" />
-  <img src="https://img.shields.io/github/forks/GLINCKER/glin-profanity" alt="GitHub Forks" />
-  <img src="https://img.shields.io/github/contributors/GLINCKER/glin-profanity" alt="Contributors" />
-  <img src="https://img.shields.io/badge/-Table%20of%20Contents-blue" alt="Table Of Contents" /> 
+  <a href="https://github.com/GLINCKER/glin-profanity/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License" />
+  </a>
+  <a href="https://github.com/GLINCKER/glin-profanity/actions">
+    <img src="https://img.shields.io/github/actions/workflow/status/GLINCKER/glin-profanity/ci.yml" alt="CI Status" />
+  </a>
+  <a href="https://www.npmjs.com/package/glin-profanity">
+    <img src="https://img.shields.io/npm/dw/glin-profanity" alt="Weekly Downloads" />
+  </a>
+  <a href="https://github.com/GLINCKER/glin-profanity/issues">
+    <img src="https://img.shields.io/github/issues/GLINCKER/glin-profanity" alt="Open Issues" />
+  </a>
+  <a href="https://github.com/GLINCKER/glin-profanity/pulls">
+    <img src="https://img.shields.io/github/issues-pr/GLINCKER/glin-profanity" alt="Open PRs" />
+  </a>
+  <a href="https://github.com/GLINCKER/glin-profanity/commits/main">
+    <img src="https://img.shields.io/github/last-commit/GLINCKER/glin-profanity" alt="Last Commit" />
+  </a>
+  <a href="https://github.com/GLINCKER/glin-profanity/stargazers">
+    <img src="https://img.shields.io/github/stars/GLINCKER/glin-profanity" alt="GitHub Stars" />
+  </a>
+  <a href="https://github.com/GLINCKER/glin-profanity/network/members">
+    <img src="https://img.shields.io/github/forks/GLINCKER/glin-profanity" alt="GitHub Forks" />
+  </a>
+  <a href="https://github.com/GLINCKER/glin-profanity/graphs/contributors">
+    <img src="https://img.shields.io/github/contributors/GLINCKER/glin-profanity" alt="Contributors" />
+  </a>
+  <a href="#-table-of-contents">
+    <img src="https://img.shields.io/badge/-Table%20of%20Contents-blue" alt="Table Of Contents" />
+  </a>
 </p>
 
 ---
