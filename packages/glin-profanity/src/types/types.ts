@@ -4,12 +4,19 @@ export enum SeverityLevel {
   Fuzzy = 2,
   Merged = 3,
 }
+export type SeverityLabel = keyof typeof SeverityLevel; // "Exact" | "Fuzzy" | "Merged"
+
+export interface FilteredProfanityResult {
+  result: CheckProfanityResult;
+  filteredWords: string[];
+}
 
 export interface CheckProfanityResult {
   containsProfanity: boolean;
   profaneWords: string[];
   processedText?: string;
-  severityMap?: { [word: string]: SeverityLevel };
+  severityMap?: Record<string, SeverityLevel>;
+  matchContexts?: { word: string; context: string }[];
 }
 export type Language =
   | 'arabic'

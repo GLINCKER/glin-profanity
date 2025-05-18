@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "start": "webpack serve --mode development",
+    "start": "webpack serve --mode development --port 4000",
     "build": "lerna run build",
     "publish": "lerna publish",
     "prepare": "husky install",

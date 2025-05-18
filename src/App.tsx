@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProfanityChecker } from 'glin-profanity';
+import { SeverityLevel, useProfanityChecker } from 'glin-profanity';
 
 const App: React.FC = () => {
   const [text, setText] = useState('');
@@ -8,18 +8,33 @@ const App: React.FC = () => {
   const [wordBoundaries, setWordBoundaries] = useState(true);
   const [allowObfuscatedMatch, setAllowObfuscatedMatch] = useState(false);
   const [fuzzyToleranceLevel, setFuzzyToleranceLevel] = useState(0.8);
+  const [autoReplace, setAutoReplace] = useState(false);
+  const [minSeverity, setMinSeverity] = useState<SeverityLevel>(
+    SeverityLevel.Exact,
+  );
   const [customWords, setCustomWords] = useState<string[]>([]);
   const [customWordsText, setCustomWordsText] = useState('[]');
   const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [logEntries, setLogEntries] = useState<string[]>([]);
+  const [replaceWith, setReplaceWith] = useState('***');
+  const [checkedOutput, setCheckedOutput] = useState<any>(null);
 
   const { result, checkText, reset } = useProfanityChecker({
     allLanguages: checkAllLanguages,
-    caseSensitive: caseSensitive,
-    wordBoundaries: wordBoundaries,
-    customWords: customWords,
+    caseSensitive,
+    wordBoundaries,
+    customWords,
     severityLevels: true,
-    allowObfuscatedMatch: allowObfuscatedMatch,
-    fuzzyToleranceLevel: fuzzyToleranceLevel,
+    allowObfuscatedMatch,
+    fuzzyToleranceLevel,
+    minSeverity,
+    autoReplace,
+    replaceWith, // 🆕 replacement style passed to Filter
+    customActions: (res) => {
+      const detected = res.profaneWords?.join(', ') || 'none';
+      const logMsg = `[Detected]: ${res.containsProfanity ? detected : 'clean'} (total: ${res.profaneWords?.length || 0})`;
+      setLogEntries((prev) => [logMsg, ...prev.slice(0, 9)]);
+    },
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,7 +42,8 @@ const App: React.FC = () => {
   };
 
   const handleCheck = () => {
-    checkText(text);
+    const output = checkText(text); // extended result
+    setCheckedOutput(output);
   };
 
   const handleReset = () => {
@@ -61,7 +77,6 @@ const App: React.FC = () => {
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>Glin-Profanity Tool Testing</h1>
 
-      {/* Input Area */}
       <input
         type="text"
         value={text}
@@ -70,26 +85,23 @@ const App: React.FC = () => {
         style={{
           padding: '10px',
           fontSize: '16px',
-          width: '300px',
+          width: '400px',
           marginBottom: '10px',
         }}
       />
       <div style={{ marginTop: '10px' }}>
-        <button
-          onClick={handleCheck}
-          style={{ padding: '10px 20px', fontSize: '16px' }}
-        >
+        <button onClick={handleCheck} style={{ padding: '10px 20px' }}>
           Check Profanity
         </button>
         <button
           onClick={handleReset}
-          style={{ padding: '10px 20px', fontSize: '16px', marginLeft: '10px' }}
+          style={{ padding: '10px 20px', marginLeft: '10px' }}
         >
           Reset
         </button>
       </div>
 
-      {/* Configuration Section */}
+      {/* Configuration */}
       <div
         style={{
           marginTop: '20px',
@@ -98,77 +110,81 @@ const App: React.FC = () => {
         }}
       >
         <h3>Configuration</h3>
-        <div style={{ marginTop: '10px' }}>
-          <label>
-            <input
-              type="checkbox"
-              checked={checkAllLanguages}
-              onChange={(e) => setCheckAllLanguages(e.target.checked)}
-              style={{ marginRight: '10px' }}
-            />
-            Check All Languages
-          </label>
-        </div>
-        <div style={{ marginTop: '10px' }}>
-          <label>
-            <input
-              type="checkbox"
-              checked={caseSensitive}
-              onChange={(e) => setCaseSensitive(e.target.checked)}
-              style={{ marginRight: '10px' }}
-            />
-            Case Sensitive
-          </label>
-        </div>
-        <div style={{ marginTop: '10px' }}>
-          <label>
-            <input
-              type="checkbox"
-              checked={wordBoundaries}
-              disabled={allowObfuscatedMatch}
-              onChange={(e) => setWordBoundaries(e.target.checked)}
-              style={{ marginRight: '10px' }}
-            />
-            Word Boundaries{' '}
-            {allowObfuscatedMatch && (
-              <span style={{ color: 'red', marginLeft: '10px' }}>
-                (Ignored when obfuscation detection is on)
-              </span>
-            )}
-          </label>
-        </div>
-        <div style={{ marginTop: '10px' }}>
-          <label>
-            <input
-              type="checkbox"
-              checked={allowObfuscatedMatch}
-              onChange={(e) => setAllowObfuscatedMatch(e.target.checked)}
-              style={{ marginRight: '10px' }}
-            />
-            Detect Obfuscated Profanity
-          </label>
-        </div>
-        <div style={{ marginTop: '10px' }}>
-          <label>
-            Fuzzy Tolerance Level: {fuzzyToleranceLevel}
-            <input
-              type="range"
-              min="0.5"
-              max="1"
-              step="0.05"
-              value={fuzzyToleranceLevel}
-              onChange={(e) =>
-                setFuzzyToleranceLevel(parseFloat(e.target.value))
-              }
-              style={{ marginLeft: '10px', width: '200px' }}
-            />
-          </label>
-        </div>
+        <label>
+          <input
+            type="checkbox"
+            checked={checkAllLanguages}
+            onChange={(e) => setCheckAllLanguages(e.target.checked)}
+          />
+          Check All Languages
+        </label>
+        <br />
+        <label>
+          <input
+            type="checkbox"
+            checked={caseSensitive}
+            onChange={(e) => setCaseSensitive(e.target.checked)}
+          />
+          Case Sensitive
+        </label>
+        <br />
+        <label>
+          <input
+            type="checkbox"
+            checked={wordBoundaries}
+            disabled={allowObfuscatedMatch}
+            onChange={(e) => setWordBoundaries(e.target.checked)}
+          />
+          Word Boundaries
+        </label>
+        <br />
+        <label>
+          <input
+            type="checkbox"
+            checked={allowObfuscatedMatch}
+            onChange={(e) => setAllowObfuscatedMatch(e.target.checked)}
+          />
+          Detect Obfuscated Profanity
+        </label>
+        <br />
+        <label>
+          Fuzzy Tolerance: {fuzzyToleranceLevel}
+          <input
+            type="range"
+            min="0.5"
+            max="1"
+            step="0.05"
+            value={fuzzyToleranceLevel}
+            onChange={(e) => setFuzzyToleranceLevel(parseFloat(e.target.value))}
+            style={{ marginLeft: '10px', width: '200px' }}
+          />
+        </label>
+        <br />
+        <label>
+          Minimum Severity:
+          <select
+            value={minSeverity}
+            onChange={(e) => setMinSeverity(Number(e.target.value))}
+            style={{ marginLeft: '10px' }}
+          >
+            <option value={SeverityLevel.Exact}>Exact</option>
+            <option value={SeverityLevel.Fuzzy}>Fuzzy</option>
+            <option value={SeverityLevel.Merged}>Merged</option>
+          </select>
+        </label>
+        <br />
+        <label>
+          <input
+            type="checkbox"
+            checked={autoReplace}
+            onChange={(e) => setAutoReplace(e.target.checked)}
+          />
+          Auto Replace Profanity
+        </label>
 
-        {/* Custom Words JSON Input */}
-        <div style={{ marginTop: '10px' }}>
+        <div style={{ marginTop: '15px' }}>
           <label>
-            Custom Words (JSON Array):
+            Custom Words (JSON):
             <textarea
               value={customWordsText}
               onChange={(e) => setCustomWordsText(e.target.value)}
@@ -178,61 +194,114 @@ const App: React.FC = () => {
                 width: '300px',
                 height: '100px',
                 marginTop: '10px',
-                padding: '10px',
-                fontSize: '14px',
               }}
             />
           </label>
-          <button
-            onClick={applyCustomWords}
-            style={{
-              padding: '6px 14px',
-              fontSize: '14px',
-              marginTop: '10px',
-              marginLeft: '10px',
-            }}
-          >
-            Apply
+          <button onClick={applyCustomWords} style={{ marginTop: '10px' }}>
+            Apply Custom Words
           </button>
           {uploadStatus && <p>{uploadStatus}</p>}
         </div>
       </div>
 
-      {/* Result Section */}
+      {/* Result */}
       {result && (
         <div
           style={{
-            marginTop: '20px',
+            marginTop: '30px',
             borderTop: '1px solid #ccc',
             paddingTop: '10px',
           }}
         >
-          <h3>Result</h3>
-          <p>
-            Contains Profanity:{' '}
-            <strong>{result.containsProfanity ? 'Yes' : 'No'}</strong>
-          </p>
-          {result.containsProfanity && (
-            <>
-              <h4>Profane Words and Severity Levels:</h4>
-              <ul>
-                {result.profaneWords.map((word, index) => (
-                  <li key={index}>
-                    {word} - Severity Level:{' '}
-                    {result.severityMap?.[word] ?? 'N/A'}
-                  </li>
-                ))}
-              </ul>
-              {result.processedText && (
-                <div>
-                  <h4>Processed Text:</h4>
-                  <p>{result.processedText}</p>
-                </div>
+          {/* Result Block */}
+          {checkedOutput && (
+            <div
+              style={{
+                marginTop: '30px',
+                borderTop: '1px solid #ccc',
+                paddingTop: '10px',
+              }}
+            >
+              <h3>Result</h3>
+              <p>
+                Contains Profanity:{' '}
+                <strong>
+                  {checkedOutput.containsProfanity ? 'Yes' : 'No'}
+                </strong>
+              </p>
+
+              {checkedOutput.containsProfanity && (
+                <>
+                  {autoReplace && (
+                    <div style={{ marginBottom: '10px' }}>
+                      <label>
+                        Replace With:{' '}
+                        <select
+                          value={replaceWith}
+                          onChange={(e) => setReplaceWith(e.target.value)}
+                          style={{ marginLeft: '10px' }}
+                        >
+                          <option value="***">***</option>
+                          <option value="[censored]">[censored]</option>
+                          <option value="🧼">🧼</option>
+                          <option value="#@%!">#@%!</option>
+                        </select>
+                      </label>
+                    </div>
+                  )}
+
+                  <h4>Filtered Profane Words (min severity applied):</h4>
+                  <ul>
+                    {checkedOutput.filteredWords?.map(
+                      (word: string, index: number) => (
+                        <li key={index}>
+                          {word} – Severity:{' '}
+                          {checkedOutput.severityMap?.[word] ?? 'N/A'}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+
+                  {checkedOutput.matchContexts?.length > 0 && (
+                    <>
+                      <h4>Context Matches:</h4>
+                      <ul>
+                        {checkedOutput.matchContexts.map(
+                          (
+                            item: { word: string; context: string },
+                            index: number,
+                          ) => (
+                            <li key={index}>
+                              <strong>{item.word}</strong>: “…{item.context}…”
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    </>
+                  )}
+
+                  {autoReplace && checkedOutput.autoReplaced && (
+                    <>
+                      <h4>Auto-Replaced Text:</h4>
+                      <p style={{ background: '#f7f7f7', padding: '10px' }}>
+                        {checkedOutput.autoReplaced}
+                      </p>
+                    </>
+                  )}
+                </>
               )}
-            </>
+            </div>
           )}
+          <h3>Log</h3>
+          <ul>
+            {logEntries.map((entry, index) => (
+              <li key={index}>{entry}</li>
+            ))}
+          </ul>
         </div>
       )}
+
+      {/* Footer */}
     </div>
   );
 };
