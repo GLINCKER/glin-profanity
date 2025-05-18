@@ -1,11 +1,53 @@
+<p align="center">
+  <img src="../../assets/glinr-logo.png" alt="Glin Profanity Logo" width="120" />
+</p>
 
-# Glin Profanity
+<h1 align="center">Glin Profanity</h1>
+  
+<p align="center">
+  <strong>A multilingual profanity detection and filtering engine for modern applications — by <a href="https://glincker.com">GLINCKER</a></strong>
+</p>
+<p align="center">
+[![Try Live Demo](https://img.shields.io/badge/🚀%20Try%20Live%20Demo-online-blue)](https://glincker.com/tools/profanity-checker)
+</p>
 
-![npm](https://img.shields.io/npm/v/glin-profanity)
-![MIT License](https://img.shields.io/badge/license-MIT-green)
-![CI](https://img.shields.io/github/actions/workflow/status/your-org/glin-profanity/ci.yml)
+<p align="center">
+  <a href="https://www.npmjs.com/package/glin-profanity">
+    <img src="https://img.shields.io/npm/v/glin-profanity" alt="NPM Version" />
+  </a>
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License" />
+  <img src="https://img.shields.io/github/actions/workflow/status/GLINCKER/glin-profanity/ci.yml" alt="CI Status" />
+  <img src="https://img.shields.io/npm/dw/glin-profanity" alt="Weekly Downloads" />
+  <img src="https://img.shields.io/github/issues/GLINCKER/glin-profanity" alt="Open Issues" />
+  <img src="https://img.shields.io/github/issues-pr/GLINCKER/glin-profanity" alt="Open PRs" />
+  <img src="https://img.shields.io/github/last-commit/GLINCKER/glin-profanity" alt="Last Commit" />
+  <img src="https://img.shields.io/github/stars/GLINCKER/glin-profanity" alt="GitHub Stars" />
+  <img src="https://img.shields.io/github/forks/GLINCKER/glin-profanity" alt="GitHub Forks" />
+  <img src="https://img.shields.io/github/contributors/GLINCKER/glin-profanity" alt="Contributors" />
+</p>
 
-Glin-Profanity is a lightweight and efficient npm package designed to detect and filter profane language in text inputs across multiple languages. Whether you’re building a chat application, a comment section, or any platform where user-generated content is involved, Glin-Profanity helps you maintain a clean and respectful environment.
+---
+
+
+> A multilingual profanity detection and filtering engine for modern applications — by [GLINCKER](https://glincker.com)
+
+![Glin Profanity Preview](../../assets/glin-profanity-preview.png)
+
+---
+
+## ✨ Overview
+
+**Glin-Profanity** is a high-performance JavaScript/TypeScript library built to detect, filter, and sanitize profane or harmful language in user-generated content. With support for over 20+ languages, configurable severity levels, obfuscation detection, and real-time React integration, it’s designed for developers who care about building safe, inclusive platforms.
+
+Whether you're moderating chat messages, community forums, or content input forms, Glin-Profanity empowers you to:
+
+- 🧼 Filter text with real-time or batch processing
+- 🗣️ Detect offensive terms in **20+ human languages**
+- 💬 Catch obfuscated profanity like `sh1t`, `f*ck`, `a$$hole`
+- 🎚️ Adjust severity thresholds (`Exact`, `Fuzzy`, `Merged`)
+- 🔁 Replace bad words with symbols or emojis
+- 🧩 Seamlessly integrate into **React apps** via `useProfanityChecker`
+- 🛡️ Add custom word lists or ignore specific terms
 
 ## 📚 Table of Contents
 - [Installation](#installation)
@@ -27,15 +69,7 @@ OR
 ```bash
 yarn add glin-profanity
 ```
-
-### ✨ Highlights
-- 🔍 Multi-language support (20+)
-- 🧼 Auto-replacement with customizable masks
-- 🎚️ Severity levels: Exact, Fuzzy, Merged
-- 🔁 Real-time React hook (`useProfanityChecker`)
-- 🚨 Obfuscation detection (e.g., f*ck)
-- 📓 Custom logging via `customActions`
-
+ 
 ### Supported Languages
 
 Arabic, Chinese, Czech, Danish, English, Esperanto, Finnish, French, German, Hindi, Hungarian, Italian, Japanese, Korean, Norwegian, Persian, Polish, Portuguese, Russian, Turkish, Swedish, Thai
