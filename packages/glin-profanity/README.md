@@ -1,15 +1,16 @@
 <p align="center">
-  <a href="https://glincker.com/tools/profanity-checker" target="_blank">
-    <img src="../../assets/glinr-logo.png" alt="Glin Profanity" width="40" />
-    <span style="font-size: 32px; font-weight: bold; vertical-align: middle; margin-left: 10px;">Glin Profanity</span>
+  <a href="https://www.glincker.com/tools/glin-profanity" target="_blank">
+    <img src="../../assets/glinr-logo.png" alt="Glin Profanity" width="40" /> 
   </a>
 </p>
+
+<h1 align="center">GLIN PROFANITY</h1>
 
 <p align="center">
   <strong>A multilingual profanity detection and filtering engine for modern applications — by <a href="https://glincker.com">GLINCKER</a></strong>
 </p>
 <p align="center">
-  <a href="https://glincker.com/tools/profanity-checker">
+  <a href="https://www.glincker.com/tools/glin-profanity">
     <img src="https://img.shields.io/badge/🚀%20Try%20Live%20Demo-online-blue" alt="Try Live Demo" />
   </a>
 </p>
@@ -28,6 +29,8 @@
   <img src="https://img.shields.io/github/stars/GLINCKER/glin-profanity" alt="GitHub Stars" />
   <img src="https://img.shields.io/github/forks/GLINCKER/glin-profanity" alt="GitHub Forks" />
   <img src="https://img.shields.io/github/contributors/GLINCKER/glin-profanity" alt="Contributors" />
+  <img src="https://img.shields.io/badge/-Table%20of%20Contents-blue" alt="Table Of Contents" /> 
+
 </p>
 
 ---
@@ -54,12 +57,26 @@ Whether you're moderating chat messages, community forums, or content input form
 - 🛡️ Add custom word lists or ignore specific terms
 
 ## 📚 Table of Contents
-- [Installation](#installation)
-- [Usage](#usage)
-- [API](#api)
+
+- [🚀 Features](#-features)
+- [📦 Installation](#installation)
+- [🌍 Supported Languages](#supported-languages)
+- [⚙️ Usage](#usage)
+  - [Basic Usage](#basic-usage)
+- [🧠 API](#api)
   - [Filter Class](#filter-class)
+    - [Constructor](#constructor)
+    - [FilterConfig Options](#filterconfig-options)
+    - [Methods](#methods)
+      - [isProfane](#isprofane)
+      - [checkProfanity](#checkprofanity)
   - [useProfanityChecker Hook](#useprofanitychecker-hook)
-- [License](#license)
+    - [Parameters](#parameters)
+    - [Return Value](#return-value)
+- [⚠️ Note](#note)
+- [🛠 Use Cases](#-use-cases)
+- [📄 License](#license)
+  - [MIT License](#mit-license)
 
 ## Installation
 
