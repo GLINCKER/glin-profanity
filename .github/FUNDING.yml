@@ -1,0 +1,15 @@
+# These are supported funding model platforms
+
+github: [glincker]   # Replace with your GitHub Sponsors username
+patreon: gdsks    # If you have a Patreon account, use your username
+# open_collective: glincker   # If you have an Open Collective page
+# ko_fi: glincker      # Your Ko-fi username
+# tidelift:            # Leave blank or specify e.g. npm/glin-profanity if applicable
+# community_bridge:    # Leave blank if not applicable
+# liberapay: glincker  # If you have a Liberapay account
+# issuehunt: glincker  # If you use IssueHunt
+# lfx_crowdfunding:    # Leave blank if not applicable
+# polar: glincker      # If you have a Polar account
+# buy_me_a_coffee: glincker  # Your Buy Me a Coffee username
+# thanks_dev: glincker # If you’re on thanks.dev
+custom: ['https://buymeacoffee.com/gdsks']  # Replace with your custom sponsorship links
