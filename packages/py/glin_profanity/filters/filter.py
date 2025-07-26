@@ -48,7 +48,7 @@ class Filter:
         # Initialize word sets
         ignore_words_list = config.get("ignore_words", [])
         self.ignore_words: set[str] = {
-            word.lower() for word in (ignore_words_list or [])
+            word.lower() for word in ignore_words_list
  
         }
 
