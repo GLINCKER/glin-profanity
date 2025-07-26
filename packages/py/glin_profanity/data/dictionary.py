@@ -14,8 +14,8 @@ class DictionaryLoader:
         # Get path to shared dictionaries (relative to this file)
         current_dir = Path(__file__).parent
         self._dict_path = (
-            current_dir.parent.parent.parent.parent / "shared" / "dictionaries"
-        ) 
+            current_dir.parent.parent.parent.parent / "shared" / "dictionaries" 
+        )
         self._dictionaries: dict[str, list[str]] = {} 
         self._load_dictionaries()
 
@@ -57,15 +57,15 @@ class DictionaryLoader:
             try:
                 with file_path.open(encoding="utf-8") as f:
                     data = json.load(f)
-                    # Handle both {"words": [...]} and [...] formats
-                    if isinstance(data, dict) and "words" in data: 
+                    # Handle both {"words": [...]} and [...] formats 
+                    if isinstance(data, dict) and "words" in data:
                         self._dictionaries[language] = data["words"]
                     elif isinstance(data, list):
-                        self._dictionaries[language] = data 
+                        self._dictionaries[language] = data
                     else:
                         self._raise_format_error(filename)
             except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
-                print(f"Warning: Could not load {filename}: {e}")  # noqa: T201 
+                print(f"Warning: Could not load {filename}: {e}")  # noqa: T201
                 self._dictionaries[language] = [] 
 
     def get_words(self, language: Language) -> list[str]:
@@ -78,8 +78,8 @@ class DictionaryLoader:
         for words in self._dictionaries.values():
             all_words.extend(words)
         return list(set(all_words))  # Remove duplicates
-
-    @property 
+ 
+    @property
     def available_languages(self) -> list[str]: 
         """Get list of available languages."""
         return list(self._dictionaries.keys())
