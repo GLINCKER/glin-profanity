@@ -34,10 +34,179 @@
       "type": "chore",
       "emoji": "♻️",
       "description": "Maintenance tasks"
+    },
+    {
+      "type": "perf",
+      "emoji": "⚡",
+      "description": "Performance improvements"
+    },
+    {
+      "type": "ci",
+      "emoji": "👷",
+      "description": "CI/CD changes"
+    },
+    {
+      "type": "build",
+      "emoji": "🏗️",
+      "description": "Build system changes"
+    },
+    {
+      "type": "revert",
+      "emoji": "⏪",
+      "description": "Revert previous commit"
+    }
+  ],
+  "releaseTypes": [
+    {
+      "type": "release",
+      "emoji": "🚀",
+      "description": "Stable release",
+      "subtypes": [
+        {
+          "subtype": "patch",
+          "emoji": "🔧",
+          "description": "Patch release (bug fixes)",
+          "example": "release: patch fix critical security issue"
+        },
+        {
+          "subtype": "minor",
+          "emoji": "✨",
+          "description": "Minor release (new features)",
+          "example": "release: minor add multi-language support"
+        },
+        {
+          "subtype": "major",
+          "emoji": "💥",
+          "description": "Major release (breaking changes)",
+          "example": "release: major restructure API interface"
+        }
+      ]
+    },
+    {
+      "type": "release",
+      "emoji": "🧪",
+      "description": "Beta release",
+      "subtypes": [
+        {
+          "subtype": "beta-patch",
+          "emoji": "🔧",
+          "description": "Beta patch release",
+          "example": "release: beta-patch experimental bug fix"
+        },
+        {
+          "subtype": "beta-minor",
+          "emoji": "✨",
+          "description": "Beta minor release",
+          "example": "release: beta-minor test new feature implementation"
+        },
+        {
+          "subtype": "beta-major",
+          "emoji": "💥",
+          "description": "Beta major release",
+          "example": "release: beta-major preview breaking changes"
+        }
+      ]
+    },
+    {
+      "type": "release",
+      "emoji": "🌱",
+      "description": "Alpha release",
+      "subtypes": [
+        {
+          "subtype": "alpha-patch",
+          "emoji": "🔧",
+          "description": "Alpha patch release",
+          "example": "release: alpha-patch early development fix"
+        },
+        {
+          "subtype": "alpha-minor",
+          "emoji": "✨",
+          "description": "Alpha minor release",
+          "example": "release: alpha-minor prototype new feature"
+        },
+        {
+          "subtype": "alpha-major",
+          "emoji": "💥",
+          "description": "Alpha major release",
+          "example": "release: alpha-major experimental API redesign"
+        }
+      ]
     }
   ],
   "emojiEnabled": true,
   "conventionalCommits": true,
-  "maxSubjectLength": 50,
-  "maxBodyLength": 72
+  "maxSubjectLength": 72,
+  "maxBodyLength": 100,
+  "scopes": [
+    "js",
+    "py", 
+    "shared",
+    "docs",
+    "ci",
+    "deps",
+    "types",
+    "filters",
+    "dictionaries",
+    "hooks",
+    "tests"
+  ],
+  "releaseRules": {
+    "description": "Commit message patterns that trigger automatic releases",
+    "patterns": {
+      "stable": {
+        "patch": "^release: patch ",
+        "minor": "^release: minor ",
+        "major": "^release: major "
+      },
+      "beta": {
+        "patch": "^release: beta-patch ",
+        "minor": "^release: beta-minor ",
+        "major": "^release: beta-major "
+      },
+      "alpha": {
+        "patch": "^release: alpha-patch ",
+        "minor": "^release: alpha-minor ",
+        "major": "^release: alpha-major "
+      }
+    },
+    "tags": {
+      "stable": "latest",
+      "beta": "beta", 
+      "alpha": "alpha"
+    }
+  },
+  "breakingChangeKeywords": [
+    "BREAKING CHANGE:",
+    "BREAKING CHANGES:",
+    "BREAKING:"
+  ],
+  "footerKeywords": [
+    "Closes",
+    "Fixes",
+    "Resolves",
+    "Implements",
+    "Refs"
+  ],
+  "validation": {
+    "enforceConventionalCommits": true,
+    "allowEmptyScope": true,
+    "requireDescription": true,
+    "maxLineLength": 100
+  },
+  "examples": {
+    "development": [
+      "feat(js): ✨ add new obfuscation detection algorithm",
+      "fix(py): 🐛 resolve memory leak in filter initialization", 
+      "docs: 📚 update API documentation with new examples",
+      "test(shared): 🚨 add cross-language parity tests",
+      "chore(deps): ♻️ update dependencies to latest versions"
+    ],
+    "releases": [
+      "release: patch 🔧 fix critical regex parsing issue",
+      "release: minor ✨ add support for 5 new languages",
+      "release: major 💥 restructure filter API for v2.0",
+      "release: beta-minor 🧪 test experimental context-aware filtering",
+      "release: alpha-patch 🌱 early fix for development branch"
+    ]
+  }
 }
