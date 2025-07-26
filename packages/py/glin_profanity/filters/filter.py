@@ -110,16 +110,16 @@ class Filter:
         simplified_text = re.sub(r"[^a-z]", "", text.lower())
         simplified_word = word.lower()
 
-        # If word boundaries are enabled, don't do fuzzy matching 
+        # If word boundaries are enabled, don't do fuzzy matching
         # that could match across word boundaries
         if self.word_boundaries:
             # Only do fuzzy matching if the word appears as a separate token
-            words_in_text = re.findall(r'\b\w+\b', text.lower())
+            words_in_text = re.findall(r"\b\w+\b", text.lower())
             for text_word in words_in_text:
                 if self._fuzzy_match_single_word(simplified_word, text_word):
                     return True
             return False
-        
+
         # Original fuzzy matching for non-word-boundary mode
         match_count = 0
         index = 0
@@ -131,14 +131,14 @@ class Filter:
 
         score = match_count / len(simplified_word) if simplified_word else 0
         return score >= self.fuzzy_tolerance_level
-    
+
     def _fuzzy_match_single_word(self, pattern_word: str, text_word: str) -> bool:
         """Check if a single word matches the pattern with fuzzy tolerance."""
         # For word boundary mode, require a more exact match
         # The pattern word should be roughly the same length as the text word
         if abs(len(pattern_word) - len(text_word)) > max(1, len(pattern_word) // 2):
             return False
-            
+
         match_count = 0
         index = 0
 
