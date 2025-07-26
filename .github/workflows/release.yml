@@ -1,0 +1,323 @@
+name: 🚀 Release
+
+on:
+  push:
+    branches:
+      - release
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to release'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+        - both
+        - js
+        - py
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.10'
+
+jobs:
+  # Determine what to release based on changes or manual input
+  check-changes:
+    name: 🔍 Check Changes
+    runs-on: ubuntu-latest
+    outputs:
+      release-js: ${{ steps.changes.outputs.js || github.event.inputs.package == 'js' || github.event.inputs.package == 'both' }}
+      release-py: ${{ steps.changes.outputs.py || github.event.inputs.package == 'py' || github.event.inputs.package == 'both' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            js:
+              - 'packages/js/**'
+              - 'shared/dictionaries/**'
+            py:
+              - 'packages/py/**'
+              - 'shared/dictionaries/**'
+
+  # Test JavaScript package before release
+  test-js:
+    name: 🧪 Test JavaScript
+    runs-on: ubuntu-latest
+    needs: check-changes
+    if: needs.check-changes.outputs.release-js == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: packages/js/package-lock.json
+      - name: Install and test
+        working-directory: ./packages/js
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+  # Test Python package before release  
+  test-py:
+    name: 🧪 Test Python
+    runs-on: ubuntu-latest
+    needs: check-changes
+    if: needs.check-changes.outputs.release-py == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install and test
+        working-directory: ./packages/py
+        run: |
+          pip install hatch
+          hatch run pytest
+
+  # Synchronize versions before release
+  sync-versions:
+    name: 🔄 Sync Versions
+    runs-on: ubuntu-latest
+    needs: [check-changes]
+    if: needs.check-changes.outputs.release-js == 'true' || needs.check-changes.outputs.release-py == 'true'
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 🔄 Synchronize versions
+        run: |
+          echo "Syncing versions between JS and Python packages..."
+          node scripts/sync-versions.js
+          
+      - name: 📤 Commit version sync (if needed)
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          if ! git diff --quiet; then
+            git add .
+            git commit -m "chore: sync versions across packages"
+            git push
+          fi
+
+  # Release JavaScript package
+  release-js:
+    name: 📦 Release JavaScript
+    runs-on: ubuntu-latest
+    needs: [check-changes, test-js, sync-versions]
+    if: needs.check-changes.outputs.release-js == 'true' && needs.test-js.result == 'success'
+    outputs:
+      npm-tarball: ${{ steps.package.outputs.tarball }}
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+          
+      - name: 🔧 Install dependencies
+        working-directory: ./packages/js
+        run: npm ci
+        
+      - name: 🏗️ Build package
+        working-directory: ./packages/js
+        run: npm run build
+        
+      - name: 📦 Create package tarball
+        id: package
+        working-directory: ./packages/js
+        run: |
+          TARBALL=$(npm pack)
+          echo "tarball=${TARBALL}" >> $GITHUB_OUTPUT
+          echo "Created tarball: ${TARBALL}"
+        
+      - name: 🚀 Publish to NPM
+        working-directory: ./packages/js
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          
+      - name: 💾 Upload npm tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball-${{ github.sha }}
+          path: ./packages/js/*.tgz
+          retention-days: 30
+
+  # Release Python package
+  release-py:
+    name: 🐍 Release Python
+    runs-on: ubuntu-latest
+    needs: [check-changes, test-py, sync-versions]
+    if: needs.check-changes.outputs.release-py == 'true' && needs.test-py.result == 'success'
+    outputs:
+      python-wheel: ${{ steps.build.outputs.wheel }}
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: 📦 Install Hatch and build package
+        id: build
+        working-directory: ./packages/py
+        run: |
+          pip install hatch
+          hatch build
+          
+          # Get wheel filename
+          WHEEL=$(ls dist/*.whl | head -1)
+          echo "wheel=${WHEEL}" >> $GITHUB_OUTPUT
+          echo "Built wheel: ${WHEEL}"
+        
+      - name: 🚀 Publish to PyPI
+        working-directory: ./packages/py
+        run: hatch publish
+        env:
+          HATCH_INDEX_USER: __token__
+          HATCH_INDEX_AUTH: ${{ secrets.PYPI_TOKEN }}
+          
+      - name: 💾 Upload Python wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-wheel-${{ github.sha }}
+          path: ./packages/py/dist/*
+          retention-days: 30
+
+  # Create GitHub release with artifacts
+  github-release:
+    name: 🏷️ GitHub Release
+    runs-on: ubuntu-latest
+    needs: [check-changes, release-js, release-py]
+    if: always() && (needs.release-js.result == 'success' || needs.release-py.result == 'success')
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 🏷️ Get version from package.json
+        id: version
+        run: |
+          if [ "${{ needs.release-js.result }}" == "success" ]; then
+            VERSION=$(node -p "require('./packages/js/package.json').version")
+          else
+            VERSION=$(python3 -c "
+            import tomllib
+            with open('packages/py/pyproject.toml', 'rb') as f:
+                data = tomllib.load(f)
+                print(data.get('project', {}).get('version', '0.0.0'))
+            ")
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Detected version: ${VERSION}"
+          
+      - name: 📥 Download npm tarball
+        if: needs.release-js.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-tarball-${{ github.sha }}
+          path: ./artifacts/
+          
+      - name: 📥 Download Python wheel
+        if: needs.release-py.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: python-wheel-${{ github.sha }}
+          path: ./artifacts/
+          
+      - name: 🏷️ Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          files: ./artifacts/*
+          body: |
+            ## 🚀 Release v${{ steps.version.outputs.version }}
+            
+            ### Released Packages
+            ${{ needs.release-js.result == 'success' && '- 📦 **JavaScript/TypeScript** - Available on [npm](https://www.npmjs.com/package/glin-profanity)' || '' }}
+            ${{ needs.release-py.result == 'success' && '- 🐍 **Python** - Available on [PyPI](https://pypi.org/project/glin-profanity/)' || '' }}
+            
+            ### Installation
+            ```bash
+            ${{ needs.release-js.result == 'success' && format('# JavaScript/TypeScript\nnpm install glin-profanity@{0}', steps.version.outputs.version) || '' }}
+            ${{ needs.release-py.result == 'success' && format('# Python\npip install glin-profanity=={0}', steps.version.outputs.version) || '' }}
+            ```
+            
+            ### What's Changed
+            See the [CHANGELOG.md](CHANGELOG.md) for detailed changes in this release.
+            
+            ### Artifacts
+            - 📦 npm tarball (for JavaScript/TypeScript)
+            - 🐍 Python wheel (.whl) and source distribution (.tar.gz)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  summary:
+    name: 📋 Release Summary
+    runs-on: ubuntu-latest
+    needs: [check-changes, release-js, release-py, github-release]
+    if: always()
+    
+    steps:
+      - name: ✅ Success Summary
+        if: needs.github-release.result == 'success'
+        run: |
+          echo "## ✅ Release Completed Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "### Released Packages:" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.release-js.result }}" == "success" ]; then
+            echo "- 📦 JavaScript/TypeScript package" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ needs.release-py.result }}" == "success" ]; then
+            echo "- 🐍 Python package" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎉 Packages are available for installation!" >> $GITHUB_STEP_SUMMARY
+          echo "📋 GitHub release created with build artifacts" >> $GITHUB_STEP_SUMMARY
+          
+      - name: ❌ Failure Summary
+        if: needs.github-release.result != 'success'
+        run: |
+          echo "## ❌ Release Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the failed jobs:" >> $GITHUB_STEP_SUMMARY
+          echo "- JavaScript: ${{ needs.release-js.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Python: ${{ needs.release-py.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Release: ${{ needs.github-release.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
+          exit 1

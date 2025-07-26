@@ -1,9 +1,0 @@
-src/
-node_modules/
-*.test.*
-*.spec.*
-*.log
-*.md
-tsconfig.json
-.npmignore
-package-lock.json

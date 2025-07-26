@@ -1,0 +1,129 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "glin-profanity"
+dynamic = ["version"]
+description = "Glin-Profanity is a lightweight and efficient Python package designed to detect and filter profane language in text inputs across multiple languages."
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "glinr", email = "contact@glincker.com" },
+]
+maintainers = [
+    { name = "glinr", email = "contact@glincker.com" },
+]
+keywords = [
+    "profanity",
+    "filter",
+    "moderation",
+    "content",
+    "text",
+    "nlp",
+    "language",
+    "detection",
+    "censorship",
+    "chat",
+    "comment",
+    "social",
+    "glin",
+    "glincker",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Filters",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "typing-extensions>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.0.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://www.glincker.com/tools/glin-profanity"
+Documentation = "https://github.com/GLINCKER/glin-profanity"
+Repository = "https://github.com/GLINCKER/glin-profanity"
+Issues = "https://github.com/GLINCKER/glin-profanity/issues"
+
+[tool.hatch.version]
+path = "glin_profanity/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["glin_profanity"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/glin_profanity",
+    "/README.md",
+]
+exclude = [
+    "/tests",
+    "*.pyc",
+    "/__pycache__",
+    "/.pytest_cache",
+    "/.coverage",
+    "/htmlcov",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+addopts = "--verbose --cov=glin_profanity --cov-report=term-missing --cov-report=xml"
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.ruff]
+select = ["E", "F", "W", "C90", "I", "N", "UP", "YTT", "ANN", "S", "BLE", "FBT", "B", "A", "COM", "C4", "DTZ", "T10", "DJ", "EM", "EXE", "FA", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SLOT", "SIM", "TID", "TCH", "INT", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "FLY", "NPY", "AIR", "PERF", "FURB", "LOG", "RUF"]
+ignore = ["ANN101", "ANN102", "D", "COM812", "ISC001"]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.per-file-ignores]
+"tests/**/*.py" = ["S101", "PLR2004", "ANN201"]
