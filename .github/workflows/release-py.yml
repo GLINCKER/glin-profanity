@@ -9,6 +9,11 @@ on:
       - 'shared/dictionaries/**'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  packages: write
+  actions: read
+
 concurrency:
   group: release-py-${{ github.ref }}
   cancel-in-progress: false
@@ -155,6 +160,7 @@ jobs:
           
       - name: 🏷️ Create GitHub Release
         uses: softprops/action-gh-release@v1
+        continue-on-error: true
         with:
           tag_name: py-v${{ needs.release.outputs.version }}
           name: Python v${{ needs.release.outputs.version }}
@@ -186,17 +192,21 @@ jobs:
     
     steps:
       - name: ✅ Success Summary
-        if: needs.github-release.result == 'success'
+        if: needs.release.result == 'success'
         run: |
           echo "## ✅ Python Release Completed!" >> $GITHUB_STEP_SUMMARY
           echo "- 🐍 **Python** v${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- 🚀 Available on [PyPI](https://pypi.org/project/glin-profanity/)" >> $GITHUB_STEP_SUMMARY
-          echo "- 🏷️ GitHub release created with build artifacts" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.github-release.result }}" == "success" ]; then
+            echo "- 🏷️ GitHub release created with build artifacts" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ GitHub release failed (non-critical)" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🎉 Package is ready for installation!" >> $GITHUB_STEP_SUMMARY
           
       - name: ❌ Failure Summary
-        if: needs.github-release.result != 'success'
+        if: needs.release.result != 'success'
         run: |
           echo "## ❌ Python Release Failed" >> $GITHUB_STEP_SUMMARY
           echo "Please check the failed jobs:" >> $GITHUB_STEP_SUMMARY
