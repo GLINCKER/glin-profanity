@@ -13,7 +13,20 @@
     "prepare": "husky install",
     "commit": "git-cz",
     "lint": "eslint .",
-    "test": "jest"
+    "test": "jest",
+    "version:sync": "node scripts/sync-versions.js sync",
+    "version:status": "node scripts/sync-versions.js status",
+    "version:validate": "node scripts/sync-versions.js validate",
+    "release:patch": "node scripts/sync-versions.js release patch stable",
+    "release:minor": "node scripts/sync-versions.js release minor stable",
+    "release:major": "node scripts/sync-versions.js release major stable",
+    "release:beta": "node scripts/sync-versions.js release minor beta",
+    "release:beta-patch": "node scripts/sync-versions.js release patch beta",
+    "release:beta-major": "node scripts/sync-versions.js release major beta",
+    "release:alpha": "node scripts/sync-versions.js release minor alpha",
+    "release:alpha-patch": "node scripts/sync-versions.js release patch alpha",
+    "release:alpha-major": "node scripts/sync-versions.js release major alpha",
+    "release:auto": "node scripts/sync-versions.js auto"
   },
   "repository": {
     "type": "git",

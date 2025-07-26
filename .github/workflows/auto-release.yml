@@ -1,0 +1,493 @@
+name: 🚀 Auto Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      channel:
+        description: 'Release channel'
+        required: true
+        default: 'stable'
+        type: choice
+        options:
+          - stable
+          - beta
+          - alpha
+      skip_tests:
+        description: 'Skip tests (emergency release)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Detect if this is a release commit
+  detect-release:
+    name: 🔍 Detect Release
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      release_type: ${{ steps.check.outputs.release_type }}
+      channel: ${{ steps.check.outputs.channel }}
+      new_version: ${{ steps.check.outputs.new_version }}
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          
+      - name: 🔍 Check for release commit
+        id: check
+        run: |
+          # Manual workflow dispatch
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+            echo "channel=${{ github.event.inputs.channel }}" >> $GITHUB_OUTPUT
+            echo "Manual release triggered: ${{ github.event.inputs.release_type }} (${{ github.event.inputs.channel }})"
+            exit 0
+          fi
+          
+          # Check last commit message for release patterns
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "📝 Last commit: $COMMIT_MSG"
+          
+          # Release patterns
+          if echo "$COMMIT_MSG" | grep -q "^release: patch "; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=patch" >> $GITHUB_OUTPUT
+            echo "channel=stable" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -q "^release: minor "; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=minor" >> $GITHUB_OUTPUT
+            echo "channel=stable" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -q "^release: major "; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=major" >> $GITHUB_OUTPUT
+            echo "channel=stable" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -q "^release: beta-patch "; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=patch" >> $GITHUB_OUTPUT
+            echo "channel=beta" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -q "^release: beta-minor "; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=minor" >> $GITHUB_OUTPUT
+            echo "channel=beta" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -q "^release: beta-major "; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=major" >> $GITHUB_OUTPUT
+            echo "channel=beta" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -q "^release: alpha-patch "; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=patch" >> $GITHUB_OUTPUT
+            echo "channel=alpha" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -q "^release: alpha-minor "; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=minor" >> $GITHUB_OUTPUT
+            echo "channel=alpha" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -q "^release: alpha-major "; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=major" >> $GITHUB_OUTPUT
+            echo "channel=alpha" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No release pattern detected"
+          fi
+
+  # Version bump and synchronization
+  bump-version:
+    name: 📈 Bump Version
+    runs-on: ubuntu-latest
+    needs: detect-release
+    if: needs.detect-release.outputs.should_release == 'true'
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 📈 Bump version and sync
+        id: bump
+        run: |
+          echo "🚀 Bumping version: ${{ needs.detect-release.outputs.release_type }} (${{ needs.detect-release.outputs.channel }})"
+          
+          # Make sync script executable
+          chmod +x scripts/sync-versions.js
+          
+          # Bump version
+          NEW_VERSION=$(node scripts/sync-versions.js release ${{ needs.detect-release.outputs.release_type }} ${{ needs.detect-release.outputs.channel }})
+          
+          if [ -z "$NEW_VERSION" ]; then
+            echo "❌ Failed to bump version"
+            exit 1
+          fi
+          
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Version bumped to: $NEW_VERSION"
+          
+      - name: 💾 Commit version bump
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git add packages/js/package.json
+          git add packages/py/pyproject.toml  
+          git add packages/py/glin_profanity/__init__.py
+          git add package.json
+          
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]" || exit 0
+          git push
+
+  # Run tests (can be skipped for emergency releases)
+  test:
+    name: 🧪 Test Packages
+    runs-on: ubuntu-latest
+    needs: [detect-release, bump-version]
+    if: needs.detect-release.outputs.should_release == 'true' && github.event.inputs.skip_tests != 'true'
+    
+    strategy:
+      matrix:
+        package: [js, py]
+        
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          
+      - name: 🔧 Setup Node.js
+        if: matrix.package == 'js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 🐍 Setup Python
+        if: matrix.package == 'py'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: 📦 Install JavaScript dependencies
+        if: matrix.package == 'js'
+        working-directory: packages/js
+        run: |
+          npm ci
+          npm run build
+          
+      - name: 📦 Install Python dependencies
+        if: matrix.package == 'py'  
+        working-directory: packages/py
+        run: |
+          pip install hatch
+          hatch env create
+          
+      - name: 🧪 Run JavaScript tests
+        if: matrix.package == 'js'
+        working-directory: packages/js
+        run: npm test
+        
+      - name: 🧪 Run Python tests
+        if: matrix.package == 'py'
+        working-directory: packages/py
+        run: hatch run pytest
+
+  # Build packages
+  build:
+    name: 🏗️ Build Packages
+    runs-on: ubuntu-latest
+    needs: [detect-release, bump-version, test]
+    if: always() && needs.detect-release.outputs.should_release == 'true' && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: 🏗️ Build JavaScript package
+        working-directory: packages/js
+        run: |
+          npm ci
+          npm run build
+          npm pack
+          
+      - name: 🏗️ Build Python package
+        working-directory: packages/py
+        run: |
+          pip install hatch
+          hatch build
+          
+      - name: 💾 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ github.sha }}
+          path: |
+            packages/js/*.tgz
+            packages/py/dist/*
+          retention-days: 7
+
+  # Publish to npm
+  publish-npm:
+    name: 📦 Publish to npm
+    runs-on: ubuntu-latest
+    needs: [detect-release, bump-version, build]
+    if: always() && needs.detect-release.outputs.should_release == 'true' && needs.build.result == 'success'
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+          
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: packages-${{ github.sha }}
+          path: ./artifacts/
+          
+      - name: 📦 Publish to npm
+        working-directory: packages/js
+        run: |
+          npm ci
+          npm run build
+          
+          # Determine npm tag
+          if [ "${{ needs.detect-release.outputs.channel }}" = "beta" ]; then
+            NPM_TAG="beta"
+          elif [ "${{ needs.detect-release.outputs.channel }}" = "alpha" ]; then
+            NPM_TAG="alpha"
+          else
+            NPM_TAG="latest"
+          fi
+          
+          echo "Publishing to npm with tag: $NPM_TAG"
+          npm publish --tag $NPM_TAG
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Publish to PyPI
+  publish-pypi:
+    name: 🐍 Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [detect-release, bump-version, build]
+    if: always() && needs.detect-release.outputs.should_release == 'true' && needs.build.result == 'success'
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: packages-${{ github.sha }}
+          path: ./artifacts/
+          
+      - name: 🐍 Publish to PyPI
+        working-directory: packages/py
+        run: |
+          pip install hatch
+          hatch build
+          
+          # Publish to PyPI (supports pre-releases automatically)
+          hatch publish
+        env:
+          HATCH_INDEX_USER: __token__
+          HATCH_INDEX_AUTH: ${{ secrets.PYPI_TOKEN }}
+
+  # Create GitHub release
+  github-release:
+    name: 🏷️ GitHub Release
+    runs-on: ubuntu-latest
+    needs: [detect-release, bump-version, publish-npm, publish-pypi]
+    if: always() && needs.detect-release.outputs.should_release == 'true' && (needs.publish-npm.result == 'success' || needs.publish-pypi.result == 'success')
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: packages-${{ github.sha }}
+          path: ./artifacts/
+          
+      - name: 🏷️ Create Git Tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          TAG_NAME="v${{ needs.bump-version.outputs.new_version }}"
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+          
+      - name: 📝 Generate Release Notes
+        id: notes
+        run: |
+          VERSION="${{ needs.bump-version.outputs.new_version }}"
+          CHANNEL="${{ needs.detect-release.outputs.channel }}"
+          
+          # Determine release type emoji and description
+          if [ "$CHANNEL" = "alpha" ]; then
+            EMOJI="🌱"
+            TYPE_DESC="Alpha Release"
+          elif [ "$CHANNEL" = "beta" ]; then
+            EMOJI="🧪"
+            TYPE_DESC="Beta Release"
+          else
+            EMOJI="🚀"
+            TYPE_DESC="Stable Release"
+          fi
+          
+          # Generate changelog from recent commits
+          CHANGELOG=$(git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD | grep -E "^- (feat|fix|docs|perf|refactor)" | head -10)
+          
+          cat > release_notes.md << EOF
+          ## $EMOJI $TYPE_DESC v$VERSION
+          
+          ### 📦 Installation
+          
+          **JavaScript/TypeScript:**
+          \`\`\`bash
+          npm install glin-profanity@$CHANNEL
+          \`\`\`
+          
+          **Python:**
+          \`\`\`bash
+          pip install glin-profanity$([ "$CHANNEL" != "stable" ] && echo " --pre" || echo "")
+          \`\`\`
+          
+          ### 🔄 Changes
+          $CHANGELOG
+          
+          ### 📋 Package Information
+          - **npm tag**: \`$CHANNEL\`
+          - **PyPI classifier**: Development Status :: $([ "$CHANNEL" = "alpha" ] && echo "3 - Alpha" || [ "$CHANNEL" = "beta" ] && echo "4 - Beta" || echo "5 - Production/Stable")
+          - **Cross-platform**: Identical APIs for JavaScript and Python
+          
+          ### 🔗 Links
+          - [npm package](https://www.npmjs.com/package/glin-profanity)
+          - [PyPI package](https://pypi.org/project/glin-profanity/)
+          - [Documentation](https://github.com/GLINCKER/glin-profanity#readme)
+          
+          ---
+          
+          🤖 *This release was automatically generated*
+          EOF
+          
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.bump-version.outputs.new_version }}
+          name: v${{ needs.bump-version.outputs.new_version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ needs.detect-release.outputs.channel != 'stable' }}
+          files: ./artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Summary
+  summary:
+    name: 📋 Release Summary
+    runs-on: ubuntu-latest
+    needs: [detect-release, bump-version, publish-npm, publish-pypi, github-release]
+    if: always() && needs.detect-release.outputs.should_release == 'true'
+    
+    steps:
+      - name: ✅ Success Summary
+        if: needs.publish-npm.result == 'success' && needs.publish-pypi.result == 'success'
+        run: |
+          echo "## 🎉 Release Completed Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** v${{ needs.bump-version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Channel:** ${{ needs.detect-release.outputs.channel }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Type:** ${{ needs.detect-release.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Published Packages" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ npm: [glin-profanity@${{ needs.detect-release.outputs.channel }}](https://www.npmjs.com/package/glin-profanity)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ PyPI: [glin-profanity](https://pypi.org/project/glin-profanity/)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ GitHub: [Release v${{ needs.bump-version.outputs.new_version }}](https://github.com/GLINCKER/glin-profanity/releases/tag/v${{ needs.bump-version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
+          
+      - name: ⚠️ Partial Success Summary
+        if: needs.publish-npm.result == 'success' || needs.publish-pypi.result == 'success'
+        run: |
+          echo "## ⚠️ Release Partially Completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** v${{ needs.bump-version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Package Status" >> $GITHUB_STEP_SUMMARY
+          echo "- npm: ${{ needs.publish-npm.result == 'success' && '✅' || '❌' }} ${{ needs.publish-npm.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- PyPI: ${{ needs.publish-pypi.result == 'success' && '✅' || '❌' }} ${{ needs.publish-pypi.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub: ${{ needs.github-release.result == 'success' && '✅' || '❌' }} ${{ needs.github-release.result }}" >> $GITHUB_STEP_SUMMARY
+          
+      - name: ❌ Failure Summary
+        if: needs.publish-npm.result != 'success' && needs.publish-pypi.result != 'success'
+        run: |
+          echo "## ❌ Release Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Attempted Version:** v${{ needs.bump-version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Failure Details" >> $GITHUB_STEP_SUMMARY
+          echo "- npm: ${{ needs.publish-npm.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- PyPI: ${{ needs.publish-pypi.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the workflow logs and retry the release." >> $GITHUB_STEP_SUMMARY
+          exit 1
