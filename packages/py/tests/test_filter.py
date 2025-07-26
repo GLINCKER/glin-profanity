@@ -10,8 +10,8 @@ class TestFilter:
         """Test basic profanity detection."""
         filter_instance = Filter()
 
-        # Test basic profanity detection
-        assert filter_instance.is_profane("This is a damn test")
+        # Test basic profanity detection (using words actually in dictionary)
+        assert filter_instance.is_profane("This is a bitch test")
         assert not filter_instance.is_profane("This is a clean test")
 
     def test_custom_words(self) -> None:
@@ -24,19 +24,19 @@ class TestFilter:
 
     def test_ignore_words(self) -> None:
         """Test word ignoring functionality."""
-        filter_instance = Filter({"ignore_words": ["damn"]})
+        filter_instance = Filter({"ignore_words": ["bitch"]})
 
-        assert not filter_instance.is_profane("This is a damn test")
+        assert not filter_instance.is_profane("This is a bitch test")
         # Should still detect other words
-        assert filter_instance.is_profane("This is a hell test")
+        assert filter_instance.is_profane("This is an ass test")
 
     def test_case_sensitivity(self) -> None:
         """Test case sensitivity options."""
         # Case insensitive (default)
         filter_instance = Filter()
-        assert filter_instance.is_profane("DAMN")
-        assert filter_instance.is_profane("damn")
-        assert filter_instance.is_profane("Damn")
+        assert filter_instance.is_profane("BITCH")
+        assert filter_instance.is_profane("bitch")
+        assert filter_instance.is_profane("Bitch")
 
         # Case sensitive - placeholder for future implementation
         # Note: This depends on the actual words in the dictionary
@@ -57,7 +57,7 @@ class TestFilter:
         """Test text replacement functionality."""
         filter_instance = Filter({"replace_with": "***"})
 
-        result = filter_instance.check_profanity("This is damn bad")
+        result = filter_instance.check_profanity("This is bitch bad")
         assert result["processed_text"] is not None
         assert "***" in result["processed_text"]
 
@@ -67,12 +67,12 @@ class TestFilter:
             {"severity_levels": True, "fuzzy_tolerance_level": 0.7}
         )
 
-        result = filter_instance.check_profanity("damn")
+        result = filter_instance.check_profanity("bitch")
         assert result["severity_map"] is not None
 
         # Test with minimum severity
         filtered_result = filter_instance.check_profanity_with_min_severity(
-            "damn", SeverityLevel.EXACT
+            "bitch", SeverityLevel.EXACT
         )
         assert "filtered_words" in filtered_result
         assert "result" in filtered_result
@@ -84,8 +84,8 @@ class TestFilter:
         )
 
         # Test character substitution
-        assert filter_instance.is_profane("d@mn")  # @ -> a
-        assert filter_instance.is_profane("d4mn")  # Depends on implementation
+        assert filter_instance.is_profane("b!tch")  # ! -> i
+        assert filter_instance.is_profane("b1tch")  # 1 -> i
 
     def test_multiple_languages(self) -> None:
         """Test multiple language support."""
@@ -106,7 +106,7 @@ class TestFilter:
         filter_instance = Filter()
 
         # Should be equivalent to is_profane
-        test_word = "damn"
+        test_word = "bitch"
         assert filter_instance.matches(test_word) == filter_instance.is_profane(
             test_word
         )
@@ -115,7 +115,7 @@ class TestFilter:
         """Test detailed profanity check results."""
         filter_instance = Filter({"severity_levels": True, "replace_with": "***"})
 
-        result = filter_instance.check_profanity("This damn text is bad")
+        result = filter_instance.check_profanity("This bitch text is bad")
 
         # Check required fields
         assert "contains_profanity" in result
@@ -143,6 +143,6 @@ class TestFilter:
         # This is harder to test without capturing output
         # Just ensure it doesn't crash
         filter_instance = Filter({"log_profanity": True})
-        filter_instance.check_profanity("This is a damn test")
+        filter_instance.check_profanity("This is a bitch test")
 
         # No assertions needed, just ensuring no exceptions
