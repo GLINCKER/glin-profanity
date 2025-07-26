@@ -44,13 +44,10 @@ class Filter:
         self.enable_context_aware = config.get("enable_context_aware", False)
         self.context_window = config.get("context_window", 3)
         self.confidence_threshold = config.get("confidence_threshold", 0.7)
- 
+
         # Initialize word sets
         ignore_words_list = config.get("ignore_words", [])
-        self.ignore_words: set[str] = {
-            word.lower() for word in ignore_words_list
- 
-        }
+        self.ignore_words: set[str] = {word.lower() for word in ignore_words_list}
 
         # Load dictionary words
         self._load_words(config)
@@ -61,16 +58,16 @@ class Filter:
 
         if config.get("all_languages", False):
             words = dictionary.get_all_words()
-        else: 
-            languages = config.get("languages", ["english"]) 
+        else:
+            languages = config.get("languages", ["english"])
             if languages:
                 for lang in languages:
                     words.extend(dictionary.get_words(lang))
 
         # Add custom words if provided
         custom_words = config.get("custom_words")
-        if custom_words: 
-            words.extend(custom_words) 
+        if custom_words:
+            words.extend(custom_words)
 
         # Store as set for faster lookup
         self.words: set[str] = {word.lower() for word in words}
@@ -83,7 +80,7 @@ class Filter:
     def _normalize_obfuscated(self, text: str) -> str:
         """Normalize obfuscated text by replacing common character substitutions."""
         # Remove repeated characters (e.g., "hiiiii" -> "hii")
-        normalized = re.sub(r"([a-zA-Z])\\1{1,}", r"\\1\\1", text)
+        normalized = re.sub(r"([a-zA-Z])\1{1,}", r"\1\1", text)
 
         # Character substitution map
         char_map = {
@@ -104,7 +101,7 @@ class Filter:
         flags = 0 if self.case_sensitive else re.IGNORECASE
         escaped_word = re.escape(word)
 
-        pattern = rf"\\b{escaped_word}\\b" if self.word_boundaries else escaped_word
+        pattern = rf"\b{escaped_word}\b" if self.word_boundaries else escaped_word
 
         return re.compile(pattern, flags)
 
@@ -113,6 +110,17 @@ class Filter:
         simplified_text = re.sub(r"[^a-z]", "", text.lower())
         simplified_word = word.lower()
 
+        # If word boundaries are enabled, don't do fuzzy matching
+        # that could match across word boundaries
+        if self.word_boundaries:
+            # Only do fuzzy matching if the word appears as a separate token
+            words_in_text = re.findall(r"\b\w+\b", text.lower())
+            for text_word in words_in_text:
+                if self._fuzzy_match_single_word(simplified_word, text_word):
+                    return True
+            return False
+
+        # Original fuzzy matching for non-word-boundary mode
         match_count = 0
         index = 0
 
@@ -122,6 +130,24 @@ class Filter:
                 index += 1
 
         score = match_count / len(simplified_word) if simplified_word else 0
+        return score >= self.fuzzy_tolerance_level
+
+    def _fuzzy_match_single_word(self, pattern_word: str, text_word: str) -> bool:
+        """Check if a single word matches the pattern with fuzzy tolerance."""
+        # For word boundary mode, require a more exact match
+        # The pattern word should be roughly the same length as the text word
+        if abs(len(pattern_word) - len(text_word)) > max(1, len(pattern_word) // 2):
+            return False
+
+        match_count = 0
+        index = 0
+
+        for char in text_word:
+            if index < len(pattern_word) and char == pattern_word[index]:
+                match_count += 1
+                index += 1
+
+        score = match_count / len(pattern_word) if pattern_word else 0
         return score >= self.fuzzy_tolerance_level
 
     def _evaluate_severity(self, word: str, text: str) -> SeverityLevel | None:
@@ -194,12 +220,12 @@ class Filter:
             if dict_word.lower() in self.ignore_words:
                 continue
 
-            severity = self._evaluate_severity(dict_word, input_lower)
+            severity = self._evaluate_severity(dict_word, input_text)
             if severity is not None:
                 regex = self._get_regex(dict_word)
 
                 # Find all matches
-                for match in regex.finditer(input_lower):
+                for match in regex.finditer(input_text):
                     matched_word = match.group(0)
                     match_index = match.start()
 
@@ -227,7 +253,7 @@ class Filter:
             for word in unique_words:
                 escaped = re.escape(word)
                 if self.word_boundaries:
-                    replacement_regex = re.compile(rf"\\b{escaped}\\b", re.IGNORECASE)
+                    replacement_regex = re.compile(rf"\b{escaped}\b", re.IGNORECASE)
                 else:
                     replacement_regex = re.compile(escaped, re.IGNORECASE)
                 processed_text = replacement_regex.sub(
@@ -271,15 +297,15 @@ class Filter:
             Dictionary with filtered words and full result
         """
         result = self.check_profanity(text)
- 
-        filtered_words = [] 
+
+        filtered_words = []
         severity_map = result.get("severity_map")
         profane_words = result.get("profane_words")
         if severity_map and profane_words:
             filtered_words = [
                 word
-                for word in profane_words 
-                if severity_map.get(word, 0) >= min_severity 
+                for word in profane_words
+                if severity_map.get(word, 0) >= min_severity
             ]
 
         return {
