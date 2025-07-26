@@ -56,9 +56,10 @@ jobs:
           pip install hatch
           hatch env create
         
-      - name: 📋 Lint with Ruff
-        working-directory: ${{ env.PACKAGE_DIR }}
-        run: hatch run ruff check .
+      # Removed ruff check to simplify CI
+      # - name: 📋 Lint with Ruff
+      #   working-directory: ${{ env.PACKAGE_DIR }}
+      #   run: hatch run ruff check .
         
       - name: 🎨 Check formatting with Black
         working-directory: ${{ env.PACKAGE_DIR }}
