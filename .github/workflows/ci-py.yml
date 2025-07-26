@@ -1,0 +1,156 @@
+name: 🐍 CI - Python
+
+on:
+  pull_request:
+    branches: 
+      - main
+      - release
+      - 'release/**'
+    paths:
+      - 'packages/py/**'
+      - 'shared/dictionaries/**'
+      - '.github/workflows/ci-py.yml'
+  push:
+    branches:
+      - main
+      - release
+    paths:
+      - 'packages/py/**'
+      - 'shared/dictionaries/**'
+      - '.github/workflows/ci-py.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.10'
+  PACKAGE_DIR: './packages/py'
+
+jobs:
+  test:
+    name: 🧪 Test Python
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    
+    outputs:
+      coverage-percentage: ${{ steps.coverage.outputs.percentage }}
+      
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 🐍 Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          
+      - name: 📦 Install Hatch and dependencies
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: |
+          pip install hatch
+          hatch env create
+        
+      - name: 📋 Lint with Ruff
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: hatch run ruff check .
+        
+      - name: 🎨 Check formatting with Black
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: hatch run black --check .
+        
+      - name: 📋 Check import sorting with isort
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: hatch run isort --check-only .
+        
+      - name: 🔍 Type check with MyPy
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: hatch run mypy glin_profanity
+        
+      - name: 🧪 Run tests with coverage
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: hatch run pytest --cov=glin_profanity --cov-report=xml --cov-report=term-missing
+        
+      - name: 📊 Extract coverage percentage
+        id: coverage
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: |
+          if [ -f coverage.xml ]; then
+            # Extract coverage percentage from XML
+            COVERAGE=$(python -c "
+            import xml.etree.ElementTree as ET
+            tree = ET.parse('coverage.xml')
+            root = tree.getroot()
+            coverage = root.attrib.get('line-rate', '0')
+            print(int(float(coverage) * 100))
+            ")
+            echo "percentage=${COVERAGE:-0}" >> $GITHUB_OUTPUT
+            echo "Coverage: ${COVERAGE}%"
+          else
+            echo "percentage=0" >> $GITHUB_OUTPUT
+            echo "No coverage data found"
+          fi
+          
+      - name: 📈 Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ${{ env.PACKAGE_DIR }}/coverage.xml
+          flags: python
+          name: glin-profanity-py-coverage
+          fail_ci_if_error: false
+          verbose: true
+          
+      - name: 🏗️ Build package
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: hatch build
+        
+      - name: 💾 Cache Python packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ${{ env.PACKAGE_DIR }}/.hatch
+          key: py-deps-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('packages/py/pyproject.toml') }}
+          restore-keys: |
+            py-deps-${{ runner.os }}-py${{ matrix.python-version }}-
+            py-deps-${{ runner.os }}-
+            
+      - name: 💾 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: matrix.python-version == '3.10'  # Only upload once
+        with:
+          name: py-build-artifacts-${{ github.sha }}
+          path: |
+            ${{ env.PACKAGE_DIR }}/dist/
+            ${{ env.PACKAGE_DIR }}/coverage.xml
+          retention-days: 7
+
+  summary:
+    name: 📋 Python CI Summary
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: always()
+    
+    steps:
+      - name: ✅ Success Summary
+        if: needs.test.result == 'success'
+        run: |
+          echo "## ✅ Python CI Passed!" >> $GITHUB_STEP_SUMMARY
+          echo "- 🏗️ Build: Success" >> $GITHUB_STEP_SUMMARY
+          echo "- 🧪 Tests: Passed (Python 3.10, 3.11, 3.12)" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 Coverage: ${{ needs.test.outputs.coverage-percentage }}%" >> $GITHUB_STEP_SUMMARY
+          echo "- 🐍 Package: Python" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Ready for review! 🚀" >> $GITHUB_STEP_SUMMARY
+          
+      - name: ❌ Failure Summary  
+        if: needs.test.result == 'failure'
+        run: |
+          echo "## ❌ Python CI Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the failed jobs and fix the issues." >> $GITHUB_STEP_SUMMARY
+          exit 1

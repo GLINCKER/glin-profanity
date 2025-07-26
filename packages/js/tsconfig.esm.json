@@ -1,0 +1,17 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+      "outDir": "./lib/esm",
+      "module": "ES6",
+      "target": "es2015",
+      "declaration": true,
+      "resolveJsonModule": true,
+      "esModuleInterop": true,
+      "baseUrl": ".",
+      "paths": {
+        "@shared/*": ["../../shared/*"]
+      }
+    },
+    "include": ["src/**/*", "../../shared/**/*"]
+  }
+  

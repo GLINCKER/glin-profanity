@@ -19,7 +19,7 @@ const App: React.FC = () => {
   const [replaceWith, setReplaceWith] = useState('***');
   const [checkedOutput, setCheckedOutput] = useState<any>(null);
 
-  const { result, checkText, reset } = useProfanityChecker({
+  const { checkText, reset } = useProfanityChecker({
     allLanguages: checkAllLanguages,
     caseSensitive,
     wordBoundaries,
@@ -205,7 +205,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Result */}
-      {result && (
+      {checkedOutput && (
         <div
           style={{
             marginTop: '30px',
@@ -213,85 +213,86 @@ const App: React.FC = () => {
             paddingTop: '10px',
           }}
         >
-          {/* Result Block */}
-          {checkedOutput && (
-            <div
-              style={{
-                marginTop: '30px',
-                borderTop: '1px solid #ccc',
-                paddingTop: '10px',
-              }}
-            >
-              <h3>Result</h3>
-              <p>
-                Contains Profanity:{' '}
-                <strong>
-                  {checkedOutput.containsProfanity ? 'Yes' : 'No'}
-                </strong>
-              </p>
+          <h3>Result</h3>
+          <p>
+            Contains Profanity:{' '}
+            <strong>
+              {checkedOutput.containsProfanity ? 'Yes' : 'No'}
+            </strong>
+          </p>
 
-              {checkedOutput.containsProfanity && (
+          {checkedOutput.containsProfanity && (
+            <>
+              {autoReplace && (
+                <div style={{ marginBottom: '10px' }}>
+                  <label>
+                    Replace With:{' '}
+                    <select
+                      value={replaceWith}
+                      onChange={(e) => setReplaceWith(e.target.value)}
+                      style={{ marginLeft: '10px' }}
+                    >
+                      <option value="***">***</option>
+                      <option value="[censored]">[censored]</option>
+                      <option value="🧼">🧼</option>
+                      <option value="#@%!">#@%!</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+
+              <h4>Filtered Profane Words (min severity applied):</h4>
+              <ul>
+                {checkedOutput.filteredWords?.map(
+                  (word: string, index: number) => (
+                    <li key={index}>
+                      {word} – Severity:{' '}
+                      {checkedOutput.severityMap?.[word] ?? 'N/A'}
+                    </li>
+                  ),
+                )}
+              </ul>
+
+              {checkedOutput.matchContexts?.length > 0 && (
                 <>
-                  {autoReplace && (
-                    <div style={{ marginBottom: '10px' }}>
-                      <label>
-                        Replace With:{' '}
-                        <select
-                          value={replaceWith}
-                          onChange={(e) => setReplaceWith(e.target.value)}
-                          style={{ marginLeft: '10px' }}
-                        >
-                          <option value="***">***</option>
-                          <option value="[censored]">[censored]</option>
-                          <option value="🧼">🧼</option>
-                          <option value="#@%!">#@%!</option>
-                        </select>
-                      </label>
-                    </div>
-                  )}
-
-                  <h4>Filtered Profane Words (min severity applied):</h4>
+                  <h4>Context Matches:</h4>
                   <ul>
-                    {checkedOutput.filteredWords?.map(
-                      (word: string, index: number) => (
+                    {checkedOutput.matchContexts.map(
+                      (
+                        item: { word: string; context: string },
+                        index: number,
+                      ) => (
                         <li key={index}>
-                          {word} – Severity:{' '}
-                          {checkedOutput.severityMap?.[word] ?? 'N/A'}
+                          <strong>{item.word}</strong>: "…{item.context}…"
                         </li>
                       ),
                     )}
                   </ul>
-
-                  {checkedOutput.matchContexts?.length > 0 && (
-                    <>
-                      <h4>Context Matches:</h4>
-                      <ul>
-                        {checkedOutput.matchContexts.map(
-                          (
-                            item: { word: string; context: string },
-                            index: number,
-                          ) => (
-                            <li key={index}>
-                              <strong>{item.word}</strong>: “…{item.context}…”
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    </>
-                  )}
-
-                  {autoReplace && checkedOutput.autoReplaced && (
-                    <>
-                      <h4>Auto-Replaced Text:</h4>
-                      <p style={{ background: '#f7f7f7', padding: '10px' }}>
-                        {checkedOutput.autoReplaced}
-                      </p>
-                    </>
-                  )}
                 </>
               )}
-            </div>
+
+              {autoReplace && checkedOutput.autoReplaced && (
+                <>
+                  <h4>Auto-Replaced Text:</h4>
+                  <p style={{ background: '#f7f7f7', padding: '10px' }}>
+                    {checkedOutput.autoReplaced}
+                  </p>
+                </>
+              )}
+            </>
           )}
+        </div>
+      )}
+
+      {/* Log */}
+      {logEntries.length > 0 && (
+        <div
+          style={{
+            marginTop: '20px',
+            borderTop: '1px solid #ccc',
+            paddingTop: '10px',
+          }}
+        >
           <h3>Log</h3>
           <ul>
             {logEntries.map((entry, index) => (

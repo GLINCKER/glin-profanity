@@ -1,0 +1,178 @@
+name: 📦 Release JavaScript
+
+on:
+  push:
+    branches:
+      - release
+    paths:
+      - 'packages/js/**'
+      - 'shared/dictionaries/**'
+  workflow_dispatch:
+
+concurrency:
+  group: release-js-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Test JavaScript package before release
+  test:
+    name: 🧪 Test JavaScript
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: packages/js/package-lock.json
+          
+      - name: 🔧 Install dependencies
+        working-directory: ./packages/js
+        run: npm ci
+        
+      - name: 🏗️ Build package
+        working-directory: ./packages/js
+        run: npm run build
+        
+      - name: 🧪 Run tests
+        working-directory: ./packages/js
+        run: npm test
+
+  # Release JavaScript package
+  release:
+    name: 📦 Release to NPM
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: needs.test.result == 'success'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      npm-tarball: ${{ steps.package.outputs.tarball }}
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+          
+      - name: 🔧 Install dependencies
+        working-directory: ./packages/js
+        run: npm ci
+        
+      - name: 🏗️ Build package
+        working-directory: ./packages/js
+        run: npm run build
+        
+      - name: 🏷️ Get package version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./packages/js/package.json').version")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Package version: ${VERSION}"
+        
+      - name: 📦 Create package tarball
+        id: package
+        working-directory: ./packages/js
+        run: |
+          TARBALL=$(npm pack)
+          echo "tarball=${TARBALL}" >> $GITHUB_OUTPUT
+          echo "Created tarball: ${TARBALL}"
+        
+      - name: 🚀 Publish to NPM
+        working-directory: ./packages/js
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          
+      - name: 💾 Upload npm tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball-${{ github.sha }}
+          path: ./packages/js/*.tgz
+          retention-days: 30
+
+  # Create GitHub release
+  github-release:
+    name: 🏷️ GitHub Release
+    runs-on: ubuntu-latest
+    needs: [release]
+    if: needs.release.result == 'success'
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 📥 Download npm tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-tarball-${{ github.sha }}
+          path: ./artifacts/
+          
+      - name: 🏷️ Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: js-v${{ needs.release.outputs.version }}
+          name: JavaScript v${{ needs.release.outputs.version }}
+          draft: false
+          prerelease: false
+          files: ./artifacts/*
+          body: |
+            ## 📦 JavaScript/TypeScript Release v${{ needs.release.outputs.version }}
+            
+            ### Installation
+            ```bash
+            npm install glin-profanity@${{ needs.release.outputs.version }}
+            ```
+            
+            ### What's Changed
+            See the [CHANGELOG.md](CHANGELOG.md) for detailed changes in this release.
+            
+            ### Artifacts
+            - 📦 npm tarball for JavaScript/TypeScript package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Summary
+  summary:
+    name: 📋 Release Summary
+    runs-on: ubuntu-latest
+    needs: [test, release, github-release]
+    if: always()
+    
+    steps:
+      - name: ✅ Success Summary
+        if: needs.github-release.result == 'success'
+        run: |
+          echo "## ✅ JavaScript Release Completed!" >> $GITHUB_STEP_SUMMARY
+          echo "- 📦 **JavaScript/TypeScript** v${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- 🚀 Available on [npm](https://www.npmjs.com/package/glin-profanity)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🏷️ GitHub release created with build artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎉 Package is ready for installation!" >> $GITHUB_STEP_SUMMARY
+          
+      - name: ❌ Failure Summary
+        if: needs.github-release.result != 'success'
+        run: |
+          echo "## ❌ JavaScript Release Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the failed jobs:" >> $GITHUB_STEP_SUMMARY
+          echo "- Test: ${{ needs.test.result || 'unknown' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Release: ${{ needs.release.result || 'unknown' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Release: ${{ needs.github-release.result || 'unknown' }}" >> $GITHUB_STEP_SUMMARY
+          exit 1

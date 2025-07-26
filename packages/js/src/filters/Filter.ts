@@ -1,19 +1,8 @@
 import dictionary from '../data/dictionary';
-import { Language, CheckProfanityResult, SeverityLevel } from '../types/types';
+import { Language, CheckProfanityResult, SeverityLevel, Match, FilterConfig } from '../types/types';
+import { ContextAnalyzer } from '../nlp/contextAnalyzer';
 
-export interface FilterConfig {
-  languages?: Language[];
-  allLanguages?: boolean;
-  caseSensitive?: boolean;
-  wordBoundaries?: boolean;
-  customWords?: string[];
-  replaceWith?: string;
-  severityLevels?: boolean;
-  ignoreWords?: string[];
-  logProfanity?: boolean;
-  allowObfuscatedMatch?: boolean;
-  fuzzyToleranceLevel?: number;
-}
+export type { FilterConfig };
 
 class Filter {
   private words: Map<string, number>;
@@ -25,8 +14,26 @@ class Filter {
   private logProfanity: boolean;
   private allowObfuscatedMatch: boolean;
   private fuzzyToleranceLevel: number;
+  // Context-aware filtering properties
+  private enableContextAware: boolean;
+  private contextWindow: number;
+  private confidenceThreshold: number;
+  private contextAnalyzer?: ContextAnalyzer;
+  private primaryLanguage: Language;
 
   constructor(config?: FilterConfig) {
+    const defaultLanguage: Language = 'english';
+    this.enableContextAware = config?.enableContextAware ?? false;
+    this.contextWindow = config?.contextWindow ?? 3;
+    this.confidenceThreshold = config?.confidenceThreshold ?? 0.7;
+    this.primaryLanguage = config?.languages?.[0] || defaultLanguage;
+    if (this.enableContextAware) {
+      this.contextAnalyzer = new ContextAnalyzer({
+        contextWindow: this.contextWindow,
+        language: this.primaryLanguage,
+        domainWhitelists: config?.domainWhitelists?.[this.primaryLanguage] || []
+      });
+    }
     let words: string[] = [];
 
     this.caseSensitive = config?.caseSensitive ?? false;
@@ -110,10 +117,10 @@ class Filter {
     text: string,
   ): SeverityLevel | undefined {
     if (this.wordBoundaries && this.getRegex(word).test(text)) {
-      return SeverityLevel.Exact;
+      return SeverityLevel.EXACT;
     }
-    if (this.getRegex(word).test(text)) return SeverityLevel.Exact;
-    if (this.isFuzzyToleranceMatch(word, text)) return SeverityLevel.Fuzzy;
+    if (this.getRegex(word).test(text)) return SeverityLevel.EXACT;
+    if (this.isFuzzyToleranceMatch(word, text)) return SeverityLevel.FUZZY;
     return undefined;
   }
 
@@ -138,35 +145,106 @@ class Filter {
   }
 
   checkProfanity(text: string): CheckProfanityResult {
+    // Backward compatibility: if not context-aware, run old logic
+    if (!this.enableContextAware) {
+      let input = this.allowObfuscatedMatch
+        ? this.normalizeObfuscated(text)
+        : text;
+
+      input = input.toLowerCase();
+      const profaneWords: string[] = [];
+      const severityMap: Record<string, SeverityLevel> = {};
+
+      for (const dictWord of this.words.keys()) {
+        if (this.ignoreWords.has(dictWord.toLowerCase())) continue;
+
+        const severity = this.evaluateSeverity(dictWord, input);
+        if (severity !== undefined) {
+          const regex = this.getRegex(dictWord);
+          let match;
+          while ((match = regex.exec(input)) !== null) {
+            profaneWords.push(match[0]);
+            if (severityMap[match[0]] === undefined) {
+              severityMap[match[0]] = severity;
+            }
+          }
+        }
+      }
+
+      let processedText = text;
+      if (this.replaceWith && profaneWords.length > 0) {
+        const uniqueWords = Array.from(new Set(profaneWords));
+        for (const word of uniqueWords) {
+          const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const replacementRegex = this.wordBoundaries
+            ? new RegExp(`\\b${escaped}\\b`, 'gi')
+            : new RegExp(escaped, 'gi');
+          processedText = processedText.replace(
+            replacementRegex,
+            this.replaceWith,
+          );
+        }
+      }
+
+      return {
+        containsProfanity: profaneWords.length > 0,
+        profaneWords: Array.from(new Set(profaneWords)),
+        processedText: this.replaceWith ? processedText : undefined,
+        severityMap:
+          this.severityLevels && Object.keys(severityMap).length > 0
+            ? severityMap
+            : undefined,
+      };
+    }
+
+    // Context-aware path
     let input = this.allowObfuscatedMatch
       ? this.normalizeObfuscated(text)
       : text;
-
     input = input.toLowerCase();
-
+    const originalText = text;
     const profaneWords: string[] = [];
     const severityMap: Record<string, SeverityLevel> = {};
+    const matches: Match[] = [];
 
     for (const dictWord of this.words.keys()) {
       if (this.ignoreWords.has(dictWord.toLowerCase())) continue;
-
       const severity = this.evaluateSeverity(dictWord, input);
       if (severity !== undefined) {
         const regex = this.getRegex(dictWord);
         let match;
         while ((match = regex.exec(input)) !== null) {
-          profaneWords.push(match[0]);
-          if (severityMap[match[0]] === undefined) {
-            severityMap[match[0]] = severity;
+          const matchedWord = match[0];
+          const matchIndex = match.index;
+          const matchObj: Match = {
+            word: matchedWord,
+            index: matchIndex,
+            severity: severity
+          };
+          if (this.enableContextAware && this.contextAnalyzer) {
+            const contextResult = this.contextAnalyzer.analyzeContext(
+              originalText,
+              matchedWord,
+              matchIndex
+            );
+            matchObj.contextScore = contextResult.contextScore;
+            matchObj.reason = contextResult.reason;
+            matchObj.isWhitelisted = contextResult.isWhitelisted;
+            if (contextResult.isWhitelisted || (contextResult.contextScore > this.confidenceThreshold)) {
+              continue;
+            }
           }
+          profaneWords.push(matchedWord);
+          if (severityMap[matchedWord] === undefined) {
+            severityMap[matchedWord] = severity;
+          }
+          matches.push(matchObj);
         }
       }
     }
-
     if (profaneWords.length > 0) {
       this.debugLog('Detected:', profaneWords);
     }
-
     let processedText = text;
     if (this.replaceWith && profaneWords.length > 0) {
       const uniqueWords = Array.from(new Set(profaneWords));
@@ -181,21 +259,28 @@ class Filter {
         );
       }
     }
-
+    let contextScore: number | undefined;
+    if (this.enableContextAware && matches.length > 0) {
+      const totalScore = matches.reduce((sum, match) =>
+        sum + (match.contextScore || 0.5), 0);
+      contextScore = totalScore / matches.length;
+    }
     return {
       containsProfanity: profaneWords.length > 0,
       profaneWords: Array.from(new Set(profaneWords)),
       processedText: this.replaceWith ? processedText : undefined,
-      severityMap:
-        this.severityLevels && Object.keys(severityMap).length > 0
-          ? severityMap
-          : undefined,
+      severityMap: this.severityLevels && Object.keys(severityMap).length > 0 ? severityMap : undefined,
+      matches: matches.length > 0 ? matches : undefined,
+      contextScore,
+      reason: matches.length > 0 ?
+        `Found ${matches.length} potential profanity matches` :
+        'No profanity detected'
     };
   }
 
   checkProfanityWithMinSeverity(
     text: string,
-    minSeverity: SeverityLevel = SeverityLevel.Exact,
+    minSeverity: SeverityLevel = SeverityLevel.EXACT,
   ): { filteredWords: string[]; result: CheckProfanityResult } {
     const result = this.checkProfanity(text);
     const filteredWords =

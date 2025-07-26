@@ -1,0 +1,37 @@
+name: 'Setup Development Environment'
+description: 'Sets up Node.js, caches dependencies, and installs packages'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '18'
+  registry-url:
+    description: 'npm registry URL'
+    required: false
+    default: 'https://registry.npmjs.org'
+  fetch-depth:
+    description: 'Git fetch depth'
+    required: false
+    default: '0'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+        token: ${{ github.token }}
+        
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+        cache-dependency-path: 'package-lock.json'
+        registry-url: ${{ inputs.registry-url }}
+        
+    - name: 🔧 Install dependencies
+      run: npm ci
+      shell: bash
