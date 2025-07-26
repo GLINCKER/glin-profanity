@@ -2,8 +2,8 @@
 
 import re
 
-from ..data.dictionary import dictionary
-from ..types.types import (
+from glin_profanity.data.dictionary import dictionary
+from glin_profanity.types.types import (
     CheckProfanityResult,
     FilterConfig,
     Match,
@@ -46,9 +46,9 @@ class Filter:
         self.confidence_threshold = config.get("confidence_threshold", 0.7)
 
         # Initialize word sets
-        self.ignore_words: set[str] = set(
+        self.ignore_words: set[str] = {
             word.lower() for word in config.get("ignore_words", [])
-        )
+        }
 
         # Load dictionary words
         self._load_words(config)
@@ -71,10 +71,10 @@ class Filter:
         # Store as set for faster lookup
         self.words: set[str] = {word.lower() for word in words}
 
-    def _debug_log(self, *args) -> None:
+    def _debug_log(self, *args: object) -> None:
         """Log debug information if logging is enabled."""
         if self.log_profanity:
-            print("[glin-profanity]", *args)
+            print("[glin-profanity]", *args)  # noqa: T201
 
     def _normalize_obfuscated(self, text: str) -> str:
         """Normalize obfuscated text by replacing common character substitutions."""
@@ -100,10 +100,7 @@ class Filter:
         flags = 0 if self.case_sensitive else re.IGNORECASE
         escaped_word = re.escape(word)
 
-        if self.word_boundaries:
-            pattern = rf"\\b{escaped_word}\\b"
-        else:
-            pattern = escaped_word
+        pattern = rf"\\b{escaped_word}\\b" if self.word_boundaries else escaped_word
 
         return re.compile(pattern, flags)
 
@@ -149,9 +146,9 @@ class Filter:
         )
 
         for word in self.words:
-            if word.lower() not in self.ignore_words:
-                if self._evaluate_severity(word, input_text) is not None:
-                    return True
+            if (word.lower() not in self.ignore_words
+                and self._evaluate_severity(word, input_text) is not None):
+                return True
 
         return False
 

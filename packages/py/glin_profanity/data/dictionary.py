@@ -19,6 +19,11 @@ class DictionaryLoader:
         self._dictionaries: dict[Language, list[str]] = {}
         self._load_dictionaries()
 
+    def _raise_format_error(self, filename: str) -> None:
+        """Raise a ValueError for unexpected file format."""
+        msg = f"Unexpected format in {filename}"
+        raise ValueError(msg)
+
     def _load_dictionaries(self) -> None:
         """Load all dictionary files from shared directory."""
         language_files = {
@@ -58,8 +63,7 @@ class DictionaryLoader:
                     elif isinstance(data, list):
                         self._dictionaries[language] = data  # type: ignore[assignment]
                     else:
-                        msg = f"Unexpected format in {filename}"
-                        raise ValueError(msg)
+                        self._raise_format_error(filename)
             except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
                 print(f"Warning: Could not load {filename}: {e}")  # noqa: T201
                 self._dictionaries[language] = []  # type: ignore[assignment]
