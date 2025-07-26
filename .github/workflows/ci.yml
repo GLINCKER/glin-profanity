@@ -6,16 +6,18 @@ on:
       - main
       - 'release/**'
     paths:
-      - 'packages/glin-profanity/**'
+      - 'packages/**'
       - '.github/workflows/**'
       - 'package*.json'
+      - 'shared/**'
   push:
     branches:
       - main
     paths:
-      - 'packages/glin-profanity/**'
+      - 'packages/**'
       - '.github/workflows/**'
       - 'package*.json'
+      - 'shared/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
