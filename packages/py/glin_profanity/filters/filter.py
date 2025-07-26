@@ -44,11 +44,12 @@ class Filter:
         self.enable_context_aware = config.get("enable_context_aware", False)
         self.context_window = config.get("context_window", 3)
         self.confidence_threshold = config.get("confidence_threshold", 0.7)
-
+ 
         # Initialize word sets
         ignore_words_list = config.get("ignore_words", [])
         self.ignore_words: set[str] = {
             word.lower() for word in (ignore_words_list or [])
+ 
         }
 
         # Load dictionary words
@@ -60,16 +61,16 @@ class Filter:
 
         if config.get("all_languages", False):
             words = dictionary.get_all_words()
-        else:
-            languages = config.get("languages", ["english"])
+        else: 
+            languages = config.get("languages", ["english"]) 
             if languages:
                 for lang in languages:
                     words.extend(dictionary.get_words(lang))
 
         # Add custom words if provided
         custom_words = config.get("custom_words")
-        if custom_words:
-            words.extend(custom_words)
+        if custom_words: 
+            words.extend(custom_words) 
 
         # Store as set for faster lookup
         self.words: set[str] = {word.lower() for word in words}
@@ -270,15 +271,15 @@ class Filter:
             Dictionary with filtered words and full result
         """
         result = self.check_profanity(text)
-
-        filtered_words = []
+ 
+        filtered_words = [] 
         severity_map = result.get("severity_map")
         profane_words = result.get("profane_words")
         if severity_map and profane_words:
             filtered_words = [
                 word
-                for word in profane_words
-                if severity_map.get(word, 0) >= min_severity
+                for word in profane_words 
+                if severity_map.get(word, 0) >= min_severity 
             ]
 
         return {
