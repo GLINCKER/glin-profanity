@@ -220,7 +220,7 @@ class Filter:
             if dict_word.lower() in self.ignore_words:
                 continue
 
-            severity = self._evaluate_severity(dict_word, input_text)
+            severity = self._evaluate_severity(dict_word, input_lower)
             if severity is not None:
                 regex = self._get_regex(dict_word)
 
