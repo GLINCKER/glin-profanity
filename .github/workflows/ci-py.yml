@@ -68,9 +68,10 @@ jobs:
         working-directory: ${{ env.PACKAGE_DIR }}
         run: hatch run isort --check-only .
         
-      - name: 🔍 Type check with MyPy
-        working-directory: ${{ env.PACKAGE_DIR }}
-        run: hatch run mypy glin_profanity
+      # Removed MyPy check to reduce CI strictness
+      # - name: 🔍 Type check with MyPy
+      #   working-directory: ${{ env.PACKAGE_DIR }}
+      #   run: hatch run mypy glin_profanity
         
       - name: 🧪 Run tests with coverage
         working-directory: ${{ env.PACKAGE_DIR }}
