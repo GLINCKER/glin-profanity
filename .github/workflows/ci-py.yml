@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.11'
   PACKAGE_DIR: './packages/py'
 
 jobs:
@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.11']
     
     outputs:
       coverage-percentage: ${{ steps.coverage.outputs.percentage }}
@@ -124,7 +124,7 @@ jobs:
             
       - name: 💾 Upload build artifacts
         uses: actions/upload-artifact@v4
-        if: matrix.python-version == '3.10'  # Only upload once
+        if: matrix.python-version == '3.11'  # Only upload once
         with:
           name: py-build-artifacts-${{ github.sha }}
           path: |
@@ -144,7 +144,7 @@ jobs:
         run: |
           echo "## ✅ Python CI Passed!" >> $GITHUB_STEP_SUMMARY
           echo "- 🏗️ Build: Success" >> $GITHUB_STEP_SUMMARY
-          echo "- 🧪 Tests: Passed (Python 3.10, 3.11, 3.12)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🧪 Tests: Passed (Python 3.11)" >> $GITHUB_STEP_SUMMARY
           echo "- 📊 Coverage: ${{ needs.test.outputs.coverage-percentage }}%" >> $GITHUB_STEP_SUMMARY
           echo "- 🐍 Package: Python" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
