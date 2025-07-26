@@ -1,8 +1,8 @@
 """
-Glin-Profanity: A lightweight and efficient Python package for profanity detection and filtering.
+Glin-Profanity: A lightweight and efficient Python package for profanity detection.
 
-Provides multi-language support, context-aware filtering, and customizable configurations
-for detecting and filtering profane language in text inputs.
+Provides multi-language support, context-aware filtering, and customizable
+configurations for detecting and filtering profane language in text inputs.
 """
 
 __version__ = "2.1.0"
@@ -20,8 +20,8 @@ from .types.types import (
 )
 
 __all__ = [
+    "CheckProfanityResult",
     "Filter",
-    "CheckProfanityResult", 
     "FilterConfig",
     "FilteredProfanityResult",
     "Language",

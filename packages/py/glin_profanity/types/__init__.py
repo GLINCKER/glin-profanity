@@ -12,7 +12,7 @@ from .types import (
 
 __all__ = [
     "CheckProfanityResult",
-    "ContextAwareConfig", 
+    "ContextAwareConfig",
     "FilterConfig",
     "FilteredProfanityResult",
     "Language",
