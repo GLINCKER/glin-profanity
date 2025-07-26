@@ -46,8 +46,9 @@ class Filter:
         self.confidence_threshold = config.get("confidence_threshold", 0.7)
 
         # Initialize word sets
+        ignore_words_list = config.get("ignore_words", [])
         self.ignore_words: set[str] = {
-            word.lower() for word in config.get("ignore_words", [])
+            word.lower() for word in (ignore_words_list or [])
         }
 
         # Load dictionary words
@@ -61,12 +62,14 @@ class Filter:
             words = dictionary.get_all_words()
         else:
             languages = config.get("languages", ["english"])
-            for lang in languages:
-                words.extend(dictionary.get_words(lang))
+            if languages:
+                for lang in languages:
+                    words.extend(dictionary.get_words(lang))
 
         # Add custom words if provided
-        if config.get("custom_words"):
-            words.extend(config["custom_words"])
+        custom_words = config.get("custom_words")
+        if custom_words:
+            words.extend(custom_words)
 
         # Store as set for faster lookup
         self.words: set[str] = {word.lower() for word in words}
@@ -269,11 +272,13 @@ class Filter:
         result = self.check_profanity(text)
 
         filtered_words = []
-        if result.get("severity_map") and result.get("profane_words"):
+        severity_map = result.get("severity_map")
+        profane_words = result.get("profane_words")
+        if severity_map and profane_words:
             filtered_words = [
                 word
-                for word in result["profane_words"]
-                if result["severity_map"].get(word, 0) >= min_severity  # type: ignore[misc]
+                for word in profane_words
+                if severity_map.get(word, 0) >= min_severity
             ]
 
         return {
