@@ -1,0 +1,43 @@
+{
+  "commitTypes": [
+    {
+      "type": "feat",
+      "emoji": "✨",
+      "description": "New feature"
+    },
+    {
+      "type": "fix",
+      "emoji": "🐛",
+      "description": "Bug fix"
+    },
+    {
+      "type": "docs",
+      "emoji": "📚",
+      "description": "Documentation changes"
+    },
+    {
+      "type": "style",
+      "emoji": "💎",
+      "description": "Code style changes"
+    },
+    {
+      "type": "refactor",
+      "emoji": "📦",
+      "description": "Code refactoring"
+    },
+    {
+      "type": "test",
+      "emoji": "🚨",
+      "description": "Testing"
+    },
+    {
+      "type": "chore",
+      "emoji": "♻️",
+      "description": "Maintenance tasks"
+    }
+  ],
+  "emojiEnabled": true,
+  "conventionalCommits": true,
+  "maxSubjectLength": 50,
+  "maxBodyLength": 72
+}

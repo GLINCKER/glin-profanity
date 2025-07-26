@@ -1,0 +1,196 @@
+name: 🐍 Release Python
+
+on:
+  push:
+    branches:
+      - release
+    paths:
+      - 'packages/py/**'
+      - 'shared/dictionaries/**'
+  workflow_dispatch:
+
+concurrency:
+  group: release-py-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: '3.10'
+
+jobs:
+  # Test Python package before release
+  test:
+    name: 🧪 Test Python
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 🐍 Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          
+      - name: 📦 Install Hatch and dependencies
+        working-directory: ./packages/py
+        run: |
+          pip install hatch
+          hatch env create
+        
+      - name: 📋 Lint with Ruff
+        working-directory: ./packages/py
+        run: hatch run ruff check .
+        
+      - name: 🎨 Check formatting with Black
+        working-directory: ./packages/py
+        run: hatch run black --check .
+        
+      - name: 📋 Check import sorting with isort
+        working-directory: ./packages/py
+        run: hatch run isort --check-only .
+        
+      - name: 🔍 Type check with MyPy
+        working-directory: ./packages/py
+        run: hatch run mypy glin_profanity
+        
+      - name: 🧪 Run tests with coverage
+        working-directory: ./packages/py
+        run: hatch run pytest --cov=glin_profanity --cov-report=xml --cov-report=term-missing
+        
+      - name: 🏗️ Build package
+        working-directory: ./packages/py
+        run: hatch build
+
+  # Release Python package
+  release:
+    name: 🐍 Release to PyPI
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: needs.test.result == 'success'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      python-wheel: ${{ steps.build.outputs.wheel }}
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: 🏷️ Get package version
+        id: version
+        run: |
+          VERSION=$(python3 -c "
+          import tomllib
+          with open('packages/py/pyproject.toml', 'rb') as f:
+              data = tomllib.load(f)
+              print(data.get('project', {}).get('version', '0.0.0'))
+          ")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Package version: ${VERSION}"
+          
+      - name: 📦 Install Hatch and build package
+        id: build
+        working-directory: ./packages/py
+        run: |
+          pip install hatch
+          hatch build
+          
+          # Get wheel filename
+          WHEEL=$(ls dist/*.whl | head -1 | xargs basename)
+          echo "wheel=${WHEEL}" >> $GITHUB_OUTPUT
+          echo "Built wheel: ${WHEEL}"
+        
+      - name: 🚀 Publish to PyPI
+        working-directory: ./packages/py
+        run: hatch publish
+        env:
+          HATCH_INDEX_USER: __token__
+          HATCH_INDEX_AUTH: ${{ secrets.PYPI_TOKEN }}
+          
+      - name: 💾 Upload Python artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist-${{ github.sha }}
+          path: ./packages/py/dist/*
+          retention-days: 30
+
+  # Create GitHub release
+  github-release:
+    name: 🏷️ GitHub Release
+    runs-on: ubuntu-latest
+    needs: [release]
+    if: needs.release.result == 'success'
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 📥 Download Python artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist-${{ github.sha }}
+          path: ./artifacts/
+          
+      - name: 🏷️ Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: py-v${{ needs.release.outputs.version }}
+          name: Python v${{ needs.release.outputs.version }}
+          draft: false
+          prerelease: false
+          files: ./artifacts/*
+          body: |
+            ## 🐍 Python Release v${{ needs.release.outputs.version }}
+            
+            ### Installation
+            ```bash
+            pip install glin-profanity==${{ needs.release.outputs.version }}
+            ```
+            
+            ### What's Changed
+            See the [CHANGELOG.md](CHANGELOG.md) for detailed changes in this release.
+            
+            ### Artifacts
+            - 🐍 Python wheel (.whl) and source distribution (.tar.gz)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Summary
+  summary:
+    name: 📋 Release Summary
+    runs-on: ubuntu-latest
+    needs: [test, release, github-release]
+    if: always()
+    
+    steps:
+      - name: ✅ Success Summary
+        if: needs.github-release.result == 'success'
+        run: |
+          echo "## ✅ Python Release Completed!" >> $GITHUB_STEP_SUMMARY
+          echo "- 🐍 **Python** v${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- 🚀 Available on [PyPI](https://pypi.org/project/glin-profanity/)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🏷️ GitHub release created with build artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎉 Package is ready for installation!" >> $GITHUB_STEP_SUMMARY
+          
+      - name: ❌ Failure Summary
+        if: needs.github-release.result != 'success'
+        run: |
+          echo "## ❌ Python Release Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the failed jobs:" >> $GITHUB_STEP_SUMMARY
+          echo "- Test: ${{ needs.test.result || 'unknown' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Release: ${{ needs.release.result || 'unknown' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Release: ${{ needs.github-release.result || 'unknown' }}" >> $GITHUB_STEP_SUMMARY
+          exit 1

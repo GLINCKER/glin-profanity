@@ -1,0 +1,24 @@
+# Global code owners
+* @glinr
+
+# Package-specific ownership
+/packages/glin-profanity/ @glinr
+
+# CI/CD and infrastructure
+/.github/ @glinr
+/package*.json @glinr
+/tsconfig*.json @glinr
+/lerna.json @glinr
+
+# Release and deployment
+/packages/glin-profanity/package.json @glinr
+/packages/glin-profanity/.releaserc.json @glinr
+/CHANGELOG.md @glinr
+
+# Documentation
+/README.md @glinr
+/docs/ @glinr
+
+# Security and configuration
+/SECURITY.md @glinr
+/.gitignore @glinr

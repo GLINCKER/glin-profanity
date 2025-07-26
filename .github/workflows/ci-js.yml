@@ -1,20 +1,24 @@
-name: 🔍 CI - Test & Build
+name: 🔍 CI - JavaScript/TypeScript
 
 on:
   pull_request:
     branches: 
       - main
+      - release
       - 'release/**'
     paths:
-      - 'packages/glin-profanity/**'
-      - '.github/workflows/**'
+      - 'packages/js/**'
+      - 'shared/dictionaries/**'
+      - '.github/workflows/ci-js.yml'
       - 'package*.json'
   push:
     branches:
       - main
+      - release
     paths:
-      - 'packages/glin-profanity/**'
-      - '.github/workflows/**'
+      - 'packages/js/**'
+      - 'shared/dictionaries/**'
+      - '.github/workflows/ci-js.yml'
       - 'package*.json'
 
 concurrency:
@@ -23,13 +27,21 @@ concurrency:
 
 env:
   NODE_VERSION: '18'
-  PACKAGE_DIR: './packages/glin-profanity'
+  PACKAGE_DIR: './packages/js'
+
+# Global environment variables for consistent caching
+defaults:
+  run:
+    shell: bash
 
 jobs:
   test:
-    name: 🧪 Test & Build
+    name: 🧪 Test & Build JS
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
     
     outputs:
       coverage-percentage: ${{ steps.coverage.outputs.percentage }}
@@ -38,22 +50,22 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Needed for codecov and semantic-release
+          fetch-depth: 0
           
-      - name: 📦 Setup Node.js
+      - name: 📦 Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
-          cache-dependency-path: 'package-lock.json'
+          cache-dependency-path: packages/js/package-lock.json
           
       - name: 🔧 Install dependencies
+        working-directory: ${{ env.PACKAGE_DIR }}
         run: npm ci
         
       - name: 📋 Lint & Type Check
         working-directory: ${{ env.PACKAGE_DIR }}
         run: |
-          # Run TypeScript compiler for type checking
           npx tsc --noEmit
           
       - name: 🏗️ Build package
@@ -79,7 +91,6 @@ jobs:
         id: coverage
         working-directory: ${{ env.PACKAGE_DIR }}
         run: |
-          # Coverage already generated from test:ci, just extract percentage
           if [ -f coverage/lcov.info ]; then
             COVERAGE=$(grep -o 'LF:[0-9]*' coverage/lcov.info | head -1 | cut -d: -f2)
             echo "percentage=${COVERAGE:-0}" >> $GITHUB_OUTPUT
@@ -93,32 +104,32 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           file: ${{ env.PACKAGE_DIR }}/coverage/lcov.info
-          flags: glin-profanity
-          name: glin-profanity-coverage
+          flags: javascript
+          name: glin-profanity-js-coverage
           fail_ci_if_error: false
           verbose: true
           
+      - name: 💾 Cache build outputs
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PACKAGE_DIR }}/lib/
+          key: js-build-${{ runner.os }}-node${{ matrix.node-version }}-${{ hashFiles('packages/js/src/**/*', 'packages/js/tsconfig*.json') }}
+          restore-keys: |
+            js-build-${{ runner.os }}-node${{ matrix.node-version }}-
+            js-build-${{ runner.os }}-
+            
       - name: 💾 Upload build artifacts
         uses: actions/upload-artifact@v4
+        if: matrix.node-version == 18  # Only upload once
         with:
-          name: build-artifacts-${{ github.sha }}
+          name: js-build-artifacts-${{ github.sha }}
           path: |
             ${{ env.PACKAGE_DIR }}/lib/
             ${{ env.PACKAGE_DIR }}/coverage/
           retention-days: 7
-          
-      - name: 💾 Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-${{ github.sha }}
-          path: |
-            ${{ env.PACKAGE_DIR }}/coverage/
-            ${{ env.PACKAGE_DIR }}/jest-results.json
-          retention-days: 7
 
   summary:
-    name: 📋 CI Summary
+    name: 📋 JS CI Summary
     runs-on: ubuntu-latest
     needs: [test]
     if: always()
@@ -127,17 +138,17 @@ jobs:
       - name: ✅ Success Summary
         if: needs.test.result == 'success'
         run: |
-          echo "## ✅ CI Passed!" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ JavaScript CI Passed!" >> $GITHUB_STEP_SUMMARY
           echo "- 🏗️ Build: Success" >> $GITHUB_STEP_SUMMARY
           echo "- 🧪 Tests: Passed" >> $GITHUB_STEP_SUMMARY
           echo "- 📊 Coverage: ${{ needs.test.outputs.coverage-percentage }}%" >> $GITHUB_STEP_SUMMARY
-          echo "- 🔒 Security: Dependency review in separate workflow" >> $GITHUB_STEP_SUMMARY
+          echo "- 📦 Package: TypeScript/JavaScript" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Ready for review! 🚀" >> $GITHUB_STEP_SUMMARY
           
       - name: ❌ Failure Summary  
         if: needs.test.result == 'failure'
         run: |
-          echo "## ❌ CI Failed" >> $GITHUB_STEP_SUMMARY
+          echo "## ❌ JavaScript CI Failed" >> $GITHUB_STEP_SUMMARY
           echo "Please check the failed jobs and fix the issues." >> $GITHUB_STEP_SUMMARY
           exit 1

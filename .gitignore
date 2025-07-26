@@ -1,16 +1,43 @@
-# Node.js dependencies
+# Dependencies
 node_modules/
-package-lock.json
-yarn.lock
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.venv/
+venv/
+env/
 
-# Output directories
+# Build outputs
+lib/
 dist/
 build/
-packages/glin-profanity/lib/*
+*.egg-info/
+.eggs/
+packages/*/lib/*
+packages/*/dist/*
 
 # TypeScript compiled output
 *.tsbuildinfo
 !src/index.d.ts
+
+# Python specific
+*.egg
+.tox/
+.nox/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
 # Logs
 logs/
 *.log

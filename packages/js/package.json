@@ -24,7 +24,12 @@
   "scripts": {
     "build:cjs": "tsc -p tsconfig.commonjs.json",
     "build:esm": "tsc -p tsconfig.esm.json",
-    "build": "npm run build:cjs && npm run build:esm"
+    "build": "npm run build:cjs && npm run build:esm",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "semantic-release": "semantic-release"
   },
   "repository": {
     "type": "git",
@@ -72,5 +77,16 @@
     "profanity-moderation-module"
   ],
   "author": "glinr",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.3",
+    "@semantic-release/npm": "^12.0.2",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.0.5",
+    "semantic-release": "^24.2.7",
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.8.3"
+  }
 }

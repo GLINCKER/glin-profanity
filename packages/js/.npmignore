@@ -1,0 +1,48 @@
+# Source files
+src/
+tests/
+coverage/
+
+# Configuration files
+tsconfig*.json
+jest.config.js
+.babelrc
+
+# Development files
+.eslintrc.*
+.prettierrc*
+.gitignore
+.editorconfig
+
+# Documentation (except README.md which is included via package.json files)
+docs/
+*.md
+!README.md
+
+# Build artifacts we don't need
+lib/cjs/shared/
+lib/esm/shared/
+lib/cjs/packages/
+lib/esm/packages/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
+
+# Cache directories
+.npm/
+.yarn/

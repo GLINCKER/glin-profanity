@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Filter, FilterConfig } from '../filters/Filter';
 import { CheckProfanityResult, Language, SeverityLevel } from '../types/types';
-import globalWhitelistData from '../data/globalWhitelist.json';
+import globalWhitelistData from '@shared/dictionaries/globalWhitelist.json';
 
 export interface ProfanityCheckerConfig {
   languages?: Language[];
