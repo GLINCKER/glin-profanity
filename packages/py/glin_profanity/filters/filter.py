@@ -146,8 +146,10 @@ class Filter:
         )
 
         for word in self.words:
-            if (word.lower() not in self.ignore_words
-                and self._evaluate_severity(word, input_text) is not None):
+            if (
+                word.lower() not in self.ignore_words
+                and self._evaluate_severity(word, input_text) is not None
+            ):
                 return True
 
         return False
