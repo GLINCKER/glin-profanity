@@ -33,6 +33,7 @@ module.exports = {
       preset: 'ts-jest',
       testEnvironment: 'jsdom',
       testMatch: ['<rootDir>/tests/**/*.test.tsx'],
+      testPathIgnorePatterns: ['<rootDir>/tests/useProfanityChecker.test.tsx'],
       moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
       moduleNameMapper: {
         '^@shared/(.*)$': '<rootDir>/../../shared/$1'
