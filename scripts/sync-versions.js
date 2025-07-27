@@ -52,17 +52,18 @@ class VersionSync {
     /**
      * Update Python package version
      */
-    setPyVersion(version) {
-        // Update __init__.py (this is where hatch reads the version from)
+    setPyVersion(version) { 
+        // Update __init__.py (this is where hatch reads the version from) 
         let initContent = fs.readFileSync(this.pyInitPath, 'utf8');
         initContent = initContent.replace(
             /__version__ = "(.*?)"/,
             `__version__ = "${version}"`
         );
-        fs.writeFileSync(this.pyInitPath, initContent);
+        fs.writeFileSync(this.pyInitPath, initContent); 
         
         // Don't update pyproject.toml as it uses dynamic versioning from __init__.py
         console.log(`   Updated Python version in ${this.pyInitPath}`);
+ 
     }
 
     /**
@@ -111,8 +112,8 @@ class VersionSync {
     /**
      * Parse commit message to determine release type and channel
      */
-    parseCommitMessage(message) {
-        // Traditional release patterns
+    parseCommitMessage(message) { 
+        // Traditional release patterns 
         const releasePatterns = {
             'patch': /^release: patch /,
             'minor': /^release: minor /,
@@ -133,7 +134,7 @@ class VersionSync {
                 return { releaseType, channel };
             }
         }
-
+ 
         // Conventional commit patterns (semantic release style)
         const conventionalPatterns = {
             feat: 'minor',      // new features
@@ -159,7 +160,7 @@ class VersionSync {
                 return { releaseType, channel: 'stable' };
             }
         }
-
+ 
         return null;
     }
 

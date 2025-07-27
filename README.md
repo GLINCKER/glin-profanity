@@ -60,7 +60,7 @@
 
 ---
 
-> A multilingual profanity detection and filtering engine for modern applications — by [GLINCKER](https://glincker.com)
+> A multilingual profanity detection and filtering engine for modern applications — by [GLINCKER](https://glincker.com) 
 
 [![Glin Profanity Preview](./assets/glin-profanity-preview.png)](https://www.glincker.com/tools/glin-profanity)
 
@@ -92,6 +92,7 @@ Whether you're moderating chat messages, community forums, or content input form
 </div>
 
 <br />
+ 
 
 - 🌍 **Multi-language Support**: 20+ languages including English, Spanish, French, German, Arabic, Chinese, and more
 - 🎯 **Context-Aware Filtering**: Advanced context analysis to reduce false positives  
@@ -102,7 +103,7 @@ Whether you're moderating chat messages, community forums, or content input form
 - 🧪 **Well Tested**: Comprehensive test suite ensuring reliability and cross-language parity
 - ⚛️ **React Hook**: Built-in `useProfanityChecker` hook for React applications
 - 🔍 **Obfuscation Detection**: Advanced pattern matching for disguised profanity
-- 🎚️ **Severity Levels**: Configurable severity detection and filtering
+- 🎚️ **Severity Levels**: Configurable severity detection and filtering 
 
 ## 📚 Table of Contents
 
@@ -138,6 +139,7 @@ Whether you're moderating chat messages, community forums, or content input form
   <img src="https://img.shields.io/badge/Yarn-2C8EBB?style=flat&logo=yarn&logoColor=white" alt="yarn" />
   <img src="https://img.shields.io/badge/pnpm-F69220?style=flat&logo=pnpm&logoColor=white" alt="pnpm" />
 </div>
+ 
 
 ```bash
 npm install glin-profanity
@@ -146,7 +148,7 @@ npm install glin-profanity
 ```bash
 yarn add glin-profanity
 ```
-
+ 
 ```bash
 pnpm add glin-profanity
 ```
@@ -160,6 +162,7 @@ pip install glin-profanity
 ```bash
 poetry add glin-profanity
 ```
+ 
 
 ## 🌍 Supported Languages
 
@@ -183,14 +186,15 @@ const result = checkProfanity("This is a damn example", {
   languages: ['english', 'spanish'],
   replaceWith: '***'
 });
-
+ 
 console.log(result.containsProfanity); // true
 console.log(result.profaneWords);      // ['damn']
 console.log(result.processedText);     // "This is a *** example"
+ 
 ```
 
 #### 🔷 TypeScript
-
+ 
 ```typescript
 import { checkProfanity, ProfanityCheckerConfig } from 'glin-profanity';
 
@@ -205,7 +209,7 @@ const result = checkProfanity("inappropriate text", config);
 ```
 
 ### Python
-
+ 
 ```python
 from glin_profanity import Filter, SeverityLevel
 
@@ -231,7 +235,8 @@ advanced_filter = Filter({
     "allow_obfuscated_match": True,
     "custom_words": ["badword", "anotherbad"],
     "ignore_words": ["exception"]
-})
+}) 
+
 ```
 
 ### Framework Examples
@@ -346,6 +351,7 @@ export class CommentComponent {
     });
   }
 }
+ 
 ```
 
 ## 🧠 API Reference
@@ -357,18 +363,19 @@ Both packages provide identical functionality with language-appropriate naming c
 | JavaScript | Python | Description |
 |------------|--------|-------------|
 | `checkProfanity(text, config)` | `check_profanity(text, config)` | Framework-agnostic profanity detection |
-| `isProfane(text)` | `is_profane(text)` | Check if text contains profanity |
+| `isProfane(text)` | `is_profane(text)` | Check if text contains profanity | 
 | `checkProfanityAsync(text, config)` | `check_profanity_async(text, config)` | Async profanity detection |
 | `isWordProfane(word, config)` | `is_word_profane(word, config)` | Check single word |
 | `Filter` class | `Filter` class | Low-level filter class for advanced usage |
 | `useProfanityChecker` hook | N/A | React-specific hook |
+ 
 
 ### Configuration Options
 
 #### JavaScript/TypeScript
 
-```typescript
-interface ProfanityCheckerConfig {
+```typescript 
+interface ProfanityCheckerConfig { 
   languages?: Language[];              // Specific languages to check
   allLanguages?: boolean;              // Check all available languages
   caseSensitive?: boolean;             // Case-sensitive matching
@@ -412,14 +419,14 @@ class FilterConfig(TypedDict, total=False):
 #### CheckProfanityResult
 
 **JavaScript/TypeScript:**
-```typescript
+```typescript 
 interface ProfanityCheckResult {
   containsProfanity: boolean;                    // Whether profanity was detected
   profaneWords: string[];                        // List of detected profane words
   processedText?: string;                        // Text with replacements
   severityMap?: Record<string, SeverityLevel>;   // Word-to-severity mapping
   filteredWords: string[];                       // Words filtered by minSeverity
-  autoReplaced: string;                          // Text with auto-replacements
+  autoReplaced: string;                          // Text with auto-replacements 
 }
 ```
 
@@ -442,7 +449,7 @@ class CheckProfanityResult(TypedDict):
 ### Custom Word Lists and Severity Filtering
 
 ```typescript
-// JavaScript
+// JavaScript 
 import { checkProfanity, SeverityLevel } from 'glin-profanity';
 
 const result = checkProfanity("This sh1t is damn bad", {
@@ -453,7 +460,7 @@ const result = checkProfanity("This sh1t is damn bad", {
     fuzzyToleranceLevel: 0.7
 });
 
-console.log(result.filteredWords); // Only exact matches
+console.log(result.filteredWords); // Only exact matches 
 ```
 
 ```python
@@ -477,7 +484,7 @@ result = filter_instance.check_profanity_with_min_severity(
 ### Obfuscation Detection
 
 ```typescript
-// JavaScript
+// JavaScript 
 import { checkProfanity } from 'glin-profanity';
 
 const result = checkProfanity("What the f*ck is this sh1t?", {
@@ -579,9 +586,10 @@ glin-profanity/
 - 🔄 **Regular Updates**: Keep the library updated to benefit from new language patterns and improved detection algorithms.
 - ⚖️ **Context Matters**: Consider enabling context-aware filtering to reduce false positives in legitimate discussions.
 - 🌍 **Cultural Sensitivity**: Different cultures have varying standards - configure accordingly for your audience.
+ 
 
-## 📄 License
-
+For proprietary licensing inquiries, contact [GLINCKER](https://glincker.com).
+ 
 This software is available under a dual license:
 
 ### MIT License
@@ -602,6 +610,7 @@ For proprietary licensing inquiries, contact [GLINCKER](https://glincker.com).
 
 ## 🏢 About GLINCKER
 
+ 
 **Glin-Profanity** is developed and maintained by [GLINCKER](https://www.glincker.com), a technology company focused on building developer tools and content moderation solutions.
 
 - 🌐 **Website**: [glincker.com/tools/glin-profanity](https://www.glincker.com/tools/glin-profanity)
@@ -636,6 +645,6 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 [![GitHub stars](https://img.shields.io/github/stars/GLINCKER/glin-profanity?style=social)](https://github.com/GLINCKER/glin-profanity/stargazers)
 
 *Building safer digital spaces, one word at a time.*
-
-GLINR STUDIOS 
+ 
+GLINR STUDIOS  
 </div>
