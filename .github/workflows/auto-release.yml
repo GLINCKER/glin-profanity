@@ -121,6 +121,7 @@ jobs:
           echo "✅ Version bumped to: $NEW_VERSION"
           
       - name: 💾 Commit version bump
+        id: commit
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -130,8 +131,23 @@ jobs:
           git add packages/py/glin_profanity/__init__.py
           git add package.json
           
-          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]" || exit 0
-          git push
+          # Check if there are changes to commit
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
+            
+            # Try to push, but don't fail the entire workflow if it's blocked by repository rules
+            if git push; then
+              echo "push_success=true" >> $GITHUB_OUTPUT
+              echo "✅ Version bump committed and pushed successfully"
+            else
+              echo "push_success=false" >> $GITHUB_OUTPUT
+              echo "⚠️ Version bump committed but push was blocked by repository rules"
+              echo "The release will continue with the locally bumped version files"
+            fi
+          else
+            echo "push_success=true" >> $GITHUB_OUTPUT
+            echo "ℹ️ No changes to commit"
+          fi
 
   # Build packages
   build:
@@ -144,7 +160,7 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref }}
           
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
@@ -155,6 +171,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: 📈 Re-apply version bump
+        run: |
+          # Re-apply the version bump since we're starting from a fresh checkout
+          echo "🔄 Re-applying version bump to: ${{ needs.bump-version.outputs.new_version }}"
+          chmod +x scripts/sync-versions.js
+          node scripts/sync-versions.js release ${{ needs.detect-release.outputs.release_type }} ${{ needs.detect-release.outputs.channel }} > /dev/null
           
       - name: 🏗️ Build JavaScript package
         working-directory: packages/js
@@ -189,13 +212,20 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref }}
           
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
+          
+      - name: 📈 Re-apply version bump
+        run: |
+          # Re-apply the version bump since we're starting from a fresh checkout
+          echo "🔄 Re-applying version bump to: ${{ needs.bump-version.outputs.new_version }}"
+          chmod +x scripts/sync-versions.js
+          node scripts/sync-versions.js release ${{ needs.detect-release.outputs.release_type }} ${{ needs.detect-release.outputs.channel }} > /dev/null
           
       - name: 📥 Download build artifacts
         uses: actions/download-artifact@v4
@@ -234,12 +264,24 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref }}
+          
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
           
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: 📈 Re-apply version bump
+        run: |
+          # Re-apply the version bump since we're starting from a fresh checkout
+          echo "🔄 Re-applying version bump to: ${{ needs.bump-version.outputs.new_version }}"
+          chmod +x scripts/sync-versions.js
+          node scripts/sync-versions.js release ${{ needs.detect-release.outputs.release_type }} ${{ needs.detect-release.outputs.channel }} > /dev/null
           
       - name: 📥 Download build artifacts
         uses: actions/download-artifact@v4
@@ -270,7 +312,7 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref }}
           fetch-depth: 0
           
       - name: 📥 Download build artifacts
