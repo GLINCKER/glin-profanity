@@ -34,7 +34,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   PYTHON_VERSION: '3.11'
 
 jobs:
@@ -179,10 +179,15 @@ jobs:
           chmod +x scripts/sync-versions.js
           node scripts/sync-versions.js release ${{ needs.detect-release.outputs.release_type }} ${{ needs.detect-release.outputs.channel }} > /dev/null
           
+      - name: 🔧 Install root dependencies
+        run: |
+          # Install root dependencies to get husky and other tools
+          npm ci
+          
       - name: 🏗️ Build JavaScript package
         working-directory: packages/js
         run: |
-          npm ci
+          npm ci --ignore-scripts
           npm run build
           npm pack
           
@@ -233,10 +238,15 @@ jobs:
           name: packages-${{ github.sha }}
           path: ./artifacts/
           
+      - name: 🔧 Install root dependencies  
+        run: |
+          # Install root dependencies to get husky and other tools
+          npm ci
+          
       - name: 📦 Publish to npm
         working-directory: packages/js
         run: |
-          npm ci
+          npm ci --ignore-scripts
           npm run build
           
           # Determine npm tag
