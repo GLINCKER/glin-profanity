@@ -57,10 +57,9 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-          cache-dependency-path: packages/js/package-lock.json
+          cache-dependency-path: package-lock.json
           
       - name: 🔧 Install dependencies
-        working-directory: ${{ env.PACKAGE_DIR }}
         run: npm ci
         
       - name: 📋 Lint & Type Check
