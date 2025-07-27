@@ -62,7 +62,7 @@
 
 ## ✨ Overview
 
-**Glin-Profanity** is a high-performance JavaScript/TypeScript library built to detect, filter, and sanitize profane or harmful language in user-generated content. With support for over 20+ languages, configurable severity levels, obfuscation detection, and real-time React integration, it’s designed for developers who care about building safe, inclusive platforms.
+**Glin-Profanity** is a high-performance JavaScript/TypeScript library built to detect, filter, and sanitize profane or harmful language in user-generated content. With support for over 20+ languages, configurable severity levels, obfuscation detection, and framework-agnostic design, it's perfect for developers who care about building safe, inclusive platforms.
 
 Whether you're moderating chat messages, community forums, or content input forms, Glin-Profanity empowers you to:
 
@@ -71,17 +71,28 @@ Whether you're moderating chat messages, community forums, or content input form
 - 💬 Catch obfuscated profanity like `sh1t`, `f*ck`, `a$$hole`
 - 🎚️ Adjust severity thresholds (`Exact`, `Fuzzy`, `Merged`)
 - 🔁 Replace bad words with symbols or emojis
-- 🧩 Seamlessly integrate into **React apps** via `useProfanityChecker`
+- 🧩 Works in **any JavaScript environment** - <img src="https://img.shields.io/badge/Node.js-339933?style=flat&logo=nodedotjs&logoColor=white" alt="Node.js" height="16" /> <img src="https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB" alt="React" height="16" /> <img src="https://img.shields.io/badge/Vue-35495E?style=flat&logo=vuedotjs&logoColor=4FC08D" alt="Vue" height="16" /> <img src="https://img.shields.io/badge/Angular-DD0031?style=flat&logo=angular&logoColor=white" alt="Angular" height="16" /> <img src="https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white" alt="TypeScript" height="16" />
 - 🛡️ Add custom word lists or ignore specific terms
+
+## 🚀 Key Features
+
+<div align="center">
+  <img src="https://img.shields.io/badge/Multi--Language-🌍-blue?style=for-the-badge" alt="Multi-Language" />
+  <img src="https://img.shields.io/badge/Real--Time-⚡-yellow?style=for-the-badge" alt="Real-Time" />
+  <img src="https://img.shields.io/badge/Obfuscation_Detection-🕵️-purple?style=for-the-badge" alt="Obfuscation" />
+  <img src="https://img.shields.io/badge/Framework_Agnostic-🧩-green?style=for-the-badge" alt="Framework Agnostic" />
+</div>
 
 ## 📚 Table of Contents
 
-- [🚀 Features](#-features)
+- [🚀 Key Features](#-key-features)
 - [📦 Installation](#installation)
 - [🌍 Supported Languages](#supported-languages)
 - [⚙️ Usage](#usage)
   - [Basic Usage](#basic-usage)
+  - [Framework Examples](#framework-examples)
 - [🧠 API](#api)
+  - [Core Functions](#core-functions)
   - [Filter Class](#filter-class)
     - [Constructor](#constructor)
     - [FilterConfig Options](#filterconfig-options)
@@ -98,6 +109,14 @@ Whether you're moderating chat messages, community forums, or content input form
 
 ## Installation
 
+<div align="center">
+  <img src="https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white" alt="npm" />
+  <img src="https://img.shields.io/badge/Yarn-2C8EBB?style=for-the-badge&logo=yarn&logoColor=white" alt="yarn" />
+  <img src="https://img.shields.io/badge/pnpm-F69220?style=for-the-badge&logo=pnpm&logoColor=white" alt="pnpm" />
+</div>
+
+<br />
+
 To install Glin-Profanity, use npm:
 
 ```bash
@@ -108,85 +127,223 @@ OR
 ```bash
 yarn add glin-profanity
 ```
- 
-### Supported Languages
+OR
 
-Arabic, Chinese, Czech, Danish, English, Esperanto, Finnish, French, German, Hindi, Hungarian, Italian, Japanese, Korean, Norwegian, Persian, Polish, Portuguese, Russian, Turkish, Swedish, Thai
+```bash
+pnpm add glin-profanity
+```
+ 
+## Supported Languages
+
+Glin-Profanity includes comprehensive profanity dictionaries for **23 languages**:
+
+🇸🇦 **Arabic** • 🇨🇳 **Chinese** • 🇨🇿 **Czech** • 🇩🇰 **Danish** • 🇬🇧 **English** • 🌍 **Esperanto** • 🇫🇮 **Finnish** • 🇫🇷 **French** • 🇩🇪 **German** • 🇮🇳 **Hindi** • 🇭🇺 **Hungarian** • 🇮🇹 **Italian** • 🇯🇵 **Japanese** • 🇰🇷 **Korean** • 🇳🇴 **Norwegian** • 🇮🇷 **Persian** • 🇵🇱 **Polish** • 🇵🇹 **Portuguese** • 🇷🇺 **Russian** • 🇪🇸 **Spanish** • 🇸🇪 **Swedish** • 🇹🇭 **Thai** • 🇹🇷 **Turkish**
+
+> **Note**: The JavaScript and Python packages maintain cross-language parity, ensuring consistent profanity detection across both ecosystems.
 
 ## Usage
 
 ### Basic Usage
 
-Here's a simple example of how to use Glin-Profanity in a React application:
+Glin-Profanity now provides framework-agnostic core functions alongside React-specific hooks:
+
+#### 🟢 Node.js / Vanilla JavaScript
+
+```javascript
+const { checkProfanity } = require('glin-profanity');
+
+const text = "This is some bad text with damn words";
+const result = checkProfanity(text, {
+  languages: ['english', 'spanish'],
+  replaceWith: '***'
+});
+
+console.log(result.containsProfanity); // true
+console.log(result.profaneWords);      // ['damn']
+console.log(result.processedText);     // "This is some bad text with *** words"
+```
+
+#### 🔷 TypeScript
+
+```typescript
+import { checkProfanity, ProfanityCheckerConfig } from 'glin-profanity';
+
+const config: ProfanityCheckerConfig = {
+  languages: ['english', 'spanish'],
+  severityLevels: true,
+  autoReplace: true,
+  replaceWith: '🤬'
+};
+
+const result = checkProfanity("inappropriate text", config);
+```
+
+### Framework Examples
+
+<div align="center">
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D" alt="Vue.js" />
+  <img src="https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white" alt="Angular" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+</div>
+
+#### ⚛️ React
 
 ```tsx
 import React, { useState } from 'react';
-import { useProfanityChecker, SeverityLevel, Language } from 'glin-profanity';
+import { useProfanityChecker, SeverityLevel } from 'glin-profanity';
 
 const App = () => {
   const [text, setText] = useState('');
-  const [autoReplace, setAutoReplace] = useState(true);
-  const [replaceWith, setReplaceWith] = useState('***');
-  const [minSeverity, setMinSeverity] = useState(SeverityLevel.Exact);
-
+  
   const { result, checkText } = useProfanityChecker({
-    allLanguages: true,
+    languages: ['english', 'spanish'],
     severityLevels: true,
-    autoReplace,
-    replaceWith,
-    minSeverity,
-    customActions: (res) => {
-      console.log('[Detected]', res.profaneWords);
-    },
+    autoReplace: true,
+    replaceWith: '***',
+    minSeverity: SeverityLevel.EXACT
   });
 
   return (
     <div>
       <input value={text} onChange={(e) => setText(e.target.value)} />
       <button onClick={() => checkText(text)}>Scan</button>
-
-      {result && (
-        <>
-          <p>Contains Profanity: {result.containsProfanity ? 'Yes' : 'No'}</p>
-          {result.containsProfanity && (
-            <>
-              <p>Detected: {result.profaneWords.join(', ')}</p>
-              <p>Replaced: {result.processedText}</p>
-            </>
-          )}
-        </>
+      
+      {result && result.containsProfanity && (
+        <p>Cleaned: {result.processedText}</p>
       )}
     </div>
   );
 };
 ```
 
+#### 💚 Vue 3
+
+```vue
+<template>
+  <div>
+    <input v-model="text" @input="checkContent" />
+    <p v-if="hasProfanity">{{ cleanedText }}</p>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import { checkProfanity } from 'glin-profanity';
+
+const text = ref('');
+const hasProfanity = ref(false);
+const cleanedText = ref('');
+
+const checkContent = () => {
+  const result = checkProfanity(text.value, {
+    languages: ['english'],
+    autoReplace: true,
+    replaceWith: '***'
+  });
+  
+  hasProfanity.value = result.containsProfanity;
+  cleanedText.value = result.autoReplaced;
+};
+</script>
+```
+
+#### 🔴 Angular
+
+```typescript
+import { Component } from '@angular/core';
+import { checkProfanity, ProfanityCheckResult } from 'glin-profanity';
+
+@Component({
+  selector: 'app-comment',
+  template: `
+    <textarea [(ngModel)]="comment" (ngModelChange)="validateComment()"></textarea>
+    <div *ngIf="profanityResult?.containsProfanity" class="error">
+      Please remove inappropriate language
+    </div>
+  `
+})
+export class CommentComponent {
+  comment = '';
+  profanityResult: ProfanityCheckResult | null = null;
+
+  validateComment() {
+    this.profanityResult = checkProfanity(this.comment, {
+      languages: ['english', 'spanish'],
+      severityLevels: true
+    });
+  }
+}
+```
+
+#### 🚂 Express.js Middleware
+
+```javascript
+const express = require('express');
+const { checkProfanity } = require('glin-profanity');
+
+const profanityMiddleware = (req, res, next) => {
+  const result = checkProfanity(req.body.message || '', {
+    languages: ['english'],
+    autoReplace: true,
+    replaceWith: '[censored]'
+  });
+  
+  if (result.containsProfanity) {
+    req.body.message = result.autoReplaced;
+  }
+  
+  next();
+};
+
+app.post('/comment', profanityMiddleware, (req, res) => {
+  // Message is now sanitized
+  res.json({ message: req.body.message });
+});
+```
 
 ## API
 
-### `Filter` Class
+### 🎯 Core Functions
+
+#### `checkProfanity`
+
+Framework-agnostic function for profanity detection.
+
+```typescript
+checkProfanity(text: string, config?: ProfanityCheckerConfig): ProfanityCheckResult
+```
+
+#### `checkProfanityAsync`
+
+Async version of checkProfanity.
+
+```typescript
+checkProfanityAsync(text: string, config?: ProfanityCheckerConfig): Promise<ProfanityCheckResult>
+```
+
+#### `isWordProfane`
+
+Quick check if a single word is profane.
+
+```typescript
+isWordProfane(word: string, config?: ProfanityCheckerConfig): boolean
+```
+
+### 🔧 `Filter` Class
 
 #### Constructor
 
 ```typescript
-new Filter(config?: { 
-  languages?: Language[]; 
-  allLanguages?: boolean;
-  caseSensitive?: boolean;
-  wordBoundaries?: boolean;
-  customWords?: string[];
-  replaceWith?: string;
-  severityLevels?: boolean; 
-  ignoreWords?: string[];
-  logProfanity?: boolean; 
-});
+new Filter(config?: FilterConfig);
 ```
 
 #### FilterConfig Options:
 
 | Option                  | Type               | Description |
 |-------------------------|--------------------|-------------|
-| `languages`             | `Language[]`       | Languages to include |
+| `languages`             | `Language[]`       | Languages to include (e.g., ['english', 'spanish']) |
 | `allLanguages`          | `boolean`          | If true, scan all available languages |
 | `caseSensitive`         | `boolean`          | Match case exactly |
 | `wordBoundaries`        | `boolean`          | Only match full words (turn off for substring matching) |
@@ -231,32 +388,25 @@ checkProfanity(text: string): CheckProfanityResult;
   - `processedText`: `string` - The text with profane words replaced (if `replaceWith` is specified).
   - `severityMap`: `{ [word: string]: number }` - A map of profane words to their severity levels (if `severityLevels` is specified).
 
-### `useProfanityChecker` Hook
+### ⚛️ `useProfanityChecker` Hook
 
 A custom React hook for using the profanity checker.
 
 #### Parameters
 
-- `config`: An optional configuration object.
-  - `languages`: An array of languages to check for profanities.
-  - `allLanguages`: A boolean indicating whether to check for all languages.
-  - `caseSensitive`: A boolean indicating whether the profanity check should be case-sensitive.
-  - `wordBoundaries`: A boolean indicating whether to consider word boundaries when checking for profanities.
-  - `customWords`: An array of custom words to include in the profanity check.
-  - `replaceWith`: A string to replace profane words with.
-  - `severityLevels`: A boolean indicating whether to include severity levels for profane words. 
-  - `ignoreWords`: An array of words to ignore in the profanity check.
-  - `logProfanity`: A boolean indicating whether to log detected profane words. 
-  - `customActions`: A function to execute custom actions when profanity is detected.
+- `config`: An optional configuration object (same as ProfanityCheckerConfig).
 
 #### Return Value
 
 - `result`: The result of the profanity check.
 - `checkText`: A function to check a given text for profanities.
 - `checkTextAsync`: A function to check a given text for profanities asynchronously.
+- `reset`: A function to reset the result state.
+- `isDirty`: Boolean indicating if profanity was found.
+- `isWordProfane`: Function to check if a single word is profane.
 
 ```typescript
-const { result, checkText, checkTextAsync } = useProfanityChecker(config);
+const { result, checkText, checkTextAsync, reset, isDirty, isWordProfane } = useProfanityChecker(config);
 ```
 
 ## Note 

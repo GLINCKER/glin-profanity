@@ -5,8 +5,25 @@
  * configurations for detecting and filtering profane language in text inputs.
  */
 
-export { Filter } from './filters/Filter';
+// Core API (framework-agnostic)
+export { 
+  checkProfanity, 
+  checkProfanityAsync, 
+  isWordProfane 
+} from './core';
+
+export type { 
+  ProfanityCheckerConfig,
+  ProfanityCheckResult 
+} from './core/types';
+
+// React-specific
 export { useProfanityChecker } from './hooks/useProfanityChecker';
+
+// Advanced/Low-level
+export { Filter } from './filters/Filter';
+
+// Legacy types (maintain compatibility)
 export { SeverityLevel } from './types/types';
 export type { 
   Language, 
