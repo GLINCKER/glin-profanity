@@ -335,6 +335,27 @@ if (require.main === module) {
             versionSync.status();
             break;
             
+        case 'detect':
+            try {
+                // Get the last commit message
+                const lastCommit = execSync('git log -1 --pretty=%B', { encoding: 'utf8' }).trim();
+                const releaseInfo = versionSync.parseCommitMessage(lastCommit);
+                
+                if (releaseInfo) {
+                    const { releaseType, channel } = releaseInfo;
+                    // Output GitHub Actions compatible format
+                    console.log(`should_release=true`);
+                    console.log(`release_type=${releaseType}`);
+                    console.log(`channel=${channel}`);
+                } else {
+                    console.log(`should_release=false`);
+                }
+            } catch (error) {
+                console.log(`should_release=false`);
+                process.exit(1);
+            }
+            break;
+            
         case 'validate':
             const version = args[1];
             if (!version) {
@@ -360,6 +381,7 @@ Commands:
   sync [version]           Sync versions between packages (optionally to specific version)
   release <type> [channel] Bump version and create release (patch|minor|major) [stable|beta|alpha]
   auto                     Auto-release based on last commit message
+  detect                   Detect if last commit should trigger release (GitHub Actions format)
   status                   Show current version status
   validate <version>       Validate version format
 
@@ -368,6 +390,7 @@ Examples:
   node scripts/sync-versions.js sync 1.2.3
   node scripts/sync-versions.js release minor beta
   node scripts/sync-versions.js auto
+  node scripts/sync-versions.js detect
   node scripts/sync-versions.js status
             `);
     }

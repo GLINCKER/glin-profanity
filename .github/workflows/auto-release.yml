@@ -66,50 +66,18 @@ jobs:
             exit 0
           fi
           
-          # Check last commit message for release patterns
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "📝 Last commit: $COMMIT_MSG"
+          # Use sync-versions.js script for semantic release detection
+          chmod +x scripts/sync-versions.js
           
-          # Release patterns
-          if echo "$COMMIT_MSG" | grep -q "^release: patch "; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "release_type=patch" >> $GITHUB_OUTPUT
-            echo "channel=stable" >> $GITHUB_OUTPUT
-          elif echo "$COMMIT_MSG" | grep -q "^release: minor "; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "release_type=minor" >> $GITHUB_OUTPUT
-            echo "channel=stable" >> $GITHUB_OUTPUT
-          elif echo "$COMMIT_MSG" | grep -q "^release: major "; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "release_type=major" >> $GITHUB_OUTPUT
-            echo "channel=stable" >> $GITHUB_OUTPUT
-          elif echo "$COMMIT_MSG" | grep -q "^release: beta-patch "; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "release_type=patch" >> $GITHUB_OUTPUT
-            echo "channel=beta" >> $GITHUB_OUTPUT
-          elif echo "$COMMIT_MSG" | grep -q "^release: beta-minor "; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "release_type=minor" >> $GITHUB_OUTPUT
-            echo "channel=beta" >> $GITHUB_OUTPUT
-          elif echo "$COMMIT_MSG" | grep -q "^release: beta-major "; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "release_type=major" >> $GITHUB_OUTPUT
-            echo "channel=beta" >> $GITHUB_OUTPUT
-          elif echo "$COMMIT_MSG" | grep -q "^release: alpha-patch "; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "release_type=patch" >> $GITHUB_OUTPUT
-            echo "channel=alpha" >> $GITHUB_OUTPUT
-          elif echo "$COMMIT_MSG" | grep -q "^release: alpha-minor "; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "release_type=minor" >> $GITHUB_OUTPUT
-            echo "channel=alpha" >> $GITHUB_OUTPUT
-          elif echo "$COMMIT_MSG" | grep -q "^release: alpha-major "; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "release_type=major" >> $GITHUB_OUTPUT
-            echo "channel=alpha" >> $GITHUB_OUTPUT
+          # Check if commit should trigger a release using our semantic detection
+          RELEASE_OUTPUT=$(node scripts/sync-versions.js detect 2>&1)
+          
+          if echo "$RELEASE_OUTPUT" | grep -q "should_release=true"; then
+            echo "$RELEASE_OUTPUT" >> $GITHUB_OUTPUT
+            echo "🎯 Semantic release detected"
           else
             echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No release pattern detected"
+            echo "ℹ️ No semantic release pattern detected"
           fi
 
   # Version bump and synchronization
