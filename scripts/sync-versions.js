@@ -62,7 +62,10 @@ class VersionSync {
         fs.writeFileSync(this.pyInitPath, initContent); 
         
         // Don't update pyproject.toml as it uses dynamic versioning from __init__.py
-        console.log(`   Updated Python version in ${this.pyInitPath}`);
+        const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
+        if (!isCI) {
+            console.log(`   Updated Python version in ${this.pyInitPath}`);
+        }
  
     }
 
@@ -213,16 +216,23 @@ class VersionSync {
         const currentVersion = this.getJsVersion();
         const newVersion = this.bumpVersion(currentVersion, releaseType, channel);
         
-        console.log(`🚀 Releasing new ${channel} ${releaseType} version`);
-        console.log(`   ${currentVersion} → ${newVersion}`);
+        // Check if running in CI environment (suppress verbose output)
+        const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
+        
+        if (!isCI) {
+            console.log(`🚀 Releasing new ${channel} ${releaseType} version`);
+            console.log(`   ${currentVersion} → ${newVersion}`);
+        }
         
         // Update versions
         this.setJsVersion(newVersion);
         this.setPyVersion(newVersion);
         
-        console.log(`✅ Version bumped to: ${newVersion}`);
-        console.log(`📦 npm tag: ${this.getNpmTag(newVersion)}`);
-        console.log(`🐍 PyPI classifier: ${this.getPyPIClassifier(newVersion)}`);
+        if (!isCI) {
+            console.log(`✅ Version bumped to: ${newVersion}`);
+            console.log(`📦 npm tag: ${this.getNpmTag(newVersion)}`);
+            console.log(`🐍 PyPI classifier: ${this.getPyPIClassifier(newVersion)}`);
+        }
         
         return newVersion;
     }
@@ -310,7 +320,11 @@ if (require.main === module) {
                 console.error(`❌ Invalid channel: ${channel}`);
                 process.exit(1);
             }
-            versionSync.release(releaseType, channel);
+            const newVersion = versionSync.release(releaseType, channel);
+            // In CI, only output the version number for GitHub Actions
+            if (process.env.CI || process.env.GITHUB_ACTIONS) {
+                console.log(newVersion);
+            }
             break;
             
         case 'auto':
