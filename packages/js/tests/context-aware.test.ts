@@ -56,7 +56,9 @@ describe('Context-Aware Filtering', () => {
       const gamingFilter = new Filter({
         enableContextAware: true,
         contextWindow: 3,
-        domainWhitelists: ['player', 'gaming', 'game'],
+        domainWhitelists: {
+          english: ['player', 'gaming', 'game']
+        },
         languages: ['english'],
       });
 
@@ -121,7 +123,7 @@ describe('Context-Aware Filtering', () => {
       expect(result.severityMap).toBeDefined();
       if (result.severityMap) {
         const severities = Object.values(result.severityMap);
-        expect(severities).toContain(SeverityLevel.Exact);
+        expect(severities).toContain(SeverityLevel.EXACT);
       }
     });
   });

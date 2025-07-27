@@ -1,6 +1,6 @@
 {
   "name": "glin-profanity",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Glin-Profanity is a lightweight and efficient npm package designed to detect and filter profane language in text inputs across multiple languages. Whether you’re building a chat application, a comment section, or any platform where user-generated content is involved, Glin-Profanity helps you maintain a clean and respectful environment.",
   "private": true,
   "workspaces": [
@@ -11,7 +11,9 @@
     "build": "lerna run build",
     "publish": "lerna publish",
     "prepare": "husky install",
-    "commit": "git-cz",
+    "commit": "commitweave",
+    "commit:glinr": "node scripts/glinr-commit.js",
+    "commit:rules": "node scripts/glinr-commit.js rules",
     "lint": "eslint .",
     "test": "jest",
     "version:sync": "node scripts/sync-versions.js sync",

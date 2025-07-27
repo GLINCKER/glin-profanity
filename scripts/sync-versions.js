@@ -52,22 +52,18 @@ class VersionSync {
     /**
      * Update Python package version
      */
-    setPyVersion(version) {
-        // Update pyproject.toml
-        let pyprojectContent = fs.readFileSync(this.pyPackagePath, 'utf8');
-        pyprojectContent = pyprojectContent.replace(
-            /version = "(.*?)"/,
-            `version = "${version}"`
-        );
-        fs.writeFileSync(this.pyPackagePath, pyprojectContent);
-
-        // Update __init__.py
+    setPyVersion(version) { 
+        // Update __init__.py (this is where hatch reads the version from) 
         let initContent = fs.readFileSync(this.pyInitPath, 'utf8');
         initContent = initContent.replace(
             /__version__ = "(.*?)"/,
             `__version__ = "${version}"`
         );
-        fs.writeFileSync(this.pyInitPath, initContent);
+        fs.writeFileSync(this.pyInitPath, initContent); 
+        
+        // Don't update pyproject.toml as it uses dynamic versioning from __init__.py
+        console.log(`   Updated Python version in ${this.pyInitPath}`);
+ 
     }
 
     /**
@@ -116,7 +112,8 @@ class VersionSync {
     /**
      * Parse commit message to determine release type and channel
      */
-    parseCommitMessage(message) {
+    parseCommitMessage(message) { 
+        // Traditional release patterns 
         const releasePatterns = {
             'patch': /^release: patch /,
             'minor': /^release: minor /,
@@ -137,7 +134,33 @@ class VersionSync {
                 return { releaseType, channel };
             }
         }
-
+ 
+        // Conventional commit patterns (semantic release style)
+        const conventionalPatterns = {
+            feat: 'minor',      // new features
+            fix: 'patch',       // bug fixes  
+            perf: 'patch',      // performance improvements
+            docs: 'patch',      // documentation changes
+            style: 'patch',     // formatting changes
+            refactor: 'patch',  // code refactoring
+            test: 'patch',      // adding tests
+            chore: 'patch',     // maintenance tasks
+        };
+        
+        // Check for breaking changes (major release)
+        if (message.includes('BREAKING CHANGE') || message.includes('!:')) {
+            return { releaseType: 'major', channel: 'stable' };
+        }
+        
+        // Check for conventional commit types
+        for (const [type, releaseType] of Object.entries(conventionalPatterns)) {
+            // Pattern to match emoji + conventional commit format or just conventional commit
+            const pattern = new RegExp(`(^|\\s)(${type})(\\(.*?\\))?!?:\\s+`, 'i');
+            if (pattern.test(message)) {
+                return { releaseType, channel: 'stable' };
+            }
+        }
+ 
         return null;
     }
 
