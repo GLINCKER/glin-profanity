@@ -4,8 +4,8 @@ Glin-Profanity: A lightweight and efficient Python package for profanity detecti
 Provides multi-language support, context-aware filtering, and customizable
 configurations for detecting and filtering profane language in text inputs.
 """
-
-__version__ = "2.2.0"
+ 
+__version__ = "2.3.0" 
 __author__ = "glinr"
 __email__ = "contact@glincker.com"
 
