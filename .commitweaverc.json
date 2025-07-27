@@ -1,0 +1,200 @@
+{
+  "preset": "glinr-commit",
+  "config": {
+    "types": [
+      {
+        "type": "feat",
+        "section": "✨ Features",
+        "description": "A new feature",
+        "emoji": "✨",
+        "release": "minor"
+      },
+      {
+        "type": "fix",
+        "section": "🐛 Bug Fixes",
+        "description": "A bug fix",
+        "emoji": "🐛",
+        "release": "patch"
+      },
+      {
+        "type": "perf",
+        "section": "⚡ Performance",
+        "description": "A code change that improves performance",
+        "emoji": "⚡",
+        "release": "patch"
+      },
+      {
+        "type": "refactor",
+        "section": "♻️ Code Refactoring",
+        "description": "A code change that neither fixes a bug nor adds a feature",
+        "emoji": "♻️",
+        "release": "patch"
+      },
+      {
+        "type": "docs",
+        "section": "📚 Documentation",
+        "description": "Documentation only changes",
+        "emoji": "📚",
+        "release": "patch"
+      },
+      {
+        "type": "style",
+        "section": "💄 Styles",
+        "description": "Changes that do not affect the meaning of the code",
+        "emoji": "💄",
+        "release": "patch"
+      },
+      {
+        "type": "test",
+        "section": "✅ Tests",
+        "description": "Adding missing tests or correcting existing tests",
+        "emoji": "✅",
+        "release": "patch"
+      },
+      {
+        "type": "build",
+        "section": "📦 Build System",
+        "description": "Changes that affect the build system or external dependencies",
+        "emoji": "📦",
+        "release": "patch"
+      },
+      {
+        "type": "ci",
+        "section": "👷 CI/CD",
+        "description": "Changes to CI configuration files and scripts",
+        "emoji": "👷",
+        "release": "patch"
+      },
+      {
+        "type": "chore",
+        "section": "🔧 Maintenance",
+        "description": "Other changes that don't modify src or test files",
+        "emoji": "🔧",
+        "release": "patch"
+      },
+      {
+        "type": "release",
+        "section": "🚀 Releases",
+        "description": "Manual release commit",
+        "emoji": "🚀",
+        "release": "custom"
+      }
+    ],
+    "scopes": [
+      {
+        "name": "core",
+        "description": "Core profanity detection engine"
+      },
+      {
+        "name": "filters",
+        "description": "Text filtering and processing"
+      },
+      {
+        "name": "multiframework",
+        "description": "Multi-framework integration support"
+      },
+      {
+        "name": "hooks",
+        "description": "React hooks and utilities"
+      },
+      {
+        "name": "types",
+        "description": "TypeScript type definitions"
+      },
+      {
+        "name": "python",
+        "description": "Python package implementation"
+      },
+      {
+        "name": "javascript",
+        "description": "JavaScript/TypeScript package"
+      },
+      {
+        "name": "tests",
+        "description": "Test suites and testing utilities"
+      },
+      {
+        "name": "ci",
+        "description": "Continuous integration and deployment"
+      },
+      {
+        "name": "docs",
+        "description": "Documentation and examples"
+      },
+      {
+        "name": "release",
+        "description": "Release automation and versioning"
+      },
+      {
+        "name": "deps",
+        "description": "Dependencies and package management"
+      }
+    ],
+    "semanticRelease": {
+      "enabled": true,
+      "releaseRules": [
+        { "type": "feat", "release": "minor" },
+        { "type": "fix", "release": "patch" },
+        { "type": "perf", "release": "patch" },
+        { "type": "refactor", "release": "patch" },
+        { "type": "docs", "release": "patch" },
+        { "type": "style", "release": "patch" },
+        { "type": "test", "release": "patch" },
+        { "type": "build", "release": "patch" },
+        { "type": "ci", "release": "patch" },
+        { "type": "chore", "release": "patch" },
+        { "breaking": true, "release": "major" }
+      ],
+      "channels": [
+        {
+          "name": "stable",
+          "pattern": "main",
+          "prerelease": false
+        },
+        {
+          "name": "beta",
+          "pattern": "beta",
+          "prerelease": "beta"
+        },
+        {
+          "name": "alpha", 
+          "pattern": "alpha",
+          "prerelease": "alpha"
+        }
+      ]
+    },
+    "commitFormat": {
+      "template": "{emoji} {type}{scope}: {subject}",
+      "subjectCase": "sentence-case",
+      "subjectMaxLength": 72,
+      "bodyWrap": 100,
+      "footerWrap": 100
+    },
+    "prompts": {
+      "type": "Select the type of change you're committing:",
+      "scope": "What is the scope of this change (optional):",
+      "subject": "Write a short, imperative mood description:",
+      "body": "Provide a longer description (optional):",
+      "breaking": "Are there any breaking changes?",
+      "issues": "Add issue references (e.g. \"fix #123\", \"re #123\"):"
+    },
+    "integration": {
+      "syncVersions": {
+        "script": "scripts/sync-versions.js",
+        "autoRelease": true
+      },
+      "github": {
+        "releases": true,
+        "labels": true
+      },
+      "npm": {
+        "publish": true,
+        "tags": ["latest", "beta", "alpha"]
+      },
+      "pypi": {
+        "publish": true,
+        "classifiers": ["3 - Alpha", "4 - Beta", "5 - Production/Stable"]
+      }
+    }
+  }
+}

@@ -1,12 +1,11 @@
 import { Filter, FilterConfig } from '../filters/Filter';
 import { ProfanityCheckerConfig, ProfanityCheckResult } from './types';
-// Using require for JSON import to avoid path alias issues in tests
-const globalWhitelistData = require('../../../shared/dictionaries/globalWhitelist.json');
+import globalWhitelistData from '@shared/dictionaries/globalWhitelist.json';
 
 function createFilterConfig(config?: ProfanityCheckerConfig): FilterConfig {
   const effective: FilterConfig = {
     ...(config ?? {}),
-    ignoreWords: globalWhitelistData.whitelist,
+    ignoreWords: (globalWhitelistData as any).whitelist,
     fuzzyToleranceLevel: config?.fuzzyToleranceLevel ?? 0.8,
   };
 
