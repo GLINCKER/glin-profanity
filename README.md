@@ -77,30 +77,21 @@ Whether you're moderating chat messages, community forums, or content input form
 - 💬 Catch obfuscated profanity like `sh1t`, `f*ck`, `a$hole`
 - 🎚️ Adjust severity thresholds (`Exact`, `Fuzzy`, `Merged`)
 - 🔁 Replace bad words with symbols or emojis
-- 🧩 Seamlessly integrate into **React apps** via `useProfanityChecker`
+- 🧩 Works in **any JavaScript environment** - <img src="https://img.shields.io/badge/Node.js-339933?style=flat&logo=nodedotjs&logoColor=white" alt="Node.js" height="16" /> <img src="https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB" alt="React" height="16" /> <img src="https://img.shields.io/badge/Vue-35495E?style=flat&logo=vuedotjs&logoColor=4FC08D" alt="Vue" height="16" /> <img src="https://img.shields.io/badge/Angular-DD0031?style=flat&logo=angular&logoColor=white" alt="Angular" height="16" /> <img src="https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white" alt="TypeScript" height="16" />
 - 🛡️ Add custom word lists or ignore specific terms
 - ⚡ Enjoy identical APIs across JavaScript and Python
 
-## 📚 Table of Contents
+## 🚀 Key Features
 
-- [🚀 Features](#-features)
-- [📦 Installation](#-installation)
-- [🌍 Supported Languages](#-supported-languages)
-- [⚙️ Quick Start](#️-quick-start)
-  - [JavaScript/TypeScript](#javascripttypescript)
-  - [Python](#python)
-  - [React Integration](#react-integration)
-- [🧠 API Reference](#-api-reference)
-  - [Core Methods](#core-methods)
-  - [Configuration Options](#configuration-options)
-  - [Return Types](#return-types)
-- [🔧 Advanced Usage](#-advanced-usage)
-- [📁 Monorepo Structure](#-monorepo-structure)
-- [🛠 Use Cases](#-use-cases)
-- [⚠️ Important Notes](#️-important-notes)
-- [📄 License](#-license)
+<div align="center">
+  <img src="https://img.shields.io/badge/Multi--Language-🌍-blue?style=for-the-badge" alt="Multi-Language" />
+  <img src="https://img.shields.io/badge/Real--Time-⚡-yellow?style=for-the-badge" alt="Real-Time" />
+  <img src="https://img.shields.io/badge/Obfuscation_Detection-🕵️-purple?style=for-the-badge" alt="Obfuscation" />
+  <img src="https://img.shields.io/badge/Framework_Agnostic-🧩-green?style=for-the-badge" alt="Framework Agnostic" />
+  <img src="https://img.shields.io/badge/Cross_Platform-🔄-orange?style=for-the-badge" alt="Cross Platform" />
+</div>
 
-## 🚀 Features
+<br />
 
 - 🌍 **Multi-language Support**: 20+ languages including English, Spanish, French, German, Arabic, Chinese, and more
 - 🎯 **Context-Aware Filtering**: Advanced context analysis to reduce false positives  
@@ -113,9 +104,40 @@ Whether you're moderating chat messages, community forums, or content input form
 - 🔍 **Obfuscation Detection**: Advanced pattern matching for disguised profanity
 - 🎚️ **Severity Levels**: Configurable severity detection and filtering
 
+## 📚 Table of Contents
+
+- [🚀 Key Features](#-key-features)
+- [📦 Installation](#-installation)
+- [🌍 Supported Languages](#-supported-languages)
+- [⚙️ Quick Start](#️-quick-start)
+  - [JavaScript/TypeScript](#javascripttypescript)
+  - [Python](#python)
+  - [Framework Examples](#framework-examples)
+- [🧠 API Reference](#-api-reference)
+  - [Core Methods](#core-methods)
+  - [Configuration Options](#configuration-options)
+  - [Return Types](#return-types)
+- [🔧 Advanced Usage](#-advanced-usage)
+- [📁 Monorepo Structure](#-monorepo-structure)
+- [🛠 Use Cases](#-use-cases)
+- [⚠️ Important Notes](#️-important-notes)
+- [📄 License](#-license)
+
 ## 📦 Installation
 
+<div align="center">
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" alt="JavaScript" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+</div>
+
 ### JavaScript/TypeScript
+
+<div align="center">
+  <img src="https://img.shields.io/badge/npm-CB3837?style=flat&logo=npm&logoColor=white" alt="npm" />
+  <img src="https://img.shields.io/badge/Yarn-2C8EBB?style=flat&logo=yarn&logoColor=white" alt="yarn" />
+  <img src="https://img.shields.io/badge/pnpm-F69220?style=flat&logo=pnpm&logoColor=white" alt="pnpm" />
+</div>
 
 ```bash
 npm install glin-profanity
@@ -123,6 +145,10 @@ npm install glin-profanity
 
 ```bash
 yarn add glin-profanity
+```
+
+```bash
+pnpm add glin-profanity
 ```
 
 ### Python
@@ -137,39 +163,45 @@ poetry add glin-profanity
 
 ## 🌍 Supported Languages
 
-Arabic, Chinese, Czech, Danish, English, Esperanto, Finnish, French, German, Hindi, Hungarian, Italian, Japanese, Korean, Norwegian, Persian, Polish, Portuguese, Russian, Spanish, Swedish, Thai, Turkish
+Glin-Profanity includes comprehensive profanity dictionaries for **23 languages**:
+
+🇸🇦 **Arabic** • 🇨🇳 **Chinese** • 🇨🇿 **Czech** • 🇩🇰 **Danish** • 🇬🇧 **English** • 🌍 **Esperanto** • 🇫🇮 **Finnish** • 🇫🇷 **French** • 🇩🇪 **German** • 🇮🇳 **Hindi** • 🇭🇺 **Hungarian** • 🇮🇹 **Italian** • 🇯🇵 **Japanese** • 🇰🇷 **Korean** • 🇳🇴 **Norwegian** • 🇮🇷 **Persian** • 🇵🇱 **Polish** • 🇵🇹 **Portuguese** • 🇷🇺 **Russian** • 🇪🇸 **Spanish** • 🇸🇪 **Swedish** • 🇹🇭 **Thai** • 🇹🇷 **Turkish**
+
+> **Note**: The JavaScript and Python packages maintain cross-language parity, ensuring consistent profanity detection across both ecosystems.
 
 ## ⚙️ Quick Start
 
 ### JavaScript/TypeScript
 
-```typescript
-import { Filter, SeverityLevel } from 'glin-profanity';
+#### 🟢 Node.js / Vanilla JavaScript
+
+```javascript
+const { checkProfanity } = require('glin-profanity');
 
 // Basic usage
-const filter = new Filter();
-
-// Check if text contains profanity
-if (filter.isProfane("This is a damn example")) {
-    console.log("Profanity detected!");
-}
-
-// Get detailed results
-const result = filter.checkProfanity("This is a damn example");
-console.log(result.profaneWords);      // ['damn']
-console.log(result.containsProfanity); // true
-console.log(result.processedText);     // "This is a **** example" (if replaceWith is set)
-
-// Advanced configuration
-const advancedFilter = new Filter({
-    languages: ['english', 'spanish'],
-    caseSensitive: false,
-    replaceWith: '***',
-    severityLevels: true,
-    allowObfuscatedMatch: true,
-    customWords: ['badword', 'anotherbad'],
-    ignoreWords: ['exception']
+const result = checkProfanity("This is a damn example", {
+  languages: ['english', 'spanish'],
+  replaceWith: '***'
 });
+
+console.log(result.containsProfanity); // true
+console.log(result.profaneWords);      // ['damn']
+console.log(result.processedText);     // "This is a *** example"
+```
+
+#### 🔷 TypeScript
+
+```typescript
+import { checkProfanity, ProfanityCheckerConfig } from 'glin-profanity';
+
+const config: ProfanityCheckerConfig = {
+  languages: ['english', 'spanish'],
+  severityLevels: true,
+  autoReplace: true,
+  replaceWith: '***'
+};
+
+const result = checkProfanity("inappropriate text", config);
 ```
 
 ### Python
@@ -202,7 +234,17 @@ advanced_filter = Filter({
 })
 ```
 
-### React Integration
+### Framework Examples
+
+<div align="center">
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D" alt="Vue.js" />
+  <img src="https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white" alt="Angular" />
+  <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
+</div>
+
+#### ⚛️ React
 
 ```tsx
 import React, { useState } from 'react';
@@ -212,24 +254,18 @@ const ChatModerator = () => {
   const [message, setMessage] = useState('');
   
   const { result, checkText } = useProfanityChecker({
-    allLanguages: true,
+    languages: ['english', 'spanish'],
     severityLevels: true,
+    autoReplace: true,
     replaceWith: '***',
-    minSeverity: SeverityLevel.Exact,
-    customActions: (res) => {
-      if (res.containsProfanity) {
-        console.log('[Moderation] Flagged:', res.profaneWords);
-      }
-    },
+    minSeverity: SeverityLevel.EXACT
   });
 
   const handleSubmit = () => {
     checkText(message);
     if (result && !result.containsProfanity) {
-      // Send clean message
       sendMessage(message);
     } else {
-      // Handle profanity detection
       alert('Please keep your message clean!');
     }
   };
@@ -253,6 +289,65 @@ const ChatModerator = () => {
 };
 ```
 
+#### 💚 Vue 3
+
+```vue
+<template>
+  <div>
+    <input v-model="text" @input="checkContent" />
+    <p v-if="hasProfanity">{{ cleanedText }}</p>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import { checkProfanity } from 'glin-profanity';
+
+const text = ref('');
+const hasProfanity = ref(false);
+const cleanedText = ref('');
+
+const checkContent = () => {
+  const result = checkProfanity(text.value, {
+    languages: ['english'],
+    autoReplace: true,
+    replaceWith: '***'
+  });
+  
+  hasProfanity.value = result.containsProfanity;
+  cleanedText.value = result.autoReplaced;
+};
+</script>
+```
+
+#### 🔴 Angular
+
+```typescript
+import { Component } from '@angular/core';
+import { checkProfanity, ProfanityCheckResult } from 'glin-profanity';
+
+@Component({
+  selector: 'app-comment',
+  template: `
+    <textarea [(ngModel)]="comment" (ngModelChange)="validateComment()"></textarea>
+    <div *ngIf="profanityResult?.containsProfanity" class="error">
+      Please remove inappropriate language
+    </div>
+  `
+})
+export class CommentComponent {
+  comment = '';
+  profanityResult: ProfanityCheckResult | null = null;
+
+  validateComment() {
+    this.profanityResult = checkProfanity(this.comment, {
+      languages: ['english', 'spanish'],
+      severityLevels: true
+    });
+  }
+}
+```
+
 ## 🧠 API Reference
 
 ### Core Methods
@@ -261,16 +356,19 @@ Both packages provide identical functionality with language-appropriate naming c
 
 | JavaScript | Python | Description |
 |------------|--------|-------------|
+| `checkProfanity(text, config)` | `check_profanity(text, config)` | Framework-agnostic profanity detection |
 | `isProfane(text)` | `is_profane(text)` | Check if text contains profanity |
-| `checkProfanity(text)` | `check_profanity(text)` | Get detailed profanity analysis |
-| `matches(word)` | `matches(word)` | Check if a single word matches profanity patterns |
+| `checkProfanityAsync(text, config)` | `check_profanity_async(text, config)` | Async profanity detection |
+| `isWordProfane(word, config)` | `is_word_profane(word, config)` | Check single word |
+| `Filter` class | `Filter` class | Low-level filter class for advanced usage |
+| `useProfanityChecker` hook | N/A | React-specific hook |
 
 ### Configuration Options
 
 #### JavaScript/TypeScript
 
 ```typescript
-interface FilterConfig {
+interface ProfanityCheckerConfig {
   languages?: Language[];              // Specific languages to check
   allLanguages?: boolean;              // Check all available languages
   caseSensitive?: boolean;             // Case-sensitive matching
@@ -281,10 +379,9 @@ interface FilterConfig {
   ignoreWords?: string[];              // Words to ignore
   allowObfuscatedMatch?: boolean;      // Detect obfuscated profanity
   fuzzyToleranceLevel?: number;        // Fuzzy matching tolerance (0-1)
-  enableContextAware?: boolean;        // Context-aware filtering
-  contextWindow?: number;              // Context analysis window size
-  confidenceThreshold?: number;        // Context confidence threshold
-  logProfanity?: boolean;              // Enable debug logging
+  minSeverity?: SeverityLevel;         // Minimum severity to flag
+  autoReplace?: boolean;               // Auto-replace profanity
+  customActions?: (result) => void;    // Custom callback
 }
 ```
 
@@ -316,14 +413,13 @@ class FilterConfig(TypedDict, total=False):
 
 **JavaScript/TypeScript:**
 ```typescript
-interface CheckProfanityResult {
+interface ProfanityCheckResult {
   containsProfanity: boolean;                    // Whether profanity was detected
   profaneWords: string[];                        // List of detected profane words
-  processedText?: string;                        // Text with replacements (if replaceWith is set)
+  processedText?: string;                        // Text with replacements
   severityMap?: Record<string, SeverityLevel>;   // Word-to-severity mapping
-  matches?: Match[];                             // Detailed match information
-  contextScore?: number;                         // Context analysis score
-  reason?: string;                               // Analysis explanation
+  filteredWords: string[];                       // Words filtered by minSeverity
+  autoReplaced: string;                          // Text with auto-replacements
 }
 ```
 
@@ -347,20 +443,17 @@ class CheckProfanityResult(TypedDict):
 
 ```typescript
 // JavaScript
-import { Filter, SeverityLevel } from 'glin-profanity';
+import { checkProfanity, SeverityLevel } from 'glin-profanity';
 
-const filter = new Filter({
+const result = checkProfanity("This sh1t is damn bad", {
     customWords: ['companyname', 'competitorname'],
     ignoreWords: ['assassin', 'classical'],  // False positives
     severityLevels: true,
+    minSeverity: SeverityLevel.EXACT,
     fuzzyToleranceLevel: 0.7
 });
 
-// Filter by minimum severity
-const result = filter.checkProfanityWithMinSeverity(
-    "This sh1t is damn bad", 
-    SeverityLevel.EXACT
-);
+console.log(result.filteredWords); // Only exact matches
 ```
 
 ```python
@@ -385,14 +478,16 @@ result = filter_instance.check_profanity_with_min_severity(
 
 ```typescript
 // JavaScript
-const filter = new Filter({
+import { checkProfanity } from 'glin-profanity';
+
+const result = checkProfanity("What the f*ck is this sh1t?", {
     allowObfuscatedMatch: true,
     wordBoundaries: false,  // Required for obfuscation detection
     fuzzyToleranceLevel: 0.8
 });
 
 // Detects: f*ck, sh1t, a$$hole, etc.
-filter.isProfane("What the f*ck is this sh1t?"); // true
+console.log(result.containsProfanity); // true
 ```
 
 ```python
@@ -411,14 +506,12 @@ filter_instance.is_profane("What the f*ck is this sh1t?")  # True
 
 ```typescript
 // JavaScript
-const multiLangFilter = new Filter({
+const result = checkProfanity("This is merde and puta content", {
     languages: ['english', 'spanish', 'french'],
     // or use: allLanguages: true
 });
 
-// Detects profanity in multiple languages
-const text = "This is merde and puta content";
-const result = multiLangFilter.checkProfanity(text);
+console.log(result.profaneWords); // ['merde', 'puta']
 ```
 
 ```python
@@ -440,7 +533,8 @@ glin-profanity/
 ├── packages/
 │   ├── js/                    # JavaScript/TypeScript package
 │   │   ├── src/               # TypeScript source code
-│   │   │   ├── Filter.ts      # Main Filter class
+│   │   │   ├── core/          # Framework-agnostic functions
+│   │   │   ├── filters/       # Filter class implementation
 │   │   │   ├── hooks/         # React hooks
 │   │   │   ├── types/         # TypeScript definitions
 │   │   │   └── utils/         # Utility functions
@@ -543,4 +637,5 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 
 *Building safer digital spaces, one word at a time.*
 
+GLINR STUDIOS 
 </div>

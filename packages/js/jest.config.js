@@ -12,6 +12,7 @@ module.exports = {
   // Test file patterns
   testMatch: [
     '<rootDir>/tests/**/*.test.ts',
+    '<rootDir>/tests/**/*.test.tsx',
     '<rootDir>/tests/**/*.spec.ts',
     '<rootDir>/src/**/*.test.ts',
     '<rootDir>/src/**/*.spec.ts'
@@ -31,6 +32,7 @@ module.exports = {
       }
     }]
   },
+  
   
   
   // Coverage configuration
@@ -55,9 +57,6 @@ module.exports = {
   
   // Coverage directory
   coverageDirectory: 'coverage',
-  
-  // Setup files (if needed for global test setup)
-  // setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   
   // Clear mocks between tests
   clearMocks: true,
