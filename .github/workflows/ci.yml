@@ -61,16 +61,12 @@ jobs:
       - name: 🏗️ Build package
         working-directory: ${{ env.PACKAGE_DIR }}
         run: |
-          echo "::group::Building CommonJS"
-          npm run build:cjs
-          echo "::endgroup::"
-          
-          echo "::group::Building ESM"
-          npm run build:esm
+          echo "::group::Building package"
+          npm run build
           echo "::endgroup::"
           
           echo "::group::Verifying build outputs"
-          ls -la lib/
+          ls -la dist/
           echo "::endgroup::"
           
       - name: 🧪 Run tests with coverage
@@ -105,7 +101,7 @@ jobs:
         with:
           name: build-artifacts-${{ github.sha }}
           path: |
-            ${{ env.PACKAGE_DIR }}/lib/
+            ${{ env.PACKAGE_DIR }}/dist/
             ${{ env.PACKAGE_DIR }}/coverage/
           retention-days: 7
           

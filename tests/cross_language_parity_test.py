@@ -201,7 +201,7 @@ class TestCrossLanguageParity:
                 js_config[key] = value
 
         js_script = f"""
-const {{ Filter }} = require('./packages/js/lib/cjs/index.js');
+const {{ Filter }} = require('./packages/js/dist/index.js');
 
 const config = {json.dumps(js_config)};
 const filter = new Filter(config);
@@ -360,7 +360,7 @@ console.log(JSON.stringify(output));
             
             # Test JavaScript equivalent
             js_script = f"""
-const {{ Filter }} = require('./packages/js/lib/cjs/index.js');
+const {{ Filter }} = require('./packages/js/dist/index.js');
 
 const filter = new Filter({{"languages": ["english"], "allowObfuscatedMatch": true}});
 const result = filter.isProfane("{text}");
@@ -387,7 +387,7 @@ console.log(result ? "true" : "false");
         py_result = py_filter.check_profanity_with_min_severity("damn bad text", SeverityLevel.EXACT)
         
         js_script = """
-const { Filter } = require('./packages/js/lib/cjs/index.js');
+const { Filter } = require('./packages/js/dist/index.js');
 
 const filter = new Filter({"languages": ["english"], "severityLevels": true});
 const result = filter.checkProfanityWithMinSeverity("damn bad text", 1);
