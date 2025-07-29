@@ -35,6 +35,7 @@
     "url": "https://github.com/GLINCKER/glin-profanity"
   },
   "homepage": "https://www.glincker.com/tools/glin-profanity",
+  "sideEffects": false,
   "keywords": [
     "profanity",
     "curse",
