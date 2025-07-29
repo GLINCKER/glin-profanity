@@ -2,29 +2,27 @@
   "name": "glin-profanity",
   "version": "2.3.2",
   "description": "Glin-Profanity is a lightweight and efficient npm package designed to detect and filter profane language in text inputs across multiple languages. Whether you’re building a chat application, a comment section, or any platform where user-generated content is involved, Glin-Profanity helps you maintain a clean and respectful environment.",
-  "main": "lib/cjs/index.js",
-  "module": "lib/esm/index.js",
-  "types": "lib/cjs/index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "require": {
-        "types": "./lib/cjs/index.d.ts",
-        "default": "./lib/cjs/index.js"
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
       },
       "import": {
-        "types": "./lib/esm/index.d.ts",
-        "default": "./lib/esm/index.js"
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
       }
     }
   },
   "files": [
-    "lib",
+    "dist",
     "README.md"
   ],
   "scripts": {
-    "build:cjs": "tsc -p tsconfig.commonjs.json",
-    "build:esm": "tsc -p tsconfig.esm.json",
-    "build": "npm run build:cjs && npm run build:esm",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -94,6 +92,7 @@
     "react-dom": "^18.3.1",
     "semantic-release": "^24.2.7",
     "ts-jest": "^29.4.0",
+    "tsup": "^8.2.3",
     "typescript": "^5.8.3"
   }
 }
