@@ -539,13 +539,13 @@ result = multi_lang_filter.check_profanity(text)
 glin-profanity/
 ├── packages/
 │   ├── js/                    # JavaScript/TypeScript package
+│   │   ├── dist/              # Built CJS + ESM outputs
 │   │   ├── src/               # TypeScript source code
 │   │   │   ├── core/          # Framework-agnostic functions
 │   │   │   ├── filters/       # Filter class implementation
 │   │   │   ├── hooks/         # React hooks
 │   │   │   ├── types/         # TypeScript definitions
 │   │   │   └── utils/         # Utility functions
-│   │   ├── lib/               # Built CJS + ESM outputs
 │   │   ├── tests/             # Jest test suite
 │   │   └── package.json       # npm package configuration
 │   └── py/                    # Python package  

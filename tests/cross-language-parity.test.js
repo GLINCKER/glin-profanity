@@ -4,7 +4,7 @@
  */
 
 const { execSync } = require('child_process');
-const { Filter } = require('../packages/js/lib/cjs/index.js');
+const { Filter } = require('../packages/js/dist/index.js');
 
 describe('Cross-Language API Parity', () => {
   const testCases = [
