@@ -5,7 +5,7 @@ Provides multi-language support, context-aware filtering, and customizable
 configurations for detecting and filtering profane language in text inputs.
 """
  
-__version__ = "2.3.2" 
+__version__ = "2.3.3" 
 __author__ = "glinr"
 __email__ = "contact@glincker.com"
 
