@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+      "outDir": "./lib/cjs",
+      "rootDir": "./src",
+      "module": "CommonJS",
+      "target": "es2015",
+      "declaration": true,
+      "resolveJsonModule": true,
+      "esModuleInterop": true,
+      "moduleResolution": "node",
+      "lib": ["es6", "dom"],
+      "sourceMap": true,
+      "downlevelIteration": true,
+      "baseUrl": "./src",
+      "paths": {
+        "@shared/*": ["../../../shared/*"]
+      }
+    },
+    "include": ["src/**/*"]
+  }
+  

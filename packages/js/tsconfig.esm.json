@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+      "outDir": "./lib/esm",
+      "rootDir": "./src",
+      "module": "ES6",
+      "target": "es2015",
+      "declaration": true,
+      "resolveJsonModule": true,
+      "esModuleInterop": true,
+      "moduleResolution": "node",
+      "lib": ["es6", "dom"],
+      "sourceMap": true,
+      "downlevelIteration": true,
+      "baseUrl": "./src",
+      "paths": {
+        "@shared/*": ["../../../shared/*"]
+      }
+    },
+    "include": ["src/**/*"]
+  }
+  
