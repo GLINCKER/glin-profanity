@@ -49,7 +49,7 @@ class Filter {
 
     if (config?.allLanguages) {
       for (const lang in dictionary) {
-        if (dictionary.hasOwnProperty(lang)) {
+        if (Object.prototype.hasOwnProperty.call(dictionary, lang)) {
           words = [...words, ...dictionary[lang as Language]];
         }
       }
@@ -68,7 +68,7 @@ class Filter {
     this.words = new Map(words.map((word) => [word.toLowerCase(), 1]));
   }
 
-  private debugLog(...args: any[]) {
+  private debugLog(...args: unknown[]) {
     if (this.logProfanity) {
       console.log('[glin-profanity]', ...args);
     }
@@ -125,7 +125,7 @@ class Filter {
   }
 
   isProfane(value: string): boolean {
-    let input = this.allowObfuscatedMatch
+    const input = this.allowObfuscatedMatch
       ? this.normalizeObfuscated(value)
       : value;
 

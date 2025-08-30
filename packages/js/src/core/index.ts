@@ -5,7 +5,7 @@ import globalWhitelistData from '@shared/dictionaries/globalWhitelist.json';
 function createFilterConfig(config?: ProfanityCheckerConfig): FilterConfig {
   const effective: FilterConfig = {
     ...(config ?? {}),
-    ignoreWords: (globalWhitelistData as any).whitelist,
+    ignoreWords: (globalWhitelistData as { whitelist: string[] }).whitelist,
     fuzzyToleranceLevel: config?.fuzzyToleranceLevel ?? 0.8,
   };
 

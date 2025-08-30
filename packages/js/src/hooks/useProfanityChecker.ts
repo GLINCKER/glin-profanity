@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { checkProfanity, checkProfanityAsync, isWordProfane } from '../core';
-import type { ProfanityCheckerConfig, ProfanityCheckResult } from '../core/types';
+import type { ProfanityCheckerConfig } from '../core/types';
 import type { CheckProfanityResult } from '../types/types';
 
 export type { ProfanityCheckerConfig };

@@ -30,9 +30,23 @@ class VersionSync {
      * Get current version from Python package
      */
     getPyVersion() {
-        const pyprojectContent = fs.readFileSync(this.pyPackagePath, 'utf8');
-        const versionMatch = pyprojectContent.match(/version = "(.*?)"/);
-        return versionMatch ? versionMatch[1] : null;
+        try {
+            // Primary source: __init__.py (since pyproject.toml uses dynamic versioning)
+            const initContent = fs.readFileSync(this.pyInitPath, 'utf8');
+            const initMatch = initContent.match(/__version__ = "(.*?)"/);
+            if (initMatch) {
+                return initMatch[1];
+            }
+            
+            // Fallback: pyproject.toml (only if it has explicit version, not dynamic)
+            const pyprojectContent = fs.readFileSync(this.pyPackagePath, 'utf8');
+            // More specific regex to avoid matching Python version requirements
+            const versionMatch = pyprojectContent.match(/^\s*version\s*=\s*"(.*?)"$/m);
+            return versionMatch ? versionMatch[1] : '0.0.0';
+        } catch (error) {
+            console.warn(`Warning: Could not read Python version: ${error.message}`);
+            return '0.0.0';
+        }
     }
 
     /**
@@ -73,7 +87,18 @@ class VersionSync {
      * Bump version based on release type
      */
     bumpVersion(currentVersion, releaseType, channel = 'stable') {
+        // Validate current version format
+        if (!currentVersion || !this.validateVersion(currentVersion.replace(/-.*$/, ''))) {
+            throw new Error(`Invalid current version format: ${currentVersion}`);
+        }
+        
         const [major, minor, patch] = currentVersion.split('-')[0].split('.').map(Number);
+        
+        // Validate parsed version numbers
+        if (isNaN(major) || isNaN(minor) || isNaN(patch)) {
+            throw new Error(`Failed to parse version numbers from: ${currentVersion}`);
+        }
+        
         let newVersion;
 
         switch (releaseType) {
@@ -191,6 +216,14 @@ class VersionSync {
     syncVersions(targetVersion = null) {
         const jsVersion = this.getJsVersion();
         const pyVersion = this.getPyVersion();
+
+        // Validate versions aren't 0.0.0
+        if (jsVersion === '0.0.0') {
+            throw new Error('JavaScript package version is 0.0.0 - this indicates a parsing error');
+        }
+        if (pyVersion === '0.0.0' && !targetVersion) {
+            console.warn('Warning: Python version is 0.0.0, using JavaScript version as source of truth');
+        }
 
         console.log(`📦 Current versions:`);
         console.log(`   JavaScript: ${jsVersion}`);

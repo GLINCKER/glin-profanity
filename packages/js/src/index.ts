@@ -22,6 +22,8 @@ export { useProfanityChecker } from './hooks/useProfanityChecker';
 
 // Advanced/Low-level
 export { Filter } from './filters/Filter';
+// Alias for backwards compatibility and better naming
+export { Filter as ProfanityFilter } from './filters/Filter';
 
 // Legacy types (maintain compatibility)
 export { SeverityLevel } from './types/types';

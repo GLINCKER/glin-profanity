@@ -33,6 +33,7 @@ const NEGATIVE_INDICATORS = new Set([
   'you', 'your', 'yourself', 'u', 'ur', 'ure', 'youre'
 ]);
 
+
 // Domain-specific positive contexts
 const GAMING_POSITIVE = new Set([
   'player', 'gamer', 'team', 'squad', 'clan', 'guild', 'match', 'game',
@@ -121,28 +122,9 @@ export class ContextAnalyzer {
     };
   }
 
-  private tokenize(text: string): string[] {
-    // Simple tokenization - split on whitespace and punctuation
-    return text.toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter(word => word.length > 0);
-  }
-
-  private findWordIndex(words: string[], charIndex: number): number {
-    // This is a simplified approach - in production, you'd want more robust mapping
-    // For now, we'll estimate based on the character position
-    let currentPos = 0;
-    for (let i = 0; i < words.length; i++) {
-      if (currentPos >= charIndex) {
-        return Math.max(0, i - 1);
-      }
-      currentPos += words[i].length + 1; // +1 for space
-    }
-    return words.length - 1;
-  }
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private checkPhraseContext(contextText: string, matchWord: string): ContextAnalysisResult | null {
+    // TODO: Use matchWord for more specific phrase matching in the future
     // Check positive phrases
     for (const [phrase, score] of POSITIVE_PHRASES.entries()) {
       if (contextText.includes(phrase)) {
@@ -168,7 +150,9 @@ export class ContextAnalyzer {
     return null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private isDomainWhitelisted(contextWords: string[], matchWord: string): boolean {
+    // TODO: Use matchWord for domain-specific filtering in the future
     // Check if any domain whitelist words are present
     for (const word of contextWords) {
       if (this.domainWhitelists.has(word) || GAMING_POSITIVE.has(word)) {
@@ -178,10 +162,44 @@ export class ContextAnalyzer {
     return false;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private generateReason(score: number, contextWords: string[]): string {
+    // TODO: Use contextWords for more detailed reasoning in the future
+    if (score >= 0.7) {
+      return 'Positive context detected - likely not profanity';
+    } else if (score <= 0.3) {
+      return 'Negative context detected - likely profanity';
+    } else {
+      return 'Neutral context - uncertain classification';
+    }
+  }
+
+  private tokenize(text: string): string[] {
+    // Simple tokenization - split on whitespace and punctuation
+    return text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 0);
+  }
+
+  private findWordIndex(words: string[], charIndex: number): number {
+    // This is a simplified approach - in production, you'd want more robust mapping
+    // For now, we'll estimate based on the character position
+    let currentPos = 0;
+    for (let i = 0; i < words.length; i++) {
+      if (currentPos >= charIndex) {
+        return Math.max(0, i - 1);
+      }
+      currentPos += words[i].length + 1; // +1 for space
+    }
+    return words.length - 1;
+  }
+
+
   private calculateSentimentScore(contextWords: string[], matchPosition: number): number {
     let positiveCount = 0;
     let negativeCount = 0;
-    let totalWords = contextWords.length;
+    const totalWords = contextWords.length;
 
     // Weight words closer to the match more heavily
     for (let i = 0; i < contextWords.length; i++) {
@@ -206,6 +224,10 @@ export class ContextAnalyzer {
     
     // Apply context-specific adjustments
     let adjustedScore = rawScore;
+    
+    // Adjust confidence based on context window size
+    const confidenceMultiplier = Math.min(1.0, totalWords / 5); // More words = higher confidence
+    adjustedScore = 0.5 + (adjustedScore - 0.5) * confidenceMultiplier;
 
     // If there are personal pronouns (you, your), lean towards negative
     const hasPersonalPronouns = contextWords.some(word => 
@@ -226,15 +248,6 @@ export class ContextAnalyzer {
     return Math.max(0, Math.min(1, adjustedScore));
   }
 
-  private generateReason(score: number, contextWords: string[]): string {
-    if (score >= 0.7) {
-      return 'Positive context detected - likely not profanity';
-    } else if (score <= 0.3) {
-      return 'Negative context detected - likely profanity';
-    } else {
-      return 'Neutral context - uncertain classification';
-    }
-  }
 
   /**
    * Updates the domain whitelist for this analyzer instance

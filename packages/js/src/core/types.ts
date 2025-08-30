@@ -1,4 +1,5 @@
-import { CheckProfanityResult, Language, SeverityLevel, FilterConfig } from '../types/types';
+import { CheckProfanityResult, Language, SeverityLevel } from '../types/types';
+import type { FilterConfig } from '../filters/Filter';
 
 export interface ProfanityCheckerConfig {
   languages?: Language[];
@@ -23,6 +24,8 @@ export interface ProfanityCheckResult extends CheckProfanityResult {
 export type { 
   CheckProfanityResult, 
   Language, 
-  SeverityLevel,
-  FilterConfig 
+  SeverityLevel
 } from '../types/types';
+
+// Re-export FilterConfig for external use
+export type { FilterConfig };
