@@ -11,11 +11,9 @@ class DictionaryLoader:
 
     def __init__(self) -> None:
         """Initialize dictionary loader."""
-        # Get path to shared dictionaries (relative to this file)
+        # Get path to dictionaries within the package
         current_dir = Path(__file__).parent
-        self._dict_path = (
-            current_dir.parent.parent.parent.parent / "shared" / "dictionaries"
-        )
+        self._dict_path = current_dir / "dictionaries"
         self._dictionaries: dict[str, list[str]] = {}
         self._load_dictionaries()
 
