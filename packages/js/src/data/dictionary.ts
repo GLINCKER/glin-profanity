@@ -2,6 +2,7 @@ import Arabic from '@shared/dictionaries/arabic.json';
 import Chinese from '@shared/dictionaries/chinese.json';
 import Czech from '@shared/dictionaries/czech.json';
 import Danish from '@shared/dictionaries/danish.json';
+import Dutch from '@shared/dictionaries/dutch.json';
 import Esperanto from '@shared/dictionaries/esperanto.json';
 import English from '@shared/dictionaries/english.json';
 import Finnish from '@shared/dictionaries/finnish.json';
@@ -26,6 +27,7 @@ export default {
   chinese: Chinese.words,
   czech: Czech.words,
   danish: Danish.words,
+  dutch: Dutch.words,
   english: English.words,
   esperanto: Esperanto.words,
   finnish: Finnish.words,

@@ -31,6 +31,7 @@ Language = Literal[
     "swedish",
     "thai",
     "turkish",
+    "dutch"
 ]
 
 

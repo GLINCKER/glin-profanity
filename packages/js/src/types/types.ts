@@ -15,6 +15,7 @@ export type Language =
   | 'chinese'
   | 'czech'
   | 'danish'
+  | 'dutch'
   | 'english'
   | 'esperanto'
   | 'finnish'
