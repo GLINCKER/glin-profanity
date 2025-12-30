@@ -196,12 +196,12 @@ jobs:
       - name: 🔧 Install root dependencies
         run: |
           # Install root dependencies to get husky and other tools
-          npm ci
+          npm install --legacy-peer-deps
           
       - name: 🏗️ Build JavaScript package
         working-directory: packages/js
         run: |
-          npm ci --ignore-scripts
+          npm install --legacy-peer-deps --ignore-scripts
           npm run build
           npm pack
           
@@ -259,12 +259,12 @@ jobs:
       - name: 🔧 Install root dependencies
         run: |
           # Install root dependencies to get husky and other tools
-          npm ci
+          npm install --legacy-peer-deps
 
       - name: 📦 Publish to npm
         working-directory: packages/js
         run: |
-          npm ci --ignore-scripts
+          npm install --legacy-peer-deps --ignore-scripts
           npm run build
 
           # Determine npm tag
