@@ -224,6 +224,7 @@ jobs:
   publish-npm:
     name: 📦 Publish to npm
     runs-on: ubuntu-latest
+    environment: npm-publish
     needs: [detect-release, bump-version, build]
     if: always() && needs.detect-release.outputs.should_release == 'true' && needs.build.result == 'success'
     
