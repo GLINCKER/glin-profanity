@@ -1,5 +1,7 @@
 """Main Filter class for profanity detection and filtering."""
 
+from __future__ import annotations
+
 import re
 from typing import Literal
 
@@ -162,6 +164,55 @@ class Filter:
     def get_cache_size(self) -> int:
         """Get the current cache size."""
         return len(self._cache)
+
+    def get_config(self) -> FilterConfig:
+        """
+        Export the current filter configuration as a dictionary.
+
+        Useful for saving configuration to files or sharing between environments.
+
+        Returns:
+            The current filter configuration
+
+        Examples:
+            >>> filter = Filter({
+            ...     "languages": ["english", "spanish"],
+            ...     "detect_leetspeak": True,
+            ...     "leetspeak_level": "aggressive",
+            ... })
+            >>> config = filter.get_config()
+            >>> # Save to file: json.dump(config, open('filter.config.json', 'w'))
+            >>> # Later, restore: new_filter = Filter(json.load(open('filter.config.json')))
+        """
+        return {
+            "case_sensitive": self.case_sensitive,
+            "word_boundaries": self.word_boundaries,
+            "replace_with": self.replace_with,
+            "severity_levels": self.severity_levels,
+            "ignore_words": list(self.ignore_words),
+            "log_profanity": self.log_profanity,
+            "allow_obfuscated_match": self.allow_obfuscated_match,
+            "fuzzy_tolerance_level": self.fuzzy_tolerance_level,
+            "enable_context_aware": self.enable_context_aware,
+            "context_window": self.context_window,
+            "confidence_threshold": self.confidence_threshold,
+            "detect_leetspeak": self.detect_leetspeak,
+            "leetspeak_level": self.leetspeak_level,
+            "normalize_unicode": self.normalize_unicode_enabled,
+            "cache_results": self.cache_results,
+            "max_cache_size": self.max_cache_size,
+        }
+
+    def get_word_count(self) -> int:
+        """
+        Return the current word dictionary size.
+
+        Useful for monitoring and debugging.
+
+        Returns:
+            Number of words in the dictionary
+        """
+        return len(self.words)
 
     def _add_to_cache(self, key: str, result: CheckProfanityResult) -> None:
         """Add a result to the cache, evicting oldest entries if necessary."""

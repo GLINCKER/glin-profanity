@@ -80,3 +80,13 @@ export type {
   Match,
   ContextAwareConfig,
 } from './types/types';
+
+// ML module types (re-exported for convenience)
+// The actual ML classes are available via 'glin-profanity/ml' subpath
+export type {
+  ToxicityLabel,
+  ToxicityPrediction,
+  MLAnalysisResult,
+  MLDetectorConfig,
+  HybridAnalysisResult,
+} from './ml/types';

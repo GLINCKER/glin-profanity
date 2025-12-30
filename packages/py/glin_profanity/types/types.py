@@ -3,6 +3,8 @@ Type definitions for glin-profanity Python package.
 Unified API that mirrors the JavaScript/TypeScript package structure.
 """
 
+from __future__ import annotations
+
 from enum import IntEnum
 from typing import Literal, TypedDict
 

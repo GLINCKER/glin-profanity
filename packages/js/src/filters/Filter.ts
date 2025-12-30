@@ -210,6 +210,60 @@ class Filter {
   }
 
   /**
+   * Exports the current filter configuration as a JSON-serializable object.
+   * Useful for saving configuration to files or sharing between environments.
+   *
+   * @returns The current filter configuration
+   *
+   * @example
+   * ```typescript
+   * const filter = new Filter({
+   *   languages: ['english', 'spanish'],
+   *   detectLeetspeak: true,
+   *   leetspeakLevel: 'aggressive',
+   * });
+   *
+   * const config = filter.getConfig();
+   * // Save to file: fs.writeFileSync('filter.config.json', JSON.stringify(config));
+   *
+   * // Later, restore:
+   * // const saved = JSON.parse(fs.readFileSync('filter.config.json'));
+   * // const restored = new Filter(saved);
+   * ```
+   */
+  public getConfig(): FilterConfig {
+    return {
+      languages: [this.primaryLanguage],
+      caseSensitive: this.caseSensitive,
+      wordBoundaries: this.wordBoundaries,
+      replaceWith: this.replaceWith,
+      severityLevels: this.severityLevels,
+      ignoreWords: Array.from(this.ignoreWords),
+      logProfanity: this.logProfanity,
+      allowObfuscatedMatch: this.allowObfuscatedMatch,
+      fuzzyToleranceLevel: this.fuzzyToleranceLevel,
+      enableContextAware: this.enableContextAware,
+      contextWindow: this.contextWindow,
+      confidenceThreshold: this.confidenceThreshold,
+      detectLeetspeak: this.detectLeetspeak,
+      leetspeakLevel: this.leetspeakLevel,
+      normalizeUnicode: this.normalizeUnicodeEnabled,
+      cacheResults: this.cacheResults,
+      maxCacheSize: this.maxCacheSize,
+    };
+  }
+
+  /**
+   * Returns the current word dictionary size.
+   * Useful for monitoring and debugging.
+   *
+   * @returns Number of words in the dictionary
+   */
+  public getWordCount(): number {
+    return this.words.size;
+  }
+
+  /**
    * Adds a result to the cache, evicting oldest entries if necessary.
    */
   private addToCache(key: string, result: CheckProfanityResult): void {
