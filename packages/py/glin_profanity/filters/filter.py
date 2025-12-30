@@ -1,6 +1,7 @@
 """Main Filter class for profanity detection and filtering."""
 
 import re
+from typing import Literal
 
 from glin_profanity.data.dictionary import dictionary
 from glin_profanity.types.types import (
@@ -9,6 +10,10 @@ from glin_profanity.types.types import (
     Match,
     SeverityLevel,
 )
+from glin_profanity.utils.leetspeak import normalize_leetspeak
+from glin_profanity.utils.unicode import normalize_unicode
+
+LeetspeakLevel = Literal["basic", "moderate", "aggressive"]
 
 
 class Filter:
@@ -16,8 +21,15 @@ class Filter:
     Main profanity filter class.
 
     Provides functionality to detect and filter profane language in text
-    with support for multiple languages, custom configurations, and
-    context-aware filtering.
+    with support for multiple languages, leetspeak detection, Unicode
+    normalization, custom configurations, and context-aware filtering.
+
+    Examples:
+        >>> filter = Filter({"languages": ["english"], "detect_leetspeak": True})
+        >>> filter.is_profane("@ss")
+        True
+        >>> filter.is_profane("fück")  # Unicode normalization
+        True
     """
 
     def __init__(self, config: FilterConfig | None = None) -> None:
@@ -44,6 +56,16 @@ class Filter:
         self.enable_context_aware = config.get("enable_context_aware", False)
         self.context_window = config.get("context_window", 3)
         self.confidence_threshold = config.get("confidence_threshold", 0.7)
+
+        # Leetspeak and Unicode normalization configuration
+        self.detect_leetspeak = config.get("detect_leetspeak", False)
+        self.leetspeak_level: LeetspeakLevel = config.get("leetspeak_level", "moderate")
+        self.normalize_unicode_enabled = config.get("normalize_unicode", True)
+
+        # Caching configuration
+        self.cache_results = config.get("cache_results", False)
+        self.max_cache_size = config.get("max_cache_size", 1000)
+        self._cache: dict[str, CheckProfanityResult] = {}
 
         # Initialize word sets
         ignore_words_list = config.get("ignore_words", [])
@@ -77,8 +99,45 @@ class Filter:
         if self.log_profanity:
             print("[glin-profanity]", *args)  # noqa: T201
 
+    def _normalize_text(self, text: str) -> str:
+        """
+        Normalize text for profanity detection using all enabled normalization methods.
+
+        Applies Unicode normalization, leetspeak detection, and obfuscation handling.
+
+        Args:
+            text: The input text to normalize
+
+        Returns:
+            The normalized text
+        """
+        normalized = text
+
+        # Step 1: Apply Unicode normalization (handles homoglyphs, diacritics, etc.)
+        if self.normalize_unicode_enabled:
+            normalized = normalize_unicode(normalized)
+
+        # Step 2: Apply leetspeak normalization
+        if self.detect_leetspeak:
+            normalized = normalize_leetspeak(
+                normalized,
+                level=self.leetspeak_level,
+                collapse_repeated=True,
+                remove_spaced_chars=True,
+            )
+
+        # Step 3: Apply legacy obfuscation handling (for backward compatibility)
+        if self.allow_obfuscated_match and not self.detect_leetspeak:
+            normalized = self._normalize_obfuscated(normalized)
+
+        return normalized
+
     def _normalize_obfuscated(self, text: str) -> str:
-        """Normalize obfuscated text by replacing common character substitutions."""
+        """
+        Normalize obfuscated text by replacing common character substitutions.
+
+        Deprecated: Use _normalize_text with detect_leetspeak option instead.
+        """
         # Remove repeated characters (e.g., "hiiiii" -> "hii")
         normalized = re.sub(r"([a-zA-Z])\1{1,}", r"\1\1", text)
 
@@ -95,6 +154,32 @@ class Filter:
             normalized = normalized.replace(char, replacement)
 
         return normalized
+
+    def clear_cache(self) -> None:
+        """Clear the result cache."""
+        self._cache.clear()
+
+    def get_cache_size(self) -> int:
+        """Get the current cache size."""
+        return len(self._cache)
+
+    def _add_to_cache(self, key: str, result: CheckProfanityResult) -> None:
+        """Add a result to the cache, evicting oldest entries if necessary."""
+        if not self.cache_results:
+            return
+
+        # Simple eviction: remove oldest entry when at capacity
+        if len(self._cache) >= self.max_cache_size:
+            oldest_key = next(iter(self._cache))
+            del self._cache[oldest_key]
+
+        self._cache[key] = result
+
+    def _get_from_cache(self, key: str) -> CheckProfanityResult | None:
+        """Get a cached result if available."""
+        if not self.cache_results:
+            return None
+        return self._cache.get(key)
 
     def _get_regex(self, word: str) -> re.Pattern[str]:
         """Create regex pattern for word matching."""
@@ -170,10 +255,18 @@ class Filter:
 
         Returns:
             True if profanity is detected, False otherwise
+
+        Examples:
+            >>> filter = Filter({"detect_leetspeak": True})
+            >>> filter.is_profane("hello")
+            False
+            >>> filter.is_profane("@ss")
+            True
+            >>> filter.is_profane("f u c k")
+            True
         """
-        input_text = (
-            self._normalize_obfuscated(value) if self.allow_obfuscated_match else value
-        )
+        # Apply all normalizations
+        input_text = self._normalize_text(value)
 
         for word in self.words:
             if (
@@ -205,10 +298,21 @@ class Filter:
 
         Returns:
             Detailed results of profanity analysis
+
+        Examples:
+            >>> filter = Filter({"detect_leetspeak": True, "severity_levels": True})
+            >>> result = filter.check_profanity("this is @ss")
+            >>> result["contains_profanity"]
+            True
         """
-        input_text = (
-            self._normalize_obfuscated(text) if self.allow_obfuscated_match else text
-        )
+        # Check cache first
+        cached_result = self._get_from_cache(text)
+        if cached_result is not None:
+            self._debug_log("Cache hit for:", text[:50])
+            return cached_result
+
+        # Apply all normalizations
+        input_text = self._normalize_text(text)
         input_lower = input_text.lower()
 
         profane_words: list[str] = []
@@ -280,6 +384,9 @@ class Filter:
             if matches
             else "No profanity detected"
         )
+
+        # Cache the result
+        self._add_to_cache(text, result)
 
         return result
 
