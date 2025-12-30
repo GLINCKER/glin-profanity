@@ -1,19 +1,16 @@
-import { CheckProfanityResult, Language, SeverityLevel } from '../types/types';
+import { CheckProfanityResult, Language, SeverityLevel, FilterConfig as BaseFilterConfig } from '../types/types';
 import type { FilterConfig } from '../filters/Filter';
 
-export interface ProfanityCheckerConfig {
-  languages?: Language[];
-  allLanguages?: boolean;
-  caseSensitive?: boolean;
-  wordBoundaries?: boolean;
-  customWords?: string[];
-  replaceWith?: string;
-  severityLevels?: boolean;
-  ignoreWords?: string[];
-  allowObfuscatedMatch?: boolean;
-  fuzzyToleranceLevel?: number;
+/**
+ * Configuration options for the profanity checker hook and functions.
+ * Extends FilterConfig with additional convenience options for V3 features.
+ */
+export interface ProfanityCheckerConfig extends Omit<BaseFilterConfig, 'logProfanity'> {
+  /** Minimum severity level to include in results */
   minSeverity?: SeverityLevel;
+  /** Auto-replace profanity with replaceWith string */
   autoReplace?: boolean;
+  /** Custom callback when profanity is detected */
   customActions?: (result: CheckProfanityResult) => void;
 }
 
