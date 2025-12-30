@@ -1,6 +1,6 @@
 {
   "name": "glin-profanity",
-  "version": "2.3.7",
+  "version": "3.0.0",
   "description": "Glin-Profanity is a lightweight and efficient npm package designed to detect and filter profane language in text inputs across multiple languages. Whether you’re building a chat application, a comment section, or any platform where user-generated content is involved, Glin-Profanity helps you maintain a clean and respectful environment.",
   "type": "module",
   "main": "dist/index.js",
@@ -16,6 +16,28 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
       }
+    },
+    "./ml": {
+      "require": {
+        "types": "./dist/ml/index.d.cts",
+        "default": "./dist/ml/index.cjs"
+      },
+      "import": {
+        "types": "./dist/ml/index.d.ts",
+        "default": "./dist/ml/index.js"
+      }
+    }
+  },
+  "peerDependencies": {
+    "@tensorflow-models/toxicity": ">=1.2.0",
+    "@tensorflow/tfjs": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tensorflow/tfjs": {
+      "optional": true
+    },
+    "@tensorflow-models/toxicity": {
+      "optional": true
     }
   },
   "files": [
@@ -23,7 +45,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "build": "tsup src/index.ts src/ml/index.ts --format cjs,esm --dts --clean",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -31,6 +53,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
+    "benchmark": "npx tsx benchmarks/benchmark.ts",
     "semantic-release": "semantic-release"
   },
   "repository": {
@@ -77,7 +100,18 @@
     "profanity-moderation-toolkit",
     "profanity-moderation-framework",
     "profanity-moderation-plugin",
-    "profanity-moderation-module"
+    "profanity-moderation-module",
+    "tensorflow",
+    "tensorflowjs",
+    "ml",
+    "machine-learning",
+    "toxicity",
+    "toxicity-detection",
+    "ai",
+    "neural-network",
+    "leetspeak",
+    "unicode",
+    "homoglyph"
   ],
   "author": "glinr",
   "license": "ISC",
@@ -99,6 +133,7 @@
     "semantic-release": "^24.2.7",
     "ts-jest": "^29.4.0",
     "tsup": "^8.2.3",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.3"
   }
 }

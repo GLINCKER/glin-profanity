@@ -1,9 +1,28 @@
 import dictionary from '../data/dictionary';
-import { Language, CheckProfanityResult, SeverityLevel, Match, FilterConfig } from '../types/types';
+import { Language, CheckProfanityResult, SeverityLevel, Match, FilterConfig, LeetspeakLevel } from '../types/types';
 import { ContextAnalyzer } from '../nlp/contextAnalyzer';
+import { normalizeLeetspeak } from '../utils/leetspeak';
+import { normalizeUnicode } from '../utils/unicode';
 
 export type { FilterConfig };
 
+/**
+ * Core profanity filter class.
+ * Provides comprehensive profanity detection with support for multiple languages,
+ * leetspeak detection, Unicode normalization, and context-aware filtering.
+ *
+ * @example
+ * ```typescript
+ * const filter = new Filter({
+ *   languages: ['english'],
+ *   detectLeetspeak: true,
+ *   normalizeUnicode: true,
+ * });
+ *
+ * filter.isProfane('f4ck');  // Returns: true
+ * filter.isProfane('fυck');  // Returns: true (Greek upsilon)
+ * ```
+ */
 class Filter {
   private words: Map<string, number>;
   private caseSensitive: boolean;
@@ -20,13 +39,51 @@ class Filter {
   private confidenceThreshold: number;
   private contextAnalyzer?: ContextAnalyzer;
   private primaryLanguage: Language;
+  // Leetspeak and Unicode detection
+  private detectLeetspeak: boolean;
+  private leetspeakLevel: LeetspeakLevel;
+  private normalizeUnicodeEnabled: boolean;
+  // Caching
+  private cacheResults: boolean;
+  private maxCacheSize: number;
+  private cache: Map<string, CheckProfanityResult>;
 
+  /**
+   * Creates a new Filter instance with the specified configuration.
+   *
+   * @param config - Filter configuration options
+   *
+   * @example
+   * ```typescript
+   * // Basic usage
+   * const filter = new Filter({ languages: ['english'] });
+   *
+   * // With leetspeak detection
+   * const filter = new Filter({
+   *   languages: ['english'],
+   *   detectLeetspeak: true,
+   *   leetspeakLevel: 'moderate',
+   * });
+   *
+   * // With all advanced features
+   * const filter = new Filter({
+   *   languages: ['english', 'spanish'],
+   *   detectLeetspeak: true,
+   *   normalizeUnicode: true,
+   *   cacheResults: true,
+   *   enableContextAware: true,
+   * });
+   * ```
+   */
   constructor(config?: FilterConfig) {
     const defaultLanguage: Language = 'english';
+
+    // Context-aware settings
     this.enableContextAware = config?.enableContextAware ?? false;
     this.contextWindow = config?.contextWindow ?? 3;
     this.confidenceThreshold = config?.confidenceThreshold ?? 0.7;
     this.primaryLanguage = config?.languages?.[0] || defaultLanguage;
+
     if (this.enableContextAware) {
       this.contextAnalyzer = new ContextAnalyzer({
         contextWindow: this.contextWindow,
@@ -34,8 +91,8 @@ class Filter {
         domainWhitelists: config?.domainWhitelists?.[this.primaryLanguage] || []
       });
     }
-    let words: string[] = [];
 
+    // Basic settings
     this.caseSensitive = config?.caseSensitive ?? false;
     this.allowObfuscatedMatch = config?.allowObfuscatedMatch ?? false;
     this.wordBoundaries = config?.wordBoundaries ?? !this.allowObfuscatedMatch;
@@ -46,6 +103,19 @@ class Filter {
     );
     this.logProfanity = config?.logProfanity ?? false;
     this.fuzzyToleranceLevel = config?.fuzzyToleranceLevel ?? 0.8;
+
+    // Leetspeak and Unicode normalization settings
+    this.detectLeetspeak = config?.detectLeetspeak ?? false;
+    this.leetspeakLevel = config?.leetspeakLevel ?? 'moderate';
+    this.normalizeUnicodeEnabled = config?.normalizeUnicode ?? true;
+
+    // Caching settings
+    this.cacheResults = config?.cacheResults ?? false;
+    this.maxCacheSize = config?.maxCacheSize ?? 1000;
+    this.cache = new Map();
+
+    // Build word dictionary
+    let words: string[] = [];
 
     if (config?.allLanguages) {
       for (const lang in dictionary) {
@@ -74,6 +144,42 @@ class Filter {
     }
   }
 
+  /**
+   * Normalizes text for profanity detection using all enabled normalization methods.
+   * Applies Unicode normalization, leetspeak detection, and obfuscation handling.
+   *
+   * @param text - The input text to normalize
+   * @returns The normalized text
+   */
+  private normalizeText(text: string): string {
+    let normalized = text;
+
+    // Step 1: Apply Unicode normalization (handles homoglyphs, diacritics, etc.)
+    if (this.normalizeUnicodeEnabled) {
+      normalized = normalizeUnicode(normalized);
+    }
+
+    // Step 2: Apply leetspeak normalization
+    if (this.detectLeetspeak) {
+      normalized = normalizeLeetspeak(normalized, {
+        level: this.leetspeakLevel,
+        collapseRepeated: true,
+        removeSpacedChars: true,
+      });
+    }
+
+    // Step 3: Apply legacy obfuscation handling (for backward compatibility)
+    if (this.allowObfuscatedMatch && !this.detectLeetspeak) {
+      normalized = this.normalizeObfuscated(normalized);
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Legacy obfuscation normalization method (for backward compatibility).
+   * @deprecated Use normalizeText() with detectLeetspeak option instead.
+   */
   private normalizeObfuscated(text: string): string {
     let normalized = text.replace(/([a-zA-Z])\1{1,}/g, '$1$1');
     const charMap: { [key: string]: string } = {
@@ -85,6 +191,101 @@ class Filter {
     };
     normalized = normalized.replace(/[@$!1*]/g, (m) => charMap[m] || m);
     return normalized;
+  }
+
+  /**
+   * Clears the result cache.
+   * Useful when dictionary or configuration changes.
+   */
+  public clearCache(): void {
+    this.cache.clear();
+  }
+
+  /**
+   * Gets the current cache size.
+   * @returns Number of cached results
+   */
+  public getCacheSize(): number {
+    return this.cache.size;
+  }
+
+  /**
+   * Exports the current filter configuration as a JSON-serializable object.
+   * Useful for saving configuration to files or sharing between environments.
+   *
+   * @returns The current filter configuration
+   *
+   * @example
+   * ```typescript
+   * const filter = new Filter({
+   *   languages: ['english', 'spanish'],
+   *   detectLeetspeak: true,
+   *   leetspeakLevel: 'aggressive',
+   * });
+   *
+   * const config = filter.getConfig();
+   * // Save to file: fs.writeFileSync('filter.config.json', JSON.stringify(config));
+   *
+   * // Later, restore:
+   * // const saved = JSON.parse(fs.readFileSync('filter.config.json'));
+   * // const restored = new Filter(saved);
+   * ```
+   */
+  public getConfig(): FilterConfig {
+    return {
+      languages: [this.primaryLanguage],
+      caseSensitive: this.caseSensitive,
+      wordBoundaries: this.wordBoundaries,
+      replaceWith: this.replaceWith,
+      severityLevels: this.severityLevels,
+      ignoreWords: Array.from(this.ignoreWords),
+      logProfanity: this.logProfanity,
+      allowObfuscatedMatch: this.allowObfuscatedMatch,
+      fuzzyToleranceLevel: this.fuzzyToleranceLevel,
+      enableContextAware: this.enableContextAware,
+      contextWindow: this.contextWindow,
+      confidenceThreshold: this.confidenceThreshold,
+      detectLeetspeak: this.detectLeetspeak,
+      leetspeakLevel: this.leetspeakLevel,
+      normalizeUnicode: this.normalizeUnicodeEnabled,
+      cacheResults: this.cacheResults,
+      maxCacheSize: this.maxCacheSize,
+    };
+  }
+
+  /**
+   * Returns the current word dictionary size.
+   * Useful for monitoring and debugging.
+   *
+   * @returns Number of words in the dictionary
+   */
+  public getWordCount(): number {
+    return this.words.size;
+  }
+
+  /**
+   * Adds a result to the cache, evicting oldest entries if necessary.
+   */
+  private addToCache(key: string, result: CheckProfanityResult): void {
+    if (!this.cacheResults) return;
+
+    // Simple LRU-like eviction: remove oldest entries when at capacity
+    if (this.cache.size >= this.maxCacheSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
+    }
+
+    this.cache.set(key, result);
+  }
+
+  /**
+   * Gets a cached result if available.
+   */
+  private getFromCache(key: string): CheckProfanityResult | undefined {
+    if (!this.cacheResults) return undefined;
+    return this.cache.get(key);
   }
 
   private getRegex(word: string): RegExp {
@@ -124,10 +325,25 @@ class Filter {
     return undefined;
   }
 
+  /**
+   * Checks if the given text contains profanity.
+   *
+   * @param value - The text to check
+   * @returns True if the text contains profanity
+   *
+   * @example
+   * ```typescript
+   * const filter = new Filter({ detectLeetspeak: true });
+   *
+   * filter.isProfane('hello');     // false
+   * filter.isProfane('fuck');      // true
+   * filter.isProfane('f4ck');      // true (leetspeak)
+   * filter.isProfane('fυck');      // true (Unicode homoglyph)
+   * ```
+   */
   isProfane(value: string): boolean {
-    const input = this.allowObfuscatedMatch
-      ? this.normalizeObfuscated(value)
-      : value;
+    // Apply all normalizations
+    const input = this.normalizeText(value);
 
     for (const word of this.words.keys()) {
       if (
@@ -144,14 +360,45 @@ class Filter {
     return this.isProfane(word);
   }
 
+  /**
+   * Performs a comprehensive profanity check on the given text.
+   *
+   * @param text - The text to check for profanity
+   * @returns Result object containing detected profanity information
+   *
+   * @example
+   * ```typescript
+   * const filter = new Filter({
+   *   languages: ['english'],
+   *   detectLeetspeak: true,
+   *   normalizeUnicode: true,
+   * });
+   *
+   * const result = filter.checkProfanity('This is f4ck!ng bad');
+   * console.log(result.containsProfanity);  // true
+   * console.log(result.profaneWords);       // ['fuck']
+   *
+   * // With caching for repeated checks
+   * const filter2 = new Filter({ cacheResults: true });
+   * filter2.checkProfanity('same text');  // Computed
+   * filter2.checkProfanity('same text');  // Retrieved from cache
+   * ```
+   */
   checkProfanity(text: string): CheckProfanityResult {
+    // Check cache first
+    const cacheKey = text;
+    const cachedResult = this.getFromCache(cacheKey);
+    if (cachedResult) {
+      this.debugLog('Cache hit for:', text.substring(0, 50));
+      return cachedResult;
+    }
+
     // Backward compatibility: if not context-aware, run old logic
     if (!this.enableContextAware) {
-      let input = this.allowObfuscatedMatch
-        ? this.normalizeObfuscated(text)
-        : text;
-
+      // Apply all normalizations
+      let input = this.normalizeText(text);
       input = input.toLowerCase();
+
       const profaneWords: string[] = [];
       const severityMap: Record<string, SeverityLevel> = {};
 
@@ -186,7 +433,7 @@ class Filter {
         }
       }
 
-      return {
+      const result: CheckProfanityResult = {
         containsProfanity: profaneWords.length > 0,
         profaneWords: Array.from(new Set(profaneWords)),
         processedText: this.replaceWith ? processedText : undefined,
@@ -195,12 +442,15 @@ class Filter {
             ? severityMap
             : undefined,
       };
+
+      // Cache the result
+      this.addToCache(cacheKey, result);
+      return result;
     }
 
     // Context-aware path
-    let input = this.allowObfuscatedMatch
-      ? this.normalizeObfuscated(text)
-      : text;
+    // Apply all normalizations
+    let input = this.normalizeText(text);
     input = input.toLowerCase();
     const originalText = text;
     const profaneWords: string[] = [];
@@ -265,7 +515,7 @@ class Filter {
         sum + (match.contextScore || 0.5), 0);
       contextScore = totalScore / matches.length;
     }
-    return {
+    const result: CheckProfanityResult = {
       containsProfanity: profaneWords.length > 0,
       profaneWords: Array.from(new Set(profaneWords)),
       processedText: this.replaceWith ? processedText : undefined,
@@ -276,8 +526,19 @@ class Filter {
         `Found ${matches.length} potential profanity matches` :
         'No profanity detected'
     };
+
+    // Cache the result
+    this.addToCache(cacheKey, result);
+    return result;
   }
 
+  /**
+   * Checks profanity with minimum severity filtering.
+   *
+   * @param text - The text to check
+   * @param minSeverity - Minimum severity level to include in results
+   * @returns Object with filtered words and full result
+   */
   checkProfanityWithMinSeverity(
     text: string,
     minSeverity: SeverityLevel = SeverityLevel.EXACT,

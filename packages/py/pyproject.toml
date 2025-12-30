@@ -29,6 +29,14 @@ keywords = [
     "social",
     "glin",
     "glincker",
+    "ml",
+    "machine-learning",
+    "toxicity",
+    "bert",
+    "transformer",
+    "leetspeak",
+    "unicode",
+    "homoglyph",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -60,6 +68,19 @@ dev = [
 test = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+]
+# ML dependencies (optional)
+ml = [
+    "detoxify>=0.5.0",
+    "torch>=2.0.0",
+    "profanity-check>=1.0.0",
+]
+ml-transformer = [
+    "detoxify>=0.5.0",
+    "torch>=2.0.0",
+]
+ml-lightweight = [
+    "profanity-check>=1.0.0",
 ]
 
 [project.urls]

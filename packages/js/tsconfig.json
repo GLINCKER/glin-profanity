@@ -6,8 +6,10 @@
       "declarationMap": true,
       "resolveJsonModule": true,
       "esModuleInterop": true,
-      "downlevelIteration": true, 
-      "target": "es2015",
+      "downlevelIteration": true,
+      "target": "es2020",
+      "module": "esnext",
+      "moduleResolution": "bundler",
       "baseUrl": ".",
       "paths": {
         "@shared/*": ["../../shared/*"]
