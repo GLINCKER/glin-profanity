@@ -115,7 +115,7 @@ jobs:
             js-build-${{ runner.os }}-
             
       - name: 💾 Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: matrix.node-version == 18  # Only upload once
         with:
           name: js-build-artifacts-${{ github.sha }}

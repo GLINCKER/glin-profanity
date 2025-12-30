@@ -133,7 +133,7 @@ jobs:
           HATCH_INDEX_AUTH: ${{ secrets.PYPI_TOKEN }}
           
       - name: 💾 Upload Python artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: python-dist-${{ github.sha }}
           path: ./packages/py/dist/*

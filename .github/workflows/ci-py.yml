@@ -127,7 +127,7 @@ jobs:
             py-deps-${{ runner.os }}-
             
       - name: 💾 Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: matrix.python-version == '3.11'  # Only upload once
         with:
           name: py-build-artifacts-${{ github.sha }}
