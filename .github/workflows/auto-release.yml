@@ -267,6 +267,17 @@ jobs:
           npm install --legacy-peer-deps --ignore-scripts
           npm run build
 
+          # Get the version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $VERSION"
+
+          # Check if version already exists on npm
+          if npm view glin-profanity@$VERSION version 2>/dev/null; then
+            echo "⚠️ Version $VERSION already exists on npm, skipping publish"
+            echo "This is expected if the version was already published in a previous run"
+            exit 0
+          fi
+
           # Determine npm tag
           if [ "${{ needs.detect-release.outputs.channel }}" = "beta" ]; then
             NPM_TAG="beta"
@@ -320,9 +331,21 @@ jobs:
       - name: 🐍 Publish to PyPI
         working-directory: packages/py
         run: |
-          pip install hatch
+          pip install hatch requests
+
+          # Get version from pyproject.toml
+          VERSION=$(grep -oP 'version = "\K[^"]+' pyproject.toml)
+          echo "Current version: $VERSION"
+
+          # Check if version already exists on PyPI
+          if python -c "import requests; exit(0 if requests.get('https://pypi.org/pypi/glin-profanity/$VERSION/json').status_code == 200 else 1)" 2>/dev/null; then
+            echo "⚠️ Version $VERSION already exists on PyPI, skipping publish"
+            echo "This is expected if the version was already published in a previous run"
+            exit 0
+          fi
+
           hatch build
-          
+
           # Publish to PyPI (supports pre-releases automatically)
           hatch publish
         env:
