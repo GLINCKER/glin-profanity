@@ -149,9 +149,10 @@ class Filter {
    * Applies Unicode normalization, leetspeak detection, and obfuscation handling.
    *
    * @param text - The input text to normalize
+   * @param aggressive - If true, collapses to single chars (for repeated char detection)
    * @returns The normalized text
    */
-  private normalizeText(text: string): string {
+  private normalizeText(text: string, aggressive: boolean = false): string {
     let normalized = text;
 
     // Step 1: Apply Unicode normalization (handles homoglyphs, diacritics, etc.)
@@ -164,6 +165,8 @@ class Filter {
       normalized = normalizeLeetspeak(normalized, {
         level: this.leetspeakLevel,
         collapseRepeated: true,
+        // Keep double letters like "ss" for normal check, collapse all for aggressive
+        maxRepeated: aggressive ? 1 : 2,
         removeSpacedChars: true,
       });
     }
@@ -317,11 +320,15 @@ class Filter {
     word: string,
     text: string,
   ): SeverityLevel | undefined {
-    if (this.wordBoundaries && this.getRegex(word).test(text)) {
+    // Check for exact word match (with or without word boundaries)
+    if (this.getRegex(word).test(text)) {
       return SeverityLevel.EXACT;
     }
-    if (this.getRegex(word).test(text)) return SeverityLevel.EXACT;
-    if (this.isFuzzyToleranceMatch(word, text)) return SeverityLevel.FUZZY;
+    // Only use fuzzy matching when word boundaries are disabled
+    // This prevents the Scunthorpe problem (matching "cunt" in "scunthorpe")
+    if (!this.wordBoundaries && this.isFuzzyToleranceMatch(word, text)) {
+      return SeverityLevel.FUZZY;
+    }
     return undefined;
   }
 
@@ -342,14 +349,25 @@ class Filter {
    * ```
    */
   isProfane(value: string): boolean {
-    // Apply all normalizations
-    const input = this.normalizeText(value);
+    // Check against original, normalized, and aggressively normalized text
+    const originalInput = value;
+    const normalizedInput = this.normalizeText(value);
+    const aggressiveInput = this.normalizeText(value, true);
 
     for (const word of this.words.keys()) {
-      if (
-        !this.ignoreWords.has(word.toLowerCase()) &&
-        this.evaluateSeverity(word, input) !== undefined
-      ) {
+      if (this.ignoreWords.has(word.toLowerCase())) {
+        continue;
+      }
+      // Check against original text first (for raw leetspeak matches like f4ck)
+      if (this.evaluateSeverity(word, originalInput) !== undefined) {
+        return true;
+      }
+      // Check against normalized text (for @ss → ass)
+      if (this.evaluateSeverity(word, normalizedInput) !== undefined) {
+        return true;
+      }
+      // Check against aggressive normalization (for fuuuuck → fuck)
+      if (this.evaluateSeverity(word, aggressiveInput) !== undefined) {
         return true;
       }
     }
@@ -395,9 +413,10 @@ class Filter {
 
     // Backward compatibility: if not context-aware, run old logic
     if (!this.enableContextAware) {
-      // Apply all normalizations
-      let input = this.normalizeText(text);
-      input = input.toLowerCase();
+      // Check original, normalized, and aggressively normalized text
+      const originalInput = text.toLowerCase();
+      const normalizedInput = this.normalizeText(text).toLowerCase();
+      const aggressiveInput = this.normalizeText(text, true).toLowerCase();
 
       const profaneWords: string[] = [];
       const severityMap: Record<string, SeverityLevel> = {};
@@ -405,14 +424,41 @@ class Filter {
       for (const dictWord of this.words.keys()) {
         if (this.ignoreWords.has(dictWord.toLowerCase())) continue;
 
-        const severity = this.evaluateSeverity(dictWord, input);
+        // Check against original text first (for raw leetspeak matches like f4ck)
+        let severity = this.evaluateSeverity(dictWord, originalInput);
         if (severity !== undefined) {
           const regex = this.getRegex(dictWord);
           let match;
-          while ((match = regex.exec(input)) !== null) {
+          while ((match = regex.exec(originalInput)) !== null) {
             profaneWords.push(match[0]);
             if (severityMap[match[0]] === undefined) {
               severityMap[match[0]] = severity;
+            }
+          }
+        }
+
+        // Check against normalized text (for @ss → ass)
+        severity = this.evaluateSeverity(dictWord, normalizedInput);
+        if (severity !== undefined) {
+          const regex = this.getRegex(dictWord);
+          let match;
+          while ((match = regex.exec(normalizedInput)) !== null) {
+            if (!profaneWords.includes(dictWord)) {
+              profaneWords.push(dictWord);
+              if (severityMap[dictWord] === undefined) {
+                severityMap[dictWord] = severity;
+              }
+            }
+          }
+        }
+
+        // Check against aggressive normalization (for fuuuuck → fuck)
+        severity = this.evaluateSeverity(dictWord, aggressiveInput);
+        if (severity !== undefined) {
+          if (!profaneWords.includes(dictWord)) {
+            profaneWords.push(dictWord);
+            if (severityMap[dictWord] === undefined) {
+              severityMap[dictWord] = severity;
             }
           }
         }

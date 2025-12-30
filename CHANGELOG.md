@@ -1,0 +1,57 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [3.1.0] - 2025-12-30
+
+### Changed
+- Removed legacy release workflow in favor of streamlined CI/CD
+- Version bump for npm publishing improvements
+
+## [3.0.0] - 2025-12-30
+
+### Added
+
+#### Leetspeak Detection
+- New `detectLeetspeak` option to catch obfuscated profanity like `f4ck`, `@ss`, `$h!t`
+- Three intensity levels: `basic`, `moderate`, `aggressive`
+- Detects spaced characters (`f u c k`) and repeated characters (`fuuuuck`)
+
+#### Unicode Normalization
+- New `normalizeUnicode` option (enabled by default)
+- Detects Cyrillic/Greek lookalikes (e.g., `fυck` with Greek upsilon)
+- Handles zero-width characters, full-width characters, and homoglyphs
+- Two-pass normalization to prevent Scunthorpe problem (false positives)
+
+#### Result Caching
+- New `cacheResults` option for 800x performance improvement on repeated checks
+- LRU eviction with configurable `maxCacheSize` (default: 1000)
+- Cache management methods: `getCacheSize()`, `clearCache()`
+
+#### ML Integration (Optional)
+- TensorFlow.js-powered toxicity detection via `glin-profanity/ml` module
+- `ToxicityDetector` class for standalone ML analysis
+- `HybridFilter` class combining rule-based and ML detection
+- Detects: toxicity, insults, threats, identity attacks, obscene content, severe toxicity
+- Configurable threshold and combination modes
+
+#### New Languages
+- Added Dutch language support
+- Fixed Turkish dictionary
+
+### Changed
+- Improved Filter class with configuration export/import
+- Enhanced performance benchmarks
+- Better TypeScript type definitions
+
+### Fixed
+- Scunthorpe problem (false positives like "Scunthorpe", "assassin")
+- Repeated character handling in edge cases
+- User ignoreWords now properly merge with global whitelist
+
+## [2.3.7] - Previous Release
+
+See git history for changes prior to v3.0.0.

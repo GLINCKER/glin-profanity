@@ -49,14 +49,16 @@ const HOMOGLYPHS: Record<string, string> = {
   'А': 'A', // Cyrillic capital A
   'е': 'e', // Cyrillic small e
   'Е': 'E', // Cyrillic capital E
+  'к': 'k', // Cyrillic small ka
+  'К': 'K', // Cyrillic capital Ka
   'о': 'o', // Cyrillic small o
   'О': 'O', // Cyrillic capital O
   'р': 'p', // Cyrillic small er
   'Р': 'P', // Cyrillic capital Er
   'с': 'c', // Cyrillic small es
   'С': 'C', // Cyrillic capital Es
-  'у': 'y', // Cyrillic small u
-  'У': 'Y', // Cyrillic capital U
+  'у': 'u', // Cyrillic small u (map to u, not y)
+  'У': 'U', // Cyrillic capital U
   'х': 'x', // Cyrillic small ha
   'Х': 'X', // Cyrillic capital Ha
   'і': 'i', // Cyrillic small i (Ukrainian)
@@ -65,6 +67,10 @@ const HOMOGLYPHS: Record<string, string> = {
   'Ј': 'J', // Cyrillic capital Je
   'ѕ': 's', // Cyrillic small dze
   'Ѕ': 'S', // Cyrillic capital Dze
+
+  // Currency and special symbols that look like letters
+  '¢': 'c', // Cent sign
+  'ƒ': 'f', // Latin small f with hook (florin)
 
   // Greek homoglyphs
   'α': 'a', // Greek small alpha

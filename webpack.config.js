@@ -11,7 +11,10 @@ module.exports = {
     library: 'Glin-profanity'  
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.js']
+    extensions: ['.ts', '.tsx', '.js'],
+    alias: {
+      'glin-profanity': path.resolve(__dirname, 'packages/js/dist/index.js')
+    }
   },
   module: {
     rules: [
