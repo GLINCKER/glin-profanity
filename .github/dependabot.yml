@@ -1,58 +1,46 @@
 version: 2
 updates:
-  # JavaScript/npm dependencies
+  # Root npm dependencies
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 3
     groups:
-      # Group all dev dependencies together
-      dev-dependencies:
+      # Group ALL minor and patch updates together
+      all-minor-patch:
         patterns:
-          - "@types/*"
-          - "*eslint*"
-          - "*prettier*"
-          - "*jest*"
-          - "@babel/*"
-          - "*webpack*"
-          - "*typescript*"
-          - "husky"
-          - "lint-staged"
-        update-types:
-          - "minor"
-          - "patch"
-      # Group testing libraries
-      testing:
-        patterns:
-          - "@testing-library/*"
-          - "jest*"
-          - "ts-jest"
+          - "*"
         update-types:
           - "minor"
           - "patch"
     labels:
       - "dependencies"
-      - "javascript"
     commit-message:
       prefix: "chore(deps)"
 
-  # JavaScript package dependencies (packages/js)
+  # JavaScript package (packages/js)
   - package-ecosystem: "npm"
     directory: "/packages/js"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "UTC"
+      interval: "monthly"
     open-pull-requests-limit: 3
+    groups:
+      # Group dev dependencies
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group production dependencies
+      production:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "javascript"
-      - "package-js"
     commit-message:
       prefix: "chore(deps)"
 
@@ -60,11 +48,15 @@ updates:
   - package-ecosystem: "pip"
     directory: "/packages/py"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    groups:
+      all-python:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "python"
@@ -75,11 +67,13 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
     open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
-      - "github-actions"
     commit-message:
       prefix: "chore(deps)"
