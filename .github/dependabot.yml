@@ -1,0 +1,79 @@
+version: 2
+updates:
+  # Root npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      # Group ALL minor and patch updates together
+      all-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # JavaScript package (packages/js)
+  - package-ecosystem: "npm"
+    directory: "/packages/js"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      # Group dev dependencies
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group production dependencies
+      production:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+      - "javascript"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/packages/py"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    groups:
+      all-python:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
