@@ -65,13 +65,27 @@ jobs:
             echo "Manual release triggered: ${{ github.event.inputs.release_type }} (${{ github.event.inputs.channel }})"
             exit 0
           fi
-          
+
+          # Get the commit message
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+
+          # Skip release for dependency updates and version bumps
+          if [[ "$COMMIT_MSG" =~ ^chore\(deps ]] || \
+             [[ "$COMMIT_MSG" =~ ^Merge\ pull\ request.*dependabot ]] || \
+             [[ "$COMMIT_MSG" =~ \[skip\ ci\] ]] || \
+             [[ "$COMMIT_MSG" =~ ^chore:\ bump\ version ]]; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Skipping release for dependency/maintenance commit"
+            exit 0
+          fi
+
           # Use sync-versions.js script for semantic release detection
           chmod +x scripts/sync-versions.js
-          
+
           # Check if commit should trigger a release using our semantic detection
           RELEASE_OUTPUT=$(node scripts/sync-versions.js detect 2>&1)
-          
+
           if echo "$RELEASE_OUTPUT" | grep -q "should_release=true"; then
             echo "$RELEASE_OUTPUT" >> $GITHUB_OUTPUT
             echo "🎯 Semantic release detected"
@@ -248,7 +262,7 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run build
-          
+
           # Determine npm tag
           if [ "${{ needs.detect-release.outputs.channel }}" = "beta" ]; then
             NPM_TAG="beta"
@@ -257,11 +271,11 @@ jobs:
           else
             NPM_TAG="latest"
           fi
-          
+
           echo "Publishing to npm with tag: $NPM_TAG"
-          npm publish --tag $NPM_TAG
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Using OIDC trusted publisher - no token needed
+          # --provenance adds verified build attestation
+          npm publish --tag $NPM_TAG --provenance --access public
 
   # Publish to PyPI
   publish-pypi:
@@ -335,10 +349,17 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
+
           TAG_NAME="v${{ needs.bump-version.outputs.new_version }}"
-          git tag $TAG_NAME
-          git push origin $TAG_NAME
+
+          # Check if tag already exists
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "⚠️ Tag $TAG_NAME already exists, skipping tag creation"
+          else
+            git tag $TAG_NAME
+            git push origin $TAG_NAME
+            echo "✅ Created and pushed tag $TAG_NAME"
+          fi
           
       - name: 📝 Generate Release Notes
         id: notes

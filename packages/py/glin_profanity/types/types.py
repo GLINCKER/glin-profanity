@@ -3,6 +3,8 @@ Type definitions for glin-profanity Python package.
 Unified API that mirrors the JavaScript/TypeScript package structure.
 """
 
+from __future__ import annotations
+
 from enum import IntEnum
 from typing import Literal, TypedDict
 
@@ -74,6 +76,10 @@ class ContextAwareConfig(TypedDict, total=False):
     domain_whitelists: dict[str, list[str]] | None
 
 
+# Leetspeak detection intensity levels
+LeetspeakLevel = Literal["basic", "moderate", "aggressive"]
+
+
 class FilterConfig(ContextAwareConfig, total=False):
     """Main filter configuration options - unified with JavaScript."""
 
@@ -88,6 +94,17 @@ class FilterConfig(ContextAwareConfig, total=False):
     log_profanity: bool
     allow_obfuscated_match: bool
     fuzzy_tolerance_level: float
+
+    # Leetspeak detection options
+    detect_leetspeak: bool  # Enable leetspeak detection (e.g., "f4ck" -> "fuck")
+    leetspeak_level: LeetspeakLevel  # Detection intensity: 'basic', 'moderate', 'aggressive'
+
+    # Unicode normalization options
+    normalize_unicode: bool  # Enable Unicode normalization to detect homoglyphs
+
+    # Caching options
+    cache_results: bool  # Cache profanity check results for repeated strings
+    max_cache_size: int  # Maximum cache size when caching is enabled
 
 
 class FilteredProfanityResult(TypedDict):

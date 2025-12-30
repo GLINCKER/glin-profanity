@@ -65,6 +65,9 @@ export interface ContextAwareConfig {
   domainWhitelists?: Record<string, string[]>;
 }
 
+/** Leetspeak detection intensity levels */
+export type LeetspeakLevel = 'basic' | 'moderate' | 'aggressive';
+
 /** Main filter configuration options - unified with Python */
 export interface FilterConfig extends ContextAwareConfig {
   languages?: Language[];
@@ -78,6 +81,39 @@ export interface FilterConfig extends ContextAwareConfig {
   logProfanity?: boolean;
   allowObfuscatedMatch?: boolean;
   fuzzyToleranceLevel?: number;
+
+  /**
+   * Enable leetspeak detection (e.g., "f4ck" → "fuck").
+   * @default false
+   */
+  detectLeetspeak?: boolean;
+
+  /**
+   * Leetspeak detection intensity level.
+   * - `basic`: Numbers only (0→o, 1→i, 3→e, 4→a, 5→s)
+   * - `moderate`: Basic + symbols (@→a, $→s, !→i)
+   * - `aggressive`: All known substitutions
+   * @default 'moderate'
+   */
+  leetspeakLevel?: LeetspeakLevel;
+
+  /**
+   * Enable Unicode normalization to detect homoglyphs and obfuscation.
+   * @default true
+   */
+  normalizeUnicode?: boolean;
+
+  /**
+   * Cache profanity check results for repeated strings.
+   * @default false
+   */
+  cacheResults?: boolean;
+
+  /**
+   * Maximum cache size when caching is enabled.
+   * @default 1000
+   */
+  maxCacheSize?: number;
 }
 
 /** Result with minimum severity filtering */

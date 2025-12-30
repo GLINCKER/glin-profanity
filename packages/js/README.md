@@ -28,6 +28,9 @@
   <a href="https://www.npmjs.com/package/glin-profanity">
     <img src="https://img.shields.io/npm/dw/glin-profanity" alt="Weekly Downloads" />
   </a>
+  <a href="https://pepy.tech/projects/glin-profanity">
+    <img src="https://static.pepy.tech/personalized-badge/glin-profanity?period=total&units=international_system&left_color=black&right_color=green&left_text=Python%20Downloads" alt="PyPI Downloads" />
+  </a>
   <a href="https://github.com/GLINCKER/glin-profanity/issues">
     <img src="https://img.shields.io/github/issues/GLINCKER/glin-profanity" alt="Open Issues" />
   </a>
@@ -81,7 +84,28 @@ Whether you're moderating chat messages, community forums, or content input form
   <img src="https://img.shields.io/badge/Real--Time-⚡-yellow?style=for-the-badge" alt="Real-Time" />
   <img src="https://img.shields.io/badge/Obfuscation_Detection-🕵️-purple?style=for-the-badge" alt="Obfuscation" />
   <img src="https://img.shields.io/badge/Framework_Agnostic-🧩-green?style=for-the-badge" alt="Framework Agnostic" />
+  <img src="https://img.shields.io/badge/ML_Powered-🤖-orange?style=for-the-badge" alt="ML Powered" />
 </div>
+
+### 💡 Why glin-profanity?
+
+| | |
+|---|---|
+| 🔒 **Privacy First** | Runs entirely on-device. No API calls, no data leaves your app. GDPR/CCPA friendly. |
+| ⚡ **Blazing Fast** | 23K-115K ops/sec rule-based, 21M+ ops/sec with caching. Sub-millisecond latency. |
+| 🌍 **Truly Multilingual** | 23 languages with unified dictionary. Consistent detection across locales. |
+| 🛡️ **Evasion Resistant** | Catches leetspeak (`f4ck`), Unicode tricks (`fυck`), zero-width chars, and homoglyphs. |
+| 🤖 **AI-Ready** | Optional ML integration for context-aware toxicity detection beyond keywords. |
+| 🧩 **Zero Config** | Works out of the box. No API keys, no server, no setup required. |
+| 📦 **Lightweight** | ~90KB core bundle. Tree-shakeable. No heavy dependencies for basic usage. |
+
+### ✨ What's New in v3.0
+
+- **Leetspeak Detection** — Catch `f4ck`, `@ss`, `$h!t` with 3 intensity levels
+- **Unicode Normalization** — Detect Cyrillic/Greek lookalikes, full-width chars, zero-width spaces
+- **Result Caching** — 800x speedup for repeated checks
+- **ML Integration** — Optional TensorFlow.js toxicity model for nuanced detection
+- **Performance** — Optimized for high-throughput production workloads
 
 ## 📚 Table of Contents
 
@@ -104,6 +128,13 @@ Whether you're moderating chat messages, community forums, or content input form
     - [Return Value](#return-value)
 - [⚠️ Note](#note)
 - [🛠 Use Cases](#-use-cases)
+- [🔬 Advanced Features](#-advanced-features)
+  - [Leetspeak Detection](#leetspeak-detection)
+  - [Unicode Normalization](#unicode-normalization)
+  - [Result Caching](#result-caching)
+  - [Configuration Management](#configuration-management)
+  - [ML-Based Detection](#ml-based-detection)
+- [📊 Benchmarks](#-benchmarks)
 - [📄 License](#license)
   - [MIT License](#mit-license)
 
@@ -357,6 +388,11 @@ new Filter(config?: FilterConfig);
 | `autoReplace`           | `boolean`          | Whether to auto-replace flagged words |
 | `minSeverity`           | `SeverityLevel`    | Minimum severity to include in final list |
 | `customActions`         | `(result) => void` | Custom logging/callback support |
+| `detectLeetspeak`       | `boolean`          | Enable leetspeak detection (e.g., `f4ck` → `fuck`) |
+| `leetspeakLevel`        | `'basic' \| 'moderate' \| 'aggressive'` | Leetspeak detection intensity |
+| `normalizeUnicode`      | `boolean`          | Enable Unicode normalization for homoglyphs |
+| `cacheResults`          | `boolean`          | Cache results for repeated checks |
+| `maxCacheSize`          | `number`           | Maximum cache size (default: 1000) |
 
 ---
 
@@ -419,6 +455,167 @@ const { result, checkText, checkTextAsync, reset, isDirty, isWordProfane } = use
 - 🕹️ Game lobbies & multiplayer chats
 - 🤖 AI content filters before processing input
 
+## 🔬 Advanced Features
+
+### Leetspeak Detection
+
+Detect and normalize leetspeak variations like `f4ck`, `@ss`, `$h!t`:
+
+```typescript
+import { Filter } from 'glin-profanity';
+
+const filter = new Filter({
+  languages: ['english'],
+  detectLeetspeak: true,
+  leetspeakLevel: 'moderate', // 'basic' | 'moderate' | 'aggressive'
+});
+
+filter.isProfane('f4ck');   // true
+filter.isProfane('@ss');    // true
+filter.isProfane('$h!t');   // true
+filter.isProfane('f u c k'); // true (spaced characters)
+```
+
+**Leetspeak Levels:**
+- `basic`: Numbers only (0→o, 1→i, 3→e, 4→a, 5→s)
+- `moderate`: Basic + common symbols (@→a, $→s, !→i)
+- `aggressive`: All known substitutions including rare ones
+
+### Unicode Normalization
+
+Detect homoglyphs and Unicode obfuscation:
+
+```typescript
+import { Filter } from 'glin-profanity';
+
+const filter = new Filter({
+  languages: ['english'],
+  normalizeUnicode: true, // enabled by default
+});
+
+// Detects various Unicode tricks:
+filter.isProfane('fυck');   // true (Greek upsilon υ → u)
+filter.isProfane('fᴜck');   // true (Small caps ᴜ → u)
+filter.isProfane('f​u​c​k'); // true (Zero-width spaces removed)
+filter.isProfane('ｆｕｃｋ'); // true (Full-width characters)
+```
+
+### Result Caching
+
+Enable caching for high-performance repeated checks:
+
+```typescript
+import { Filter } from 'glin-profanity';
+
+const filter = new Filter({
+  languages: ['english'],
+  cacheResults: true,
+  maxCacheSize: 1000, // LRU eviction when full
+});
+
+// First call computes result
+filter.checkProfanity('hello world'); // ~0.04ms
+
+// Subsequent calls return cached result
+filter.checkProfanity('hello world'); // ~0.00005ms (800x faster!)
+
+// Cache management
+console.log(filter.getCacheSize()); // 1
+filter.clearCache();
+```
+
+### Configuration Management
+
+Export and import filter configurations for sharing between environments:
+
+```typescript
+import { Filter } from 'glin-profanity';
+
+const filter = new Filter({
+  languages: ['english', 'spanish'],
+  detectLeetspeak: true,
+  leetspeakLevel: 'aggressive',
+  cacheResults: true,
+});
+
+// Export configuration
+const config = filter.getConfig();
+// Save to file: fs.writeFileSync('filter.config.json', JSON.stringify(config));
+
+// Later, restore configuration
+// const savedConfig = JSON.parse(fs.readFileSync('filter.config.json'));
+// const restoredFilter = new Filter(savedConfig);
+
+// Get dictionary size for monitoring
+console.log(filter.getWordCount()); // 406
+```
+
+### ML-Based Detection
+
+Optional TensorFlow.js-powered toxicity detection for context-aware filtering:
+
+```bash
+# Install optional dependencies
+npm install @tensorflow/tfjs @tensorflow-models/toxicity
+```
+
+```typescript
+import { HybridFilter } from 'glin-profanity/ml';
+
+const filter = new HybridFilter({
+  languages: ['english'],
+  detectLeetspeak: true,
+  enableML: true,
+  mlThreshold: 0.85,
+  combinationMode: 'or', // 'or' | 'and' | 'ml-override' | 'rules-first'
+});
+
+// Initialize ML model (async)
+await filter.initialize();
+
+// Hybrid check (rules + ML)
+const result = await filter.checkProfanityAsync('you are terrible');
+console.log(result.isToxic);          // true
+console.log(result.mlResult?.matchedCategories); // ['insult', 'toxicity']
+console.log(result.confidence);       // 0.92
+
+// Sync rule-based check (fast, no ML)
+filter.isProfane('badword'); // true
+```
+
+**ML Categories Detected:**
+- `toxicity` - General toxic content
+- `insult` - Insults and personal attacks
+- `threat` - Threatening language
+- `obscene` - Obscene/vulgar content
+- `identity_attack` - Identity-based hate
+- `sexual_explicit` - Sexually explicit content
+- `severe_toxicity` - Highly toxic content
+
+## 📊 Benchmarks
+
+Performance benchmarks on a MacBook Pro (M1):
+
+| Operation | Throughput | Average Time |
+|-----------|------------|--------------|
+| `isProfane` (clean text) | 23,524 ops/sec | 0.04ms |
+| `isProfane` (profane text) | 114,666 ops/sec | 0.009ms |
+| With leetspeak detection | 22,904 ops/sec | 0.04ms |
+| With Unicode normalization | 24,058 ops/sec | 0.04ms |
+| With caching (cached hit) | **21,396,095 ops/sec** | 0.00005ms |
+| `checkProfanity` (detailed) | 3,677 ops/sec | 0.27ms |
+| Multi-language (4 langs) | 24,855 ops/sec | 0.04ms |
+| All languages (23 langs) | 14,114 ops/sec | 0.07ms |
+
+**Key Findings:**
+- Leetspeak and Unicode normalization add minimal overhead
+- Caching provides **800x speedup** for repeated checks
+- Multi-language support scales well
+
+Run benchmarks yourself:
+```bash
+npm run benchmark
+```
 
 ## License
 

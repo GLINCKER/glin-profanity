@@ -6,6 +6,7 @@ from .types import (
     FilterConfig,
     FilteredProfanityResult,
     Language,
+    LeetspeakLevel,
     Match,
     SeverityLevel,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "FilterConfig",
     "FilteredProfanityResult",
     "Language",
+    "LeetspeakLevel",
     "Match",
     "SeverityLevel",
 ]
