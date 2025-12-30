@@ -88,7 +88,7 @@ jobs:
           fi
           
       - name: 📈 Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           file: ${{ env.PACKAGE_DIR }}/coverage/lcov.info
           flags: glin-profanity
