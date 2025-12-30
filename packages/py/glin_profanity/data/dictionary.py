@@ -31,6 +31,7 @@ class DictionaryLoader:
             "chinese": "chinese.json",
             "czech": "czech.json",
             "danish": "danish.json",
+            "dutch": "dutch.json",
             "english": "english.json",
             "esperanto": "esperanto.json",
             "finnish": "finnish.json",

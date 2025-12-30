@@ -12,6 +12,7 @@ Language = Literal[
     "chinese",
     "czech",
     "danish",
+    "dutch",
     "english",
     "esperanto",
     "finnish",

@@ -9,6 +9,7 @@ export interface ProfanityCheckerConfig {
   customWords?: string[];
   replaceWith?: string;
   severityLevels?: boolean;
+  ignoreWords?: string[];
   allowObfuscatedMatch?: boolean;
   fuzzyToleranceLevel?: number;
   minSeverity?: SeverityLevel;
