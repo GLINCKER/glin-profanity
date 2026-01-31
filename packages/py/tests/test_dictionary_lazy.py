@@ -11,7 +11,7 @@ class TestDictionaryLazy:
         # Create a new instance to avoid side effects from other tests
         loader = DictionaryLoader()
         assert len(loader._dictionaries) == 0
-        assert len(loader.available_languages) == 24
+        assert len(loader.available_languages) == len(loader.LANGUAGE_FILES)
 
     def test_load_single_language(self) -> None:
         """Test that requesting words for one language loads only that language."""

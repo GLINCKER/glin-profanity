@@ -144,9 +144,9 @@ export class ContextAnalyzer {
       }
     }
 
-    // Check negative phrases
+    // Check negative phrases (prefixes like "you are" that introduce profanity)
     for (const [phrase, score] of NEGATIVE_PHRASES.entries()) {
-      if (phrase.includes(matchWord) && contextText.includes(phrase)) {
+      if (contextText.includes(phrase)) {
         return {
           contextScore: score,
           reason: `Negative phrase detected: "${phrase}"`,

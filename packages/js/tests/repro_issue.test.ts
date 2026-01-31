@@ -30,10 +30,10 @@ describe('Domain Specific Whitelisting', () => {
     const result = filter.checkProfanity(text);
 
     expect(result.containsProfanity).toBe(true);
-    if (result.matches && result.matches.length > 0) {
-        // It should NOT be whitelisted
-        expect(result.matches[0].isWhitelisted).toBe(false);
-    }
+    expect(result.matches).toBeDefined();
+    expect(result.matches!.length).toBeGreaterThan(0);
+    // It should NOT be whitelisted
+    expect(result.matches![0].isWhitelisted).toBe(false);
   });
 
   it('whitelists acceptable gaming words in gaming context', () => {
