@@ -6,6 +6,10 @@
 [![glin-profanity](https://img.shields.io/badge/powered%20by-glin--profanity-blue)](https://www.npmjs.com/package/glin-profanity)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+<a href="https://glama.ai/mcp/servers/@thegdsks/glin-profanity-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@thegdsks/glin-profanity-mcp/badge" alt="Glin Profanity MCP server" />
+</a>
+
 MCP (Model Context Protocol) server for **glin-profanity** - enables AI assistants like Claude Desktop, Cursor, Windsurf, and other MCP-compatible tools to use profanity detection and content moderation as native tools.
 
 ## What is MCP?

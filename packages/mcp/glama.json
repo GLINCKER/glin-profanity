@@ -1,0 +1,39 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "name": "glin-profanity-mcp",
+  "display_name": "Glin Profanity",
+  "description": "Content moderation and profanity detection MCP server for AI assistants. Detects profanity in 24 languages with advanced evasion detection (leetspeak, Unicode tricks, Cyrillic substitutions).",
+  "repository": "https://github.com/GLINCKER/glin-profanity",
+  "homepage": "https://github.com/GLINCKER/glin-profanity/tree/release/packages/mcp",
+  "author": {
+    "name": "GLINR",
+    "url": "https://glincker.com"
+  },
+  "license": "MIT",
+  "categories": [
+    "content-moderation",
+    "text-processing",
+    "safety"
+  ],
+  "tags": [
+    "profanity",
+    "filter",
+    "moderation",
+    "content-safety",
+    "multilingual",
+    "leetspeak",
+    "ai-safety"
+  ],
+  "installation": {
+    "npm": "glin-profanity-mcp"
+  },
+  "config": {
+    "claude_desktop": {
+      "command": "npx",
+      "args": ["-y", "glin-profanity-mcp"]
+    }
+  },
+  "tools": 19,
+  "resources": 5,
+  "prompts": 4
+}
