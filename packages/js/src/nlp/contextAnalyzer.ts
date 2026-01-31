@@ -41,6 +41,16 @@ const GAMING_POSITIVE = new Set([
   'build', 'loadout', 'strategy', 'tactic', 'play', 'move', 'combo'
 ]);
 
+// Words that are acceptable in gaming contexts but might be flagged otherwise
+const GAMING_ACCEPTABLE_WORDS = new Set([
+  'kill', 'killer', 'killed', 'killing',
+  'shoot', 'shot', 'shooting',
+  'die', 'dying', 'died', 'dead', 'death',
+  'badass', 'sick', 'insane', 'crazy', 'mad', 'beast', 'savage',
+  'suck', 'sucks',
+  'wtf', 'omg', 'hell', 'damn', 'crap'
+]);
+
 // Common positive phrases that might contain flagged words
 const POSITIVE_PHRASES = new Map([
   ['the bomb', 0.9], // "this movie is the bomb"
@@ -148,13 +158,21 @@ export class ContextAnalyzer {
     return null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private isDomainWhitelisted(contextWords: string[], matchWord: string): boolean {
-    // TODO: Use matchWord for domain-specific filtering in the future
+    const normalizedMatchWord = matchWord.toLowerCase();
+
     // Check if any domain whitelist words are present
     for (const word of contextWords) {
-      if (this.domainWhitelists.has(word) || GAMING_POSITIVE.has(word)) {
+      // Check user-defined domain whitelists (permissive)
+      if (this.domainWhitelists.has(word)) {
         return true;
+      }
+
+      // Check internal gaming whitelist (restrictive)
+      if (GAMING_POSITIVE.has(word)) {
+        if (GAMING_ACCEPTABLE_WORDS.has(normalizedMatchWord)) {
+          return true;
+        }
       }
     }
     return false;
