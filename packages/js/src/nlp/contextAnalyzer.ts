@@ -1,5 +1,5 @@
-// src/nlp/contextAnalyzer.ts
 import { Language } from '../types/types';
+import { contextData, ContextDefinition } from '../data/context-data';
 
 export interface ContextAnalysisResult {
   contextScore: number; // 0-1, where 0 = negative context, 1 = positive context
@@ -13,73 +13,18 @@ export interface ContextConfig {
   domainWhitelists?: string[];
 }
 
-// Positive sentiment indicators
-const POSITIVE_INDICATORS = new Set([
-  'amazing', 'awesome', 'excellent', 'fantastic', 'great', 'love', 'wonderful',
-  'brilliant', 'perfect', 'incredible', 'outstanding', 'superb', 'magnificent',
-  'marvelous', 'spectacular', 'phenomenal', 'terrific', 'fabulous', 'divine',
-  'best', 'good', 'nice', 'cool', 'sweet', 'rad', 'sick', 'dope', 'fire',
-  'lit', 'epic', 'legendary', 'godlike', 'insane', 'crazy', 'wild', 'beast',
-  'movie', 'film', 'show', 'song', 'music', 'game', 'book', 'restaurant',
-  'food', 'dish', 'meal', 'place', 'spot', 'location', 'experience'
-]);
-
-// Negative sentiment indicators
-const NEGATIVE_INDICATORS = new Set([
-  'hate', 'terrible', 'awful', 'horrible', 'disgusting', 'pathetic', 'stupid',
-  'idiot', 'moron', 'loser', 'worthless', 'useless', 'garbage', 'trash',
-  'suck', 'sucks', 'worst', 'bad', 'ugly', 'gross', 'nasty', 'annoying',
-  'irritating', 'frustrating', 'disappointing', 'lame', 'weak', 'fail',
-  'you', 'your', 'yourself', 'u', 'ur', 'ure', 'youre'
-]);
-
-
-// Domain-specific positive contexts
-const GAMING_POSITIVE = new Set([
-  'player', 'gamer', 'team', 'squad', 'clan', 'guild', 'match', 'game',
-  'round', 'level', 'boss', 'raid', 'quest', 'achievement', 'skill',
-  'build', 'loadout', 'strategy', 'tactic', 'play', 'move', 'combo'
-]);
-
-// Words that are acceptable in gaming contexts but might be flagged otherwise
-const GAMING_ACCEPTABLE_WORDS = new Set([
-  'kill', 'killer', 'killed', 'killing',
-  'shoot', 'shot', 'shooting',
-  'die', 'dying', 'died', 'dead', 'death',
-  'badass', 'sick', 'insane', 'crazy', 'mad', 'beast', 'savage',
-  'suck', 'sucks',
-  'wtf', 'omg', 'hell', 'damn', 'crap'
-]);
-
-// Common positive phrases that might contain flagged words
-const POSITIVE_PHRASES = new Map([
-  ['the bomb', 0.9], // "this movie is the bomb"
-  ['da bomb', 0.9], // slang for "the best"
-  ['bomb.com', 0.9], // website reference
-  ['bomb diggity', 0.9], // slang for excellent
-  ['photo bomb', 0.8], // photography term
-  ['bath bomb', 0.8], // cosmetic product
-  ['bomb squad', 0.7], // could be neutral/positive in gaming
-]);
-
-// Negative phrases that should remain flagged
-const NEGATIVE_PHRASES = new Map([
-  ['you are', 0.1], // "you are [profanity]"
-  ['ur a', 0.1], // "ur a [profanity]"
-  ['such a', 0.2], // "such a [profanity]"
-  ['fucking', 0.1], // intensifier, usually negative
-  ['damn', 0.2], // mild profanity, context dependent
-]);
-
 export class ContextAnalyzer {
   private contextWindow: number;
   private language: Language;
   private domainWhitelists: Set<string>;
+  private data: ContextDefinition | undefined;
 
   constructor(config: ContextConfig) {
     this.contextWindow = config.contextWindow;
     this.language = config.language;
     this.domainWhitelists = new Set(config.domainWhitelists || []);
+    // Load context data for the configured language
+    this.data = contextData[this.language];
   }
 
   /**
@@ -134,9 +79,10 @@ export class ContextAnalyzer {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private checkPhraseContext(contextText: string, matchWord: string): ContextAnalysisResult | null {
-    // TODO: Use matchWord for more specific phrase matching in the future
+    if (!this.data) return null;
+
     // Check positive phrases
-    for (const [phrase, score] of POSITIVE_PHRASES.entries()) {
+    for (const [phrase, score] of this.data.positivePhrases.entries()) {
       if (contextText.includes(phrase)) {
         return {
           contextScore: score,
@@ -147,7 +93,7 @@ export class ContextAnalyzer {
     }
 
     // Check negative phrases
-    for (const [phrase, score] of NEGATIVE_PHRASES.entries()) {
+    for (const [phrase, score] of this.data.negativePhrases.entries()) {
       if (contextText.includes(phrase)) {
         return {
           contextScore: score,
@@ -170,10 +116,14 @@ export class ContextAnalyzer {
         return true;
       }
 
-      // Check internal gaming whitelist (restrictive)
-      if (GAMING_POSITIVE.has(word)) {
-        if (GAMING_ACCEPTABLE_WORDS.has(normalizedMatchWord)) {
-          return true;
+      // Check internal domain definitions (restrictive)
+      if (this.data && this.data.domains) {
+        for (const domain of Object.values(this.data.domains)) {
+           if (domain.positiveIndicators.has(word)) {
+             if (domain.acceptableWords.has(normalizedMatchWord)) {
+               return true;
+             }
+           }
         }
       }
     }
@@ -225,9 +175,9 @@ export class ContextAnalyzer {
       const distance = Math.abs(i - matchPosition);
       const weight = Math.max(0.1, 1 - (distance * 0.2)); // Closer words have higher weight
 
-      if (POSITIVE_INDICATORS.has(word)) {
+      if (this.data?.positiveIndicators.has(word)) {
         positiveCount += weight;
-      } else if (NEGATIVE_INDICATORS.has(word)) {
+      } else if (this.data?.negativeIndicators.has(word)) {
         negativeCount += weight;
       }
     }
@@ -247,20 +197,22 @@ export class ContextAnalyzer {
     const confidenceMultiplier = Math.min(1.0, totalWords / 5); // More words = higher confidence
     adjustedScore = 0.5 + (adjustedScore - 0.5) * confidenceMultiplier;
 
-    // If there are personal pronouns (you, your), lean towards negative
-    const hasPersonalPronouns = contextWords.some(word => 
-      ['you', 'your', 'u', 'ur'].includes(word)
-    );
-    if (hasPersonalPronouns && rawScore < 0.7) {
-      adjustedScore *= 0.7; // Reduce score when personal pronouns are present
-    }
+    if (this.data) {
+        // If there are personal pronouns (you, your), lean towards negative
+        const hasPersonalPronouns = contextWords.some(word =>
+          this.data!.personalPronouns.has(word)
+        );
+        if (hasPersonalPronouns && rawScore < 0.7) {
+          adjustedScore *= 0.7; // Reduce score when personal pronouns are present
+        }
 
-    // If there are object/thing references, lean towards positive
-    const hasObjectReferences = contextWords.some(word =>
-      ['movie', 'song', 'game', 'book', 'show', 'this', 'that', 'it'].includes(word)
-    );
-    if (hasObjectReferences && rawScore > 0.3) {
-      adjustedScore = Math.min(1, adjustedScore * 1.3); // Boost score for object references
+        // If there are object/thing references, lean towards positive
+        const hasObjectReferences = contextWords.some(word =>
+          this.data!.objectReferences.has(word)
+        );
+        if (hasObjectReferences && rawScore > 0.3) {
+          adjustedScore = Math.min(1, adjustedScore * 1.3); // Boost score for object references
+        }
     }
 
     return Math.max(0, Math.min(1, adjustedScore));
