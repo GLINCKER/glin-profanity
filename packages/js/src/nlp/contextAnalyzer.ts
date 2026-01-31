@@ -79,7 +79,9 @@ export class ContextAnalyzer {
   constructor(config: ContextConfig) {
     this.contextWindow = config.contextWindow;
     this.language = config.language;
-    this.domainWhitelists = new Set(config.domainWhitelists || []);
+    this.domainWhitelists = new Set(
+      (config.domainWhitelists || []).map(word => word.toLowerCase())
+    );
   }
 
   /**
@@ -272,7 +274,7 @@ export class ContextAnalyzer {
    * Updates the domain whitelist for this analyzer instance
    */
   updateDomainWhitelist(newWhitelist: string[]): void {
-    this.domainWhitelists = new Set(newWhitelist);
+    this.domainWhitelists = new Set(newWhitelist.map(word => word.toLowerCase()));
   }
 
   /**

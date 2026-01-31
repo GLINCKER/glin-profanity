@@ -25,7 +25,7 @@ class DictionaryLoader:
         "italian": "italian.json",
         "japanese": "japanese.json",
         "korean": "korean.json",
-        "norwegian": "Norwegian.json",
+        "norwegian": "norwegian.json",
         "persian": "persian.json",
         "polish": "polish.json",
         "portuguese": "portuguese.json",
