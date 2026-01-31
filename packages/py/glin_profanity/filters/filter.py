@@ -68,6 +68,7 @@ class Filter:
         self.cache_results = config.get("cache_results", False)
         self.max_cache_size = config.get("max_cache_size", 1000)
         self._cache: dict[str, CheckProfanityResult] = {}
+        self._regex_cache: dict[str, re.Pattern[str]] = {}
 
         # Initialize word sets
         ignore_words_list = config.get("ignore_words", [])
@@ -234,12 +235,17 @@ class Filter:
 
     def _get_regex(self, word: str) -> re.Pattern[str]:
         """Create regex pattern for word matching."""
+        if word in self._regex_cache:
+            return self._regex_cache[word]
+
         flags = 0 if self.case_sensitive else re.IGNORECASE
         escaped_word = re.escape(word)
 
         pattern = rf"\b{escaped_word}\b" if self.word_boundaries else escaped_word
 
-        return re.compile(pattern, flags)
+        regex = re.compile(pattern, flags)
+        self._regex_cache[word] = regex
+        return regex
 
     def _is_fuzzy_tolerance_match(self, word: str, text: str) -> bool:
         """Check if word matches text within fuzzy tolerance."""
