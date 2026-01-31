@@ -160,13 +160,16 @@ export class ContextAnalyzer {
     return false;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private generateReason(score: number, contextWords: string[]): string {
-    // TODO: Use contextWords for more detailed reasoning in the future
+    const foundPositive = Array.from(new Set(contextWords.filter(word => POSITIVE_INDICATORS.has(word))));
+    const foundNegative = Array.from(new Set(contextWords.filter(word => NEGATIVE_INDICATORS.has(word))));
+
     if (score >= 0.7) {
-      return 'Positive context detected - likely not profanity';
+      const details = foundPositive.length > 0 ? ` (found: ${foundPositive.join(', ')})` : '';
+      return `Positive context detected${details} - likely not profanity`;
     } else if (score <= 0.3) {
-      return 'Negative context detected - likely profanity';
+      const details = foundNegative.length > 0 ? ` (found: ${foundNegative.join(', ')})` : '';
+      return `Negative context detected${details} - likely profanity`;
     } else {
       return 'Neutral context - uncertain classification';
     }
