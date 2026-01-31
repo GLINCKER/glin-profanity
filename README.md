@@ -41,6 +41,19 @@
 
 ---
 
+## 📦 Packages
+
+This monorepo maintains the following packages:
+
+| Package | Version | Description |
+|---------|---------|-------------|
+| [glin-profanity](https://www.npmjs.com/package/glin-profanity) | [![npm](https://img.shields.io/npm/v/glin-profanity?style=flat-square)](https://www.npmjs.com/package/glin-profanity) | Core profanity filter for JavaScript/TypeScript |
+| [glin-profanity](https://pypi.org/project/glin-profanity/) | [![PyPI](https://img.shields.io/pypi/v/glin-profanity?style=flat-square)](https://pypi.org/project/glin-profanity/) | Core profanity filter for Python |
+| [glin-profanity-mcp](https://www.npmjs.com/package/glin-profanity-mcp) | [![npm](https://img.shields.io/npm/v/glin-profanity-mcp?style=flat-square)](https://www.npmjs.com/package/glin-profanity-mcp) | MCP server for AI assistants (Claude, Cursor, etc.) |
+| [openclaw-profanity](https://www.npmjs.com/package/openclaw-profanity) | [![npm](https://img.shields.io/npm/v/openclaw-profanity?style=flat-square)](https://www.npmjs.com/package/openclaw-profanity) | Plugin for OpenClaw/Moltbot AI agents |
+
+---
+
 ## Why Glin Profanity?
 
 Most profanity filters are trivially bypassed. Users type `f*ck`, `sh1t`, or `fսck` (with Cyrillic characters) and walk right through. Glin Profanity doesn't just check against a word list—it understands evasion tactics.
@@ -290,6 +303,80 @@ Open **http://localhost:4000** to access the testing interface with:
 | Education | Maintain safe learning environments |
 | Enterprise | Filter internal communications |
 | AI/ML pipelines | Clean training data before model ingestion |
+
+---
+
+## MCP Server for AI Assistants
+
+Glin Profanity includes an MCP (Model Context Protocol) server that enables AI assistants like **Claude Desktop**, **Cursor**, **Windsurf**, and other MCP-compatible tools to use profanity detection as a native tool.
+
+### Quick Setup
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "glin-profanity": {
+      "command": "npx",
+      "args": ["-y", "glin-profanity-mcp"]
+    }
+  }
+}
+```
+
+**Cursor** (`.cursor/mcp.json`):
+```json
+{
+  "mcpServers": {
+    "glin-profanity": {
+      "command": "npx",
+      "args": ["-y", "glin-profanity-mcp"]
+    }
+  }
+}
+```
+
+### Available Tools (12)
+
+| Tool | Description |
+|------|-------------|
+| `check_profanity` | Check text for profanity with detailed results |
+| `censor_text` | Censor profanity with configurable replacement |
+| `analyze_context` | Context-aware analysis with domain whitelists |
+| `batch_check` | Check multiple texts in one operation |
+| `validate_content` | Content validation with safety scoring (0-100) |
+| `detect_obfuscation` | Detect leetspeak and Unicode tricks |
+| `get_supported_languages` | List all 24 supported languages |
+| `explain_match` | Explain why text was flagged with reasoning |
+| `suggest_alternatives` | Suggest clean alternatives for profane content |
+| `analyze_corpus` | Analyze up to 500 texts for moderation stats |
+| `compare_strictness` | Compare results across strictness levels |
+| `create_regex_pattern` | Generate regex patterns for custom detection |
+
+**Plus 4 workflow prompts** and **5 reference resources** for guided AI interactions.
+
+### Example Prompts for AI Assistants
+
+```
+"Check this user comment for profanity using glin-profanity"
+"Validate this blog post content with high strictness"
+"Batch check these 50 messages for any inappropriate content"
+"Analyze this medical text with the medical domain context"
+```
+
+See the full [MCP documentation](./packages/mcp/README.md) for setup instructions and examples.
+
+---
+
+## Roadmap
+
+See our [ROADMAP.md](./ROADMAP.md) for planned features including:
+
+- Streaming support for real-time chat
+- OpenAI function calling integration
+- Image OCR for profanity in images
+- Edge deployment (Cloudflare Workers, Vercel Edge)
+- More framework integrations
 
 ---
 

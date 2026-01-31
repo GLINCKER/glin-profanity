@@ -1,0 +1,79 @@
+{
+  "name": "glin-profanity-mcp",
+  "version": "1.0.0",
+  "description": "MCP (Model Context Protocol) server for glin-profanity - enables AI assistants like Claude, Cursor, and others to use profanity detection as a tool",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "glin-profanity-mcp": "./dist/index.js",
+    "glin-profanity-mcp-http": "./dist/http.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "default": "./dist/http.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "start:http": "node dist/http.js",
+    "inspect": "npx @anthropic-ai/mcp-inspector node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "profanity",
+    "filter",
+    "moderation",
+    "ai",
+    "claude",
+    "cursor",
+    "anthropic",
+    "glin-profanity",
+    "content-moderation",
+    "tool",
+    "streaming",
+    "real-time",
+    "http"
+  ],
+  "author": "glinr",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GLINCKER/glin-profanity",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/GLINCKER/glin-profanity/tree/release/packages/mcp",
+  "bugs": {
+    "url": "https://github.com/GLINCKER/glin-profanity/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "glin-profanity": "^3.2.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

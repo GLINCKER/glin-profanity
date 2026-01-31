@@ -17,6 +17,16 @@
         "default": "./dist/index.js"
       }
     },
+    "./react": {
+      "require": {
+        "types": "./dist/react.d.cts",
+        "default": "./dist/react.cjs"
+      },
+      "import": {
+        "types": "./dist/react.d.ts",
+        "default": "./dist/react.js"
+      }
+    },
     "./ml": {
       "require": {
         "types": "./dist/ml/index.d.cts",
@@ -26,12 +36,128 @@
         "types": "./dist/ml/index.d.ts",
         "default": "./dist/ml/index.js"
       }
+    },
+    "./ai": {
+      "require": {
+        "types": "./dist/integrations/index.d.cts",
+        "default": "./dist/integrations/index.cjs"
+      },
+      "import": {
+        "types": "./dist/integrations/index.d.ts",
+        "default": "./dist/integrations/index.js"
+      }
+    },
+    "./ai/openai": {
+      "require": {
+        "types": "./dist/integrations/openai.d.cts",
+        "default": "./dist/integrations/openai.cjs"
+      },
+      "import": {
+        "types": "./dist/integrations/openai.d.ts",
+        "default": "./dist/integrations/openai.js"
+      }
+    },
+    "./ai/langchain": {
+      "require": {
+        "types": "./dist/integrations/langchain.d.cts",
+        "default": "./dist/integrations/langchain.cjs"
+      },
+      "import": {
+        "types": "./dist/integrations/langchain.d.ts",
+        "default": "./dist/integrations/langchain.js"
+      }
+    },
+    "./ai/vercel": {
+      "require": {
+        "types": "./dist/integrations/vercel-ai.d.cts",
+        "default": "./dist/integrations/vercel-ai.cjs"
+      },
+      "import": {
+        "types": "./dist/integrations/vercel-ai.d.ts",
+        "default": "./dist/integrations/vercel-ai.js"
+      }
+    },
+    "./ai/semantic": {
+      "require": {
+        "types": "./dist/integrations/semantic.d.cts",
+        "default": "./dist/integrations/semantic.cjs"
+      },
+      "import": {
+        "types": "./dist/integrations/semantic.d.ts",
+        "default": "./dist/integrations/semantic.js"
+      }
+    },
+    "./ml/transformers": {
+      "require": {
+        "types": "./dist/ml/transformers.d.cts",
+        "default": "./dist/ml/transformers.cjs"
+      },
+      "import": {
+        "types": "./dist/ml/transformers.d.ts",
+        "default": "./dist/ml/transformers.js"
+      }
+    },
+    "./multimodal": {
+      "require": {
+        "types": "./dist/multimodal/index.d.cts",
+        "default": "./dist/multimodal/index.cjs"
+      },
+      "import": {
+        "types": "./dist/multimodal/index.d.ts",
+        "default": "./dist/multimodal/index.js"
+      }
+    },
+    "./ocr": {
+      "require": {
+        "types": "./dist/multimodal/ocr.d.cts",
+        "default": "./dist/multimodal/ocr.cjs"
+      },
+      "import": {
+        "types": "./dist/multimodal/ocr.d.ts",
+        "default": "./dist/multimodal/ocr.js"
+      }
+    },
+    "./audio": {
+      "require": {
+        "types": "./dist/multimodal/audio.d.cts",
+        "default": "./dist/multimodal/audio.cjs"
+      },
+      "import": {
+        "types": "./dist/multimodal/audio.d.ts",
+        "default": "./dist/multimodal/audio.js"
+      }
+    },
+    "./frameworks": {
+      "require": {
+        "types": "./dist/frameworks/index.d.cts",
+        "default": "./dist/frameworks/index.cjs"
+      },
+      "import": {
+        "types": "./dist/frameworks/index.d.ts",
+        "default": "./dist/frameworks/index.js"
+      }
+    },
+    "./nextjs": {
+      "require": {
+        "types": "./dist/frameworks/nextjs.d.cts",
+        "default": "./dist/frameworks/nextjs.cjs"
+      },
+      "import": {
+        "types": "./dist/frameworks/nextjs.d.ts",
+        "default": "./dist/frameworks/nextjs.js"
+      }
     }
   },
   "peerDependencies": {
     "react": ">=16.8.0",
     "@tensorflow-models/toxicity": ">=1.2.0",
-    "@tensorflow/tfjs": ">=4.0.0"
+    "@tensorflow/tfjs": ">=4.0.0",
+    "zod": ">=3.0.0",
+    "openai": ">=4.0.0",
+    "@langchain/core": ">=0.1.0",
+    "ai": ">=3.0.0",
+    "@xenova/transformers": ">=2.0.0",
+    "tesseract.js": ">=5.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -41,6 +167,24 @@
       "optional": true
     },
     "@tensorflow-models/toxicity": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    },
+    "@langchain/core": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    },
+    "@xenova/transformers": {
+      "optional": true
+    },
+    "tesseract.js": {
       "optional": true
     }
   },
@@ -105,6 +249,14 @@
     "profanity-moderation-framework",
     "profanity-moderation-plugin",
     "profanity-moderation-module",
+    "openai",
+    "openai-function-calling",
+    "langchain",
+    "langchain-tool",
+    "vercel-ai",
+    "ai-sdk",
+    "semantic-analysis",
+    "embeddings",
     "tensorflow",
     "tensorflowjs",
     "ml",
@@ -115,7 +267,22 @@
     "neural-network",
     "leetspeak",
     "unicode",
-    "homoglyph"
+    "homoglyph",
+    "transformers",
+    "transformers-js",
+    "huggingface",
+    "onnx",
+    "ocr",
+    "tesseract",
+    "image-moderation",
+    "audio-moderation",
+    "speech-to-text",
+    "whisper",
+    "nextjs",
+    "nextjs-middleware",
+    "server-actions",
+    "content-moderation",
+    "multimodal"
   ],
   "author": "glinr",
   "license": "ISC",

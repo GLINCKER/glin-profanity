@@ -40,8 +40,8 @@ export type {
   ProfanityCheckResult
 } from './core/types';
 
-// React-specific
-export { useProfanityChecker } from './hooks/useProfanityChecker';
+// React hook is available via 'glin-profanity/react' subpath
+// import { useProfanityChecker } from 'glin-profanity/react';
 
 // Advanced/Low-level
 export { Filter } from './filters/Filter';

@@ -43,3 +43,16 @@ export type {
   MLDetectorConfig,
   HybridAnalysisResult,
 } from './types';
+
+// Transformers.js integration
+export {
+  createMLChecker,
+  createHybridChecker,
+  isTransformersAvailable,
+  preloadModel,
+  RECOMMENDED_MODELS,
+  type MLCheckerConfig,
+  type HybridCheckerConfig,
+  type MLCheckResult,
+  type HybridCheckResult,
+} from './transformers';
