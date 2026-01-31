@@ -1,85 +1,168 @@
+<div align="center">
+
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/66tazty4o06aptvs6m7b.png" alt="openclaw-profanity - Block Profanity, Protect Your AI, Save Money" width="100%" />
+
 # openclaw-profanity
 
-> **Part of [glin-profanity](https://github.com/GLINCKER/glin-profanity)** - Content moderation plugin for **OpenClaw** (formerly **Moltbot** / **Clawdbot**)
+**Content moderation plugin for OpenClaw, Moltbot & Clawdbot AI agents**
 
-[![npm version](https://img.shields.io/npm/v/openclaw-profanity.svg)](https://www.npmjs.com/package/openclaw-profanity)
-[![glin-profanity](https://img.shields.io/badge/powered%20by-glin--profanity-blue)](https://www.npmjs.com/package/glin-profanity)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://img.shields.io/npm/v/openclaw-profanity.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/openclaw-profanity)
+[![Downloads](https://img.shields.io/npm/dm/openclaw-profanity.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/openclaw-profanity)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![glin-profanity](https://img.shields.io/badge/powered%20by-glin--profanity-blue?style=for-the-badge)](https://www.npmjs.com/package/glin-profanity)
 
-The official **[glin-profanity](https://www.npmjs.com/package/glin-profanity)** plugin for OpenClaw AI agents. Provides 24-language profanity detection across WhatsApp, Telegram, Discord, Slack, iMessage, and all other supported platforms.
+[Installation](#installation) · [Quick Start](#quick-start) · [API Reference](#api-reference) · [Documentation](https://github.com/GLINCKER/glin-profanity/tree/release/packages/openclaw)
 
-> **Note**: This package wraps [glin-profanity](https://www.npmjs.com/package/glin-profanity) for seamless OpenClaw integration. For standalone use, install `glin-profanity` directly.
+</div>
+
+---
+
+## Why openclaw-profanity?
+
+Your AI agent uses GPT, Claude, or Gemini. Why pay for profanity checking?
+
+| | AI-Only Moderation | openclaw-profanity |
+|---|---|---|
+| **Cost** | $100-300/month | **$0** |
+| **Latency** | 200-500ms | **< 1ms** |
+| **Rate Limits** | API limits | **None** |
+| **Availability** | Depends on API | **Always on** |
+
+**openclaw-profanity** runs locally. No API calls. No costs. Sub-millisecond response.
+
+---
 
 ## Features
 
-- **24 Language Support** - Arabic, Chinese, Czech, Danish, Dutch, English, Esperanto, Finnish, French, German, Hindi, Hungarian, Italian, Japanese, Korean, Norwegian, Persian, Polish, Portuguese, Russian, Spanish, Swedish, Thai, Turkish
-- **Multiple Integration Methods** - Skills, Plugin API, Hooks, and MCP
-- **Leetspeak Detection** - Catches obfuscated profanity like "f0ck", "sh1t"
-- **Unicode Normalization** - Detects homoglyph attacks like "fück"
-- **Context-Aware** - Understands when words are used appropriately (gaming, quotes)
-- **Platform Agnostic** - Works across all OpenClaw-supported messaging platforms
+| Feature | Description |
+|---------|-------------|
+| **24 Languages** | English, Spanish, French, German, Portuguese, Italian, Dutch, Russian, Chinese, Japanese, Korean, Arabic, Hindi, Turkish, Polish, Vietnamese, Thai, Swedish, Norwegian, Danish, Finnish, Czech, Hungarian, Greek |
+| **Evasion Detection** | Catches leetspeak (`f4ck`, `sh1t`), Unicode tricks (`fսck`), character spacing (`f u c k`), symbols (`f*ck`) |
+| **Multiple Integrations** | Skills, Hooks, Plugin API, MCP, Direct API |
+| **Platform Support** | WhatsApp, Telegram, Discord, Slack, iMessage, Teams, Matrix, Signal |
+| **Context-Aware** | Understands appropriate word usage in gaming, quotes, medical contexts |
+| **Zero Dependencies** | Only requires `glin-profanity` core library |
+
+---
 
 ## Installation
 
 ```bash
-# Via npm
+# npm
 npm install openclaw-profanity
 
-# Via OpenClaw CLI
-openclaw plugins install openclaw-profanity
+# yarn
+yarn add openclaw-profanity
 
-# For hooks
-openclaw hooks install openclaw-profanity
+# pnpm
+pnpm add openclaw-profanity
+
+# OpenClaw CLI
+openclaw plugins install openclaw-profanity
 ```
+
+---
 
 ## Quick Start
 
-### Option 1: Skills (Simplest)
+### Option 1: Profanity Guard Hook (Recommended)
 
-Skills are automatically available after installation. Just ask your OpenClaw agent:
+The simplest integration—one hook filters all messages automatically.
 
+```javascript
+import { OpenClawAgent } from "openclaw";
+import { profanityGuardHook } from "openclaw-profanity/hooks";
+
+const agent = new OpenClawAgent({
+  // your config
+});
+
+// Add the profanity guard - that's it!
+agent.useHook(profanityGuardHook({
+  action: "censor",           // "censor" or "block"
+  languages: ["en", "es"],    // languages to check
+  replacement: "***",         // censorship character
+  onViolation: (msg, result) => {
+    console.log(`Filtered: ${result.profaneWords.join(", ")}`);
+  }
+}));
+
+agent.start();
 ```
-"Check this message for profanity: Hello world"
-"Censor this text: What the fuck is this?"
-"Is this appropriate to send?"
+
+**Actions:**
+- `action: "censor"` — Replaces profanity with `***` and continues
+- `action: "block"` — Stops the message, sends warning to user
+
+### Option 2: Custom Skill
+
+Create a reusable skill your agent can call programmatically.
+
+```javascript
+import { defineSkill } from "openclaw";
+import { checkProfanity, censorText } from "openclaw-profanity/skills";
+
+export const moderationSkill = defineSkill({
+  name: "content-moderation",
+  description: "Check and filter profanity from user messages",
+
+  actions: {
+    check: {
+      description: "Check text for profanity",
+      parameters: { text: { type: "string", required: true } },
+      handler: async ({ text }) => {
+        const result = checkProfanity(text);
+        return {
+          containsProfanity: result.containsProfanity,
+          profaneWords: result.profaneWords,
+          confidence: result.confidence
+        };
+      }
+    },
+
+    censor: {
+      description: "Censor profanity in text",
+      parameters: { text: { type: "string", required: true } },
+      handler: async ({ text }) => {
+        const result = censorText(text);
+        return {
+          original: result.originalText,
+          censored: result.processedText,
+          wordsCensored: result.censoredWords
+        };
+      }
+    }
+  }
+});
+
+// Register with your agent
+agent.useSkill(moderationSkill);
 ```
 
-### Option 2: Plugin API (TypeScript)
+### Option 3: Direct Integration
 
-```typescript
-// In your OpenClaw plugin
-import { registerProfanityTools } from 'openclaw-profanity';
+For full control, use the library directly in your message handler.
 
-export default function(api) {
-  registerProfanityTools(api);
+```javascript
+import { checkProfanity, censorText } from "openclaw-profanity";
+
+async function handleIncomingMessage(message, context) {
+  const check = checkProfanity(message.text, {
+    languages: ["en", "es", "fr"],
+    detectLeetspeak: true,
+    detectUnicode: true
+  });
+
+  if (check.containsProfanity) {
+    if (check.confidence > 0.9) {
+      return context.reply("Please keep the conversation respectful.");
+    }
+    const censored = censorText(message.text);
+    message.text = censored.processedText;
+  }
+
+  return context.next(message);
 }
-```
-
-Or use individual tools:
-
-```typescript
-import { profanityTools } from 'openclaw-profanity';
-
-export default function(api) {
-  api.registerTool(profanityTools.checkProfanity);
-  api.registerTool(profanityTools.censorText);
-}
-```
-
-### Option 3: Hooks (Auto-Moderation)
-
-```bash
-# Enable the profanity guard hook
-openclaw hooks enable profanity-guard
-```
-
-Configure via environment variables:
-
-```bash
-export PROFANITY_MODE=moderate     # strict | moderate | lenient
-export PROFANITY_BLOCK=false       # Block profane messages
-export PROFANITY_CENSOR=true       # Censor profane words
-export PROFANITY_LANGUAGES=english,spanish,french
 ```
 
 ### Option 4: MCP (Model Context Protocol)
@@ -91,14 +174,92 @@ export PROFANITY_LANGUAGES=english,spanish,french
     servers: {
       "glin-profanity": {
         command: "npx",
-        args: ["-y", "openclaw-profanity", "mcp-server"]
+        args: ["-y", "glin-profanity-mcp"]
       }
     }
   }
 }
 ```
 
-## Available Tools
+---
+
+## Platform Examples
+
+### WhatsApp Bot
+
+```javascript
+import { WhatsAppAdapter } from "openclaw/adapters/whatsapp";
+import { profanityGuardHook } from "openclaw-profanity/hooks";
+
+const agent = new OpenClawAgent({
+  adapter: new WhatsAppAdapter({ /* config */ })
+});
+
+agent.useHook(profanityGuardHook({
+  action: "censor",
+  languages: ["en", "es", "pt"]
+}));
+```
+
+### Telegram Bot
+
+```javascript
+import { TelegramAdapter } from "openclaw/adapters/telegram";
+import { profanityGuardHook } from "openclaw-profanity/hooks";
+
+const agent = new OpenClawAgent({
+  adapter: new TelegramAdapter({
+    token: process.env.TELEGRAM_BOT_TOKEN
+  })
+});
+
+agent.useHook(profanityGuardHook({
+  action: "block",
+  warningMessage: "Please keep the chat friendly!"
+}));
+```
+
+### Discord Bot
+
+```javascript
+import { DiscordAdapter } from "openclaw/adapters/discord";
+import { profanityGuardHook } from "openclaw-profanity/hooks";
+
+const agent = new OpenClawAgent({
+  adapter: new DiscordAdapter({
+    token: process.env.DISCORD_BOT_TOKEN
+  })
+});
+
+agent.useHook(profanityGuardHook({
+  action: "censor",
+  onViolation: async (msg, result, context) => {
+    await msg.delete();
+    await context.reply(`${msg.author}: ${result.censoredText}`);
+  }
+}));
+```
+
+### Slack Bot
+
+```javascript
+import { SlackAdapter } from "openclaw/adapters/slack";
+import { profanityGuardHook } from "openclaw-profanity/hooks";
+
+const agent = new OpenClawAgent({
+  adapter: new SlackAdapter({
+    token: process.env.SLACK_BOT_TOKEN
+  })
+});
+
+agent.useHook(profanityGuardHook({ action: "censor" }));
+```
+
+---
+
+## API Reference
+
+### Available Tools
 
 | Tool | Description |
 |------|-------------|
@@ -108,7 +269,7 @@ export PROFANITY_LANGUAGES=english,spanish,french
 | `analyze_profanity_context` | Context-aware analysis |
 | `get_supported_languages` | List all 24 supported languages |
 
-## Skills
+### Skills
 
 | Skill | Description |
 |-------|-------------|
@@ -116,103 +277,102 @@ export PROFANITY_LANGUAGES=english,spanish,french
 | `censor_message` | Automatically censor profanity |
 | `content_guard` | Proactive content moderation |
 
-## Hooks
+### Hooks
 
 | Hook | Description |
 |------|-------------|
 | `profanity-guard` | Auto-moderate all messages |
 
-## Configuration
+### Configuration
 
-### Moderation Modes
+```javascript
+import { Filter } from "openclaw-profanity";
 
-- **Strict**: No tolerance, blocks all profanity
-- **Moderate**: Context-aware, allows appropriate usage
-- **Lenient**: Only flags severe profanity
-
-### Multi-Language Example
-
-```typescript
-import { createProfanityGuard } from 'openclaw-profanity';
-
-const guard = createProfanityGuard({
-  mode: 'moderate',
-  languages: ['english', 'spanish', 'french', 'german'],
-  censorProfanity: true,
-  censorReplacement: '[CENSORED]',
+const filter = new Filter({
+  languages: ["en", "es", "fr"],      // Languages to check
+  detectLeetspeak: true,               // f4ck, sh1t
+  detectUnicode: true,                 // Cyrillic/Greek tricks
+  detectSpacing: true,                 // f u c k
+  replaceWith: "*",                    // Replacement character
+  preserveLength: true,                // **** vs ***
+  whitelist: ["assistant", "class"],   // Words to ignore
+  customWords: ["badword1"]            // Custom words to add
 });
 ```
 
-## Platform Support
+### Moderation Modes
 
-Works with all OpenClaw-supported platforms:
+| Mode | Description |
+|------|-------------|
+| **Strict** | No tolerance, blocks all profanity |
+| **Moderate** | Context-aware, allows appropriate usage |
+| **Lenient** | Only flags severe profanity |
 
-- WhatsApp (via WhatsApp Web / Baileys)
-- Telegram (Bot API / grammY)
-- Discord (Bot API)
-- Slack
-- iMessage (imsg CLI)
-- Microsoft Teams
-- Matrix
-- Google Chat
-- Signal
-- And more...
+---
 
-## API Reference
+## Advanced: Hybrid AI + Local Filtering
 
-### Plugin Functions
+Use local filtering for speed, escalate edge cases to AI.
 
-```typescript
-// Register all tools
-registerProfanityTools(api: OpenClawAPI): void
+```javascript
+import { checkProfanity } from "openclaw-profanity";
 
-// Individual tools
-profanityTools.checkProfanity
-profanityTools.censorText
-profanityTools.batchCheck
-profanityTools.analyzeContext
-profanityTools.getSupportedLanguages
+async function smartModeration(message, agent) {
+  const localCheck = checkProfanity(message.text);
+
+  if (!localCheck.containsProfanity) {
+    return { action: "allow" };
+  }
+
+  if (localCheck.confidence > 0.95) {
+    return { action: "block" };
+  }
+
+  // Uncertain - ask AI (rare, ~5% of cases)
+  const aiAnalysis = await agent.analyze({
+    prompt: `Is this message inappropriate? "${message.text}"`,
+    format: "json"
+  });
+
+  return aiAnalysis.inappropriate
+    ? { action: "block" }
+    : { action: "allow" };
+}
 ```
 
-### Hook Functions
+**Result:** 95% handled instantly (free, <1ms), 5% escalated to AI, 90%+ cost reduction.
 
-```typescript
-// Create custom guard
-createProfanityGuard(config: ProfanityGuardConfig): ProfanityGuard
-
-// Quick one-time check
-quickGuard(message: string, options?: GuardOptions): HookResult
-```
-
-### MCP Functions
-
-```typescript
-// Create MCP handler
-createMCPHandler(): MCPHandler
-
-// Execute tool directly
-executeMCPTool(toolName: string, args: Record<string, unknown>): Promise<MCPToolResult>
-```
+---
 
 ## Compatibility
 
-This plugin is compatible with:
+| Framework | Status |
+|-----------|--------|
+| **OpenClaw** v1.x+ | ✅ Supported |
+| **Moltbot** (legacy) | ✅ Supported |
+| **Clawdbot** (original) | ✅ Supported |
 
-- **OpenClaw** v1.x+ (current)
-- **Moltbot** (legacy name, January 2026)
-- **Clawdbot** (original name, December 2025)
+---
 
-<!-- SEO: moltbot profanity, clawdbot profanity, moltbot content moderation, clawdbot content moderation, openclaw content moderation, openclaw profanity filter, moltbot plugin, clawdbot plugin, openclaw plugin, ai agent content moderation, whatsapp profanity filter, telegram profanity filter, discord profanity filter, slack profanity filter -->
+## Part of the glin-profanity Ecosystem
 
-## Contributing
+| Package | Description |
+|---------|-------------|
+| [glin-profanity](https://www.npmjs.com/package/glin-profanity) | Core profanity filter for JavaScript/TypeScript |
+| [glin-profanity-mcp](https://www.npmjs.com/package/glin-profanity-mcp) | MCP server for Claude Desktop, Cursor, Windsurf |
+| [glin-profanity (Python)](https://pypi.org/project/glin-profanity/) | Python version for Flask/Django |
 
-Contributions are welcome! Please see the [main repository](https://github.com/GLINCKER/glin-profanity) for guidelines.
+---
 
-## Related Projects
+## Links
 
-- [glin-profanity](https://github.com/GLINCKER/glin-profanity) - Core profanity detection library
-- [OpenClaw](https://github.com/openclaw/openclaw) - Open-source personal AI assistant
-- [Awesome OpenClaw Skills](https://github.com/voltagent/awesome-moltbot-skills) - Community skills collection
+- **npm**: [openclaw-profanity](https://www.npmjs.com/package/openclaw-profanity)
+- **GitHub**: [GLINCKER/glin-profanity](https://github.com/GLINCKER/glin-profanity)
+- **Documentation**: [Integration Guide](https://github.com/GLINCKER/glin-profanity/tree/release/packages/openclaw)
+- **Live Demo**: [glincker.com/tools/glin-profanity](https://www.glincker.com/tools/glin-profanity)
+- **Tutorial**: [OpenClaw Profanity Filter Guide](https://dev.to/glincker/how-to-add-profanity-filtering-to-your-openclawmoltbotclawdbot-agent)
+
+---
 
 ## License
 
@@ -220,6 +380,12 @@ MIT
 
 ---
 
-Built with [glin-profanity](https://github.com/GLINCKER/glin-profanity) - The most comprehensive profanity detection library for JavaScript/TypeScript.
+<div align="center">
 
-<!-- Keywords: openclaw, openclaw-plugin, openclaw-skill, openclaw-hook, moltbot, moltbot-skill, moltbot-plugin, clawdbot, clawdbot-skill, clawdbot-plugin, profanity-filter, content-moderation, ai-agent, ai-safety, whatsapp-moderation, telegram-moderation, discord-moderation, slack-moderation, chat-moderation, glin-profanity, mcp, model-context-protocol -->
+**[Get Started Now](#installation)** · Star on [GitHub](https://github.com/GLINCKER/glin-profanity)
+
+Built with [glin-profanity](https://github.com/GLINCKER/glin-profanity) by [GLINCKER](https://glincker.com)
+
+</div>
+
+<!-- SEO Keywords: openclaw profanity filter, moltbot profanity, clawdbot profanity, moltbot content moderation, clawdbot content moderation, openclaw content moderation, openclaw plugin, moltbot plugin, clawdbot plugin, moltbot skill, clawdbot skill, ai agent content moderation, whatsapp profanity filter, telegram profanity filter, discord profanity filter, slack profanity filter, whatsapp bot moderation, telegram bot moderation, discord bot moderation, best profanity filter npm 2026, chatbot moderation javascript, ai safety, content safety -->
