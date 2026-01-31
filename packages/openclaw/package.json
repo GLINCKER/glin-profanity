@@ -1,6 +1,6 @@
 {
   "name": "openclaw-profanity",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Content moderation plugin for OpenClaw (formerly Moltbot/Clawdbot) - Profanity detection in 24 languages for AI agents",
   "keywords": [
     "openclaw",
@@ -73,7 +73,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "glin-profanity": "^3.2.0"
+    "glin-profanity": "^3.2.1"
   },
   "peerDependencies": {
     "@sinclair/typebox": ">=0.32.0"
