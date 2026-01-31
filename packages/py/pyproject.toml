@@ -95,9 +95,14 @@ path = "glin_profanity/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["glin_profanity"]
 
+[tool.hatch.build.targets.wheel.shared-data]
+# Include dictionary files in the wheel
+"glin_profanity/data/dictionaries" = "glin_profanity/data/dictionaries"
+
 [tool.hatch.build.targets.sdist]
 include = [
     "/glin_profanity",
+    "/glin_profanity/data/dictionaries/*.json",
     "/README.md",
 ]
 exclude = [

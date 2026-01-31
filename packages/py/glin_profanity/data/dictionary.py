@@ -38,11 +38,16 @@ class DictionaryLoader:
 
     def __init__(self) -> None:
         """Initialize dictionary loader."""
-        # Get path to shared dictionaries (relative to this file)
+        # Get path to bundled dictionaries (inside the package)
         current_dir = Path(__file__).parent
-        self._dict_path = (
-            current_dir.parent.parent.parent.parent / "shared" / "dictionaries"
-        )
+        self._dict_path = current_dir / "dictionaries"
+
+        # Fallback to shared dictionaries for development
+        if not self._dict_path.exists():
+            self._dict_path = (
+                current_dir.parent.parent.parent.parent / "shared" / "dictionaries"
+            )
+
         self._dictionaries: dict[str, list[str]] = {}
 
     def _raise_format_error(self, filename: str) -> None:
