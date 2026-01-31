@@ -41,6 +41,16 @@ const GAMING_POSITIVE = new Set([
   'build', 'loadout', 'strategy', 'tactic', 'play', 'move', 'combo'
 ]);
 
+// Words that are acceptable in gaming contexts but might be flagged otherwise
+const GAMING_ACCEPTABLE_WORDS = new Set([
+  'kill', 'killer', 'killed', 'killing',
+  'shoot', 'shot', 'shooting',
+  'die', 'dying', 'died', 'dead', 'death',
+  'badass', 'sick', 'insane', 'crazy', 'mad', 'beast', 'savage',
+  'suck', 'sucks',
+  'wtf', 'omg', 'hell', 'damn', 'crap'
+]);
+
 // Common positive phrases that might contain flagged words
 const POSITIVE_PHRASES = new Map([
   ['the bomb', 0.9], // "this movie is the bomb"
@@ -69,7 +79,9 @@ export class ContextAnalyzer {
   constructor(config: ContextConfig) {
     this.contextWindow = config.contextWindow;
     this.language = config.language;
-    this.domainWhitelists = new Set(config.domainWhitelists || []);
+    this.domainWhitelists = new Set(
+      (config.domainWhitelists || []).map(word => word.toLowerCase())
+    );
   }
 
   /**
@@ -122,12 +134,10 @@ export class ContextAnalyzer {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private checkPhraseContext(contextText: string, matchWord: string): ContextAnalysisResult | null {
-    // TODO: Use matchWord for more specific phrase matching in the future
     // Check positive phrases
     for (const [phrase, score] of POSITIVE_PHRASES.entries()) {
-      if (contextText.includes(phrase)) {
+      if (phrase.includes(matchWord) && contextText.includes(phrase)) {
         return {
           contextScore: score,
           reason: `Positive phrase detected: "${phrase}"`,
@@ -136,7 +146,7 @@ export class ContextAnalyzer {
       }
     }
 
-    // Check negative phrases
+    // Check negative phrases (prefixes like "you are" that introduce profanity)
     for (const [phrase, score] of NEGATIVE_PHRASES.entries()) {
       if (contextText.includes(phrase)) {
         return {
@@ -150,25 +160,36 @@ export class ContextAnalyzer {
     return null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private isDomainWhitelisted(contextWords: string[], matchWord: string): boolean {
-    // TODO: Use matchWord for domain-specific filtering in the future
+    const normalizedMatchWord = matchWord.toLowerCase();
+
     // Check if any domain whitelist words are present
     for (const word of contextWords) {
-      if (this.domainWhitelists.has(word) || GAMING_POSITIVE.has(word)) {
+      // Check user-defined domain whitelists (permissive)
+      if (this.domainWhitelists.has(word)) {
         return true;
+      }
+
+      // Check internal gaming whitelist (restrictive)
+      if (GAMING_POSITIVE.has(word)) {
+        if (GAMING_ACCEPTABLE_WORDS.has(normalizedMatchWord)) {
+          return true;
+        }
       }
     }
     return false;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private generateReason(score: number, contextWords: string[]): string {
-    // TODO: Use contextWords for more detailed reasoning in the future
+    const foundPositive = Array.from(new Set(contextWords.filter(word => POSITIVE_INDICATORS.has(word))));
+    const foundNegative = Array.from(new Set(contextWords.filter(word => NEGATIVE_INDICATORS.has(word))));
+
     if (score >= 0.7) {
-      return 'Positive context detected - likely not profanity';
+      const details = foundPositive.length > 0 ? ` (found: ${foundPositive.join(', ')})` : '';
+      return `Positive context detected${details} - likely not profanity`;
     } else if (score <= 0.3) {
-      return 'Negative context detected - likely profanity';
+      const details = foundNegative.length > 0 ? ` (found: ${foundNegative.join(', ')})` : '';
+      return `Negative context detected${details} - likely profanity`;
     } else {
       return 'Neutral context - uncertain classification';
     }
@@ -253,7 +274,7 @@ export class ContextAnalyzer {
    * Updates the domain whitelist for this analyzer instance
    */
   updateDomainWhitelist(newWhitelist: string[]): void {
-    this.domainWhitelists = new Set(newWhitelist);
+    this.domainWhitelists = new Set(newWhitelist.map(word => word.toLowerCase()));
   }
 
   /**
