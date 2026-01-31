@@ -1,0 +1,281 @@
+name: 🦞 Release OpenClaw Plugin
+
+on:
+  push:
+    branches: [main, release]
+    paths:
+      - 'packages/openclaw/**'
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+concurrency:
+  group: release-openclaw-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Detect if release is needed
+  detect-release:
+    name: 🔍 Detect OpenClaw Release
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      release_type: ${{ steps.check.outputs.release_type }}
+      current_version: ${{ steps.check.outputs.current_version }}
+      new_version: ${{ steps.check.outputs.new_version }}
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: 🔍 Check for release
+        id: check
+        run: |
+          # Manual workflow dispatch
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "release_type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+            echo "Manual release triggered: ${{ github.event.inputs.release_type }}"
+          else
+            # Check if openclaw package changed
+            CHANGED=$(git diff --name-only HEAD~1 HEAD | grep "^packages/openclaw/" || true)
+            if [ -n "$CHANGED" ]; then
+              echo "should_release=true" >> $GITHUB_OUTPUT
+              echo "release_type=patch" >> $GITHUB_OUTPUT
+              echo "OpenClaw package changes detected"
+            else
+              echo "should_release=false" >> $GITHUB_OUTPUT
+              echo "No OpenClaw changes detected"
+            fi
+          fi
+
+          # Get current version
+          CURRENT_VERSION=$(node -p "require('./packages/openclaw/package.json').version")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          # Calculate new version
+          if [ "${{ github.event.inputs.release_type }}" = "major" ]; then
+            NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. '{print $1+1".0.0"}')
+          elif [ "${{ github.event.inputs.release_type }}" = "minor" ]; then
+            NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. '{print $1"."$2+1".0"}')
+          else
+            NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. '{print $1"."$2"."$3+1}')
+          fi
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $CURRENT_VERSION -> $NEW_VERSION"
+
+  # Build and test
+  build:
+    name: 🏗️ Build OpenClaw Plugin
+    runs-on: ubuntu-latest
+    needs: detect-release
+    if: needs.detect-release.outputs.should_release == 'true'
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📦 Install root dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: 📦 Install OpenClaw dependencies
+        working-directory: packages/openclaw
+        run: npm install --legacy-peer-deps
+
+      - name: 🧪 Run tests
+        working-directory: packages/openclaw
+        run: npm test
+
+      - name: 🏗️ Build package
+        working-directory: packages/openclaw
+        run: |
+          npm run build
+          npm pack
+
+      - name: 💾 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openclaw-package-${{ github.sha }}
+          path: packages/openclaw/*.tgz
+          retention-days: 7
+
+  # Publish to npm
+  publish-npm:
+    name: 📦 Publish to npm
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    needs: [detect-release, build]
+    if: needs.detect-release.outputs.should_release == 'true'
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: 🔧 Upgrade npm for OIDC support
+        run: npm install -g npm@latest
+
+      - name: 📈 Bump version
+        working-directory: packages/openclaw
+        run: |
+          npm version ${{ needs.detect-release.outputs.new_version }} --no-git-tag-version
+
+      - name: 📦 Install and build
+        working-directory: packages/openclaw
+        run: |
+          npm install --legacy-peer-deps
+          npm run build
+
+      - name: 🔍 Check if version exists
+        id: check_version
+        working-directory: packages/openclaw
+        run: |
+          VERSION=${{ needs.detect-release.outputs.new_version }}
+          if npm view openclaw-profanity@$VERSION version 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Version $VERSION already exists on npm"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Version $VERSION is available"
+          fi
+
+      - name: 📦 Publish to npm
+        if: steps.check_version.outputs.exists == 'false'
+        working-directory: packages/openclaw
+        run: |
+          # Using OIDC trusted publisher - no token needed
+          # --provenance adds verified build attestation
+          npm publish --provenance --access public
+
+  # Create GitHub release
+  github-release:
+    name: 🏷️ GitHub Release
+    runs-on: ubuntu-latest
+    needs: [detect-release, publish-npm]
+    if: needs.detect-release.outputs.should_release == 'true'
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: openclaw-package-${{ github.sha }}
+          path: ./artifacts/
+
+      - name: 🏷️ Create Git Tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          TAG_NAME="openclaw-v${{ needs.detect-release.outputs.new_version }}"
+
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "⚠️ Tag $TAG_NAME already exists"
+          else
+            git tag $TAG_NAME
+            git push origin $TAG_NAME
+            echo "✅ Created tag $TAG_NAME"
+          fi
+
+      - name: 📝 Generate Release Notes
+        run: |
+          VERSION="${{ needs.detect-release.outputs.new_version }}"
+
+          cat > release_notes.md << 'EOF'
+          ## 🦞 OpenClaw Profanity Plugin v$VERSION
+
+          Content moderation plugin for OpenClaw (formerly Moltbot/Clawdbot).
+
+          ### 📦 Installation
+
+          ```bash
+          # Via npm
+          npm install openclaw-profanity
+
+          # Via OpenClaw CLI
+          openclaw plugins install openclaw-profanity
+          ```
+
+          ### ✨ Features
+
+          - **4 Integration Methods**: Skills, Plugin API, Hooks, MCP
+          - **24 Languages**: Full multilingual profanity detection
+          - **Platform Support**: WhatsApp, Telegram, Discord, Slack, iMessage
+          - **Leetspeak Detection**: Catches obfuscated profanity
+          - **Context-Aware**: Understands appropriate word usage
+
+          ### 🔗 Links
+
+          - [npm package](https://www.npmjs.com/package/openclaw-profanity)
+          - [Documentation](https://github.com/GLINCKER/glin-profanity/tree/release/packages/openclaw)
+          - [glin-profanity core](https://www.npmjs.com/package/glin-profanity)
+
+          ---
+
+          🤖 *This release was automatically generated*
+          EOF
+
+          sed -i "s/\$VERSION/$VERSION/g" release_notes.md
+
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: openclaw-v${{ needs.detect-release.outputs.new_version }}
+          name: "openclaw-profanity v${{ needs.detect-release.outputs.new_version }}"
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: ./artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Summary
+  summary:
+    name: 📋 Release Summary
+    runs-on: ubuntu-latest
+    needs: [detect-release, publish-npm, github-release]
+    if: always() && needs.detect-release.outputs.should_release == 'true'
+
+    steps:
+      - name: 📋 Summary
+        run: |
+          echo "## 🦞 OpenClaw Plugin Release" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** openclaw-profanity" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** v${{ needs.detect-release.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Status" >> $GITHUB_STEP_SUMMARY
+          echo "- npm: ${{ needs.publish-npm.result == 'success' && '✅' || '❌' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Release: ${{ needs.github-release.result == 'success' && '✅' || '❌' }}" >> $GITHUB_STEP_SUMMARY

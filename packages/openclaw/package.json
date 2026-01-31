@@ -1,0 +1,106 @@
+{
+  "name": "openclaw-profanity",
+  "version": "1.0.0",
+  "description": "Content moderation plugin for OpenClaw (formerly Moltbot/Clawdbot) - Profanity detection in 24 languages for AI agents",
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "openclaw-skill",
+    "moltbot",
+    "moltbot-skill",
+    "clawdbot",
+    "clawdbot-skill",
+    "profanity",
+    "profanity-filter",
+    "content-moderation",
+    "ai-agent",
+    "ai-safety",
+    "whatsapp-moderation",
+    "telegram-moderation",
+    "discord-moderation",
+    "slack-moderation",
+    "chat-moderation",
+    "glin-profanity",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./skills": {
+      "types": "./dist/skills.d.ts",
+      "import": "./dist/skills.js",
+      "require": "./dist/skills.cjs"
+    },
+    "./hooks": {
+      "types": "./dist/hooks.d.ts",
+      "import": "./dist/hooks.js",
+      "require": "./dist/hooks.cjs"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.js",
+      "require": "./dist/mcp.cjs"
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/plugin.js"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "hooks": [
+      "./hooks/profanity-guard"
+    ]
+  },
+  "files": [
+    "dist",
+    "skills",
+    "hooks",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "glin-profanity": "^3.2.0"
+  },
+  "peerDependencies": {
+    "@sinclair/typebox": ">=0.32.0"
+  },
+  "peerDependenciesMeta": {
+    "@sinclair/typebox": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@sinclair/typebox": "^0.32.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.0.0",
+    "jest": "^30.0.0",
+    "ts-jest": "^29.4.0",
+    "tsup": "^8.2.3",
+    "typescript": "^5.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GLINCKER/glin-profanity",
+    "directory": "packages/openclaw"
+  },
+  "homepage": "https://github.com/GLINCKER/glin-profanity/tree/release/packages/openclaw",
+  "bugs": {
+    "url": "https://github.com/GLINCKER/glin-profanity/issues"
+  },
+  "author": "GLINR",
+  "license": "MIT"
+}
