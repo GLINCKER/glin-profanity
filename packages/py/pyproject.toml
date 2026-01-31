@@ -95,10 +95,6 @@ path = "glin_profanity/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["glin_profanity"]
 
-[tool.hatch.build.targets.wheel.force-include]
-# Bundle dictionary files inside the package
-"glin_profanity/data/dictionaries" = "glin_profanity/data/dictionaries"
-
 [tool.hatch.build.targets.sdist]
 include = [
     "/glin_profanity",
