@@ -122,12 +122,10 @@ export class ContextAnalyzer {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private checkPhraseContext(contextText: string, matchWord: string): ContextAnalysisResult | null {
-    // TODO: Use matchWord for more specific phrase matching in the future
     // Check positive phrases
     for (const [phrase, score] of POSITIVE_PHRASES.entries()) {
-      if (contextText.includes(phrase)) {
+      if (phrase.includes(matchWord) && contextText.includes(phrase)) {
         return {
           contextScore: score,
           reason: `Positive phrase detected: "${phrase}"`,
@@ -138,7 +136,7 @@ export class ContextAnalyzer {
 
     // Check negative phrases
     for (const [phrase, score] of NEGATIVE_PHRASES.entries()) {
-      if (contextText.includes(phrase)) {
+      if (phrase.includes(matchWord) && contextText.includes(phrase)) {
         return {
           contextScore: score,
           reason: `Negative phrase detected: "${phrase}"`,
