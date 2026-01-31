@@ -143,6 +143,13 @@ jobs:
       - name: 🔧 Upgrade npm for OIDC support
         run: npm install -g npm@latest
 
+      - name: 📦 Install root dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: 🏗️ Build glin-profanity (dependency)
+        working-directory: packages/js
+        run: npm run build
+
       - name: 📈 Bump version
         working-directory: packages/mcp
         run: |
