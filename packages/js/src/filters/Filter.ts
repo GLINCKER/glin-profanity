@@ -47,6 +47,7 @@ class Filter {
   private cacheResults: boolean;
   private maxCacheSize: number;
   private cache: Map<string, CheckProfanityResult>;
+  private regexCache: Map<string, RegExp>;
 
   /**
    * Creates a new Filter instance with the specified configuration.
@@ -113,6 +114,7 @@ class Filter {
     this.cacheResults = config?.cacheResults ?? false;
     this.maxCacheSize = config?.maxCacheSize ?? 1000;
     this.cache = new Map();
+    this.regexCache = new Map();
 
     // Build word dictionary
     let words: string[] = [];
@@ -202,6 +204,7 @@ class Filter {
    */
   public clearCache(): void {
     this.cache.clear();
+    this.regexCache.clear();
   }
 
   /**
@@ -292,10 +295,17 @@ class Filter {
   }
 
   private getRegex(word: string): RegExp {
+    if (this.regexCache.has(word)) {
+      const regex = this.regexCache.get(word)!;
+      regex.lastIndex = 0;
+      return regex;
+    }
     const flags = this.caseSensitive ? 'g' : 'gi';
     const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const boundary = this.wordBoundaries ? '\\b' : '';
-    return new RegExp(`${boundary}${escapedWord}${boundary}`, flags);
+    const regex = new RegExp(`${boundary}${escapedWord}${boundary}`, flags);
+    this.regexCache.set(word, regex);
+    return regex;
   }
 
   private isFuzzyToleranceMatch(word: string, text: string): boolean {
