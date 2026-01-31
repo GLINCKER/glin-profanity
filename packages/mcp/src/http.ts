@@ -14,10 +14,15 @@
 
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerAllTools, registerAllResources, registerAllPrompts } from "./server.js";
+
+// Read version from package.json
+const require = createRequire(import.meta.url);
+const packageJson = require("../package.json");
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -72,7 +77,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
       name: "glin-profanity-mcp",
-      version: "1.1.0",
+      version: packageJson.version,
       transport: "streamable-http",
       endpoints: {
         mcp: "/mcp",
@@ -153,7 +158,7 @@ const server = createServer(async (req, res) => {
       if (!sessionId && isInitializeRequest(parsedBody)) {
         const mcpServer = new McpServer({
           name: "glin-profanity",
-          version: "1.1.0",
+          version: packageJson.version,
         });
 
         // Register all tools, resources, and prompts
@@ -212,9 +217,10 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
+  const versionPadded = `v${packageJson.version}`.padStart(7);
   process.stderr.write(`
 ╔═══════════════════════════════════════════════════════════════╗
-║             Glin-Profanity MCP HTTP Server v1.1.0             ║
+║          Glin-Profanity MCP HTTP Server ${versionPadded}             ║
 ╠═══════════════════════════════════════════════════════════════╣
 ║  Server running at: http://${HOST}:${PORT}                         ║
 ║  MCP endpoint:      http://${HOST}:${PORT}/mcp                     ║

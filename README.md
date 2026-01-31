@@ -336,7 +336,7 @@ Glin Profanity includes an MCP (Model Context Protocol) server that enables AI a
 }
 ```
 
-### Available Tools (12)
+### Available Tools (19)
 
 | Tool | Description |
 |------|-------------|
@@ -352,6 +352,13 @@ Glin Profanity includes an MCP (Model Context Protocol) server that enables AI a
 | `analyze_corpus` | Analyze up to 500 texts for moderation stats |
 | `compare_strictness` | Compare results across strictness levels |
 | `create_regex_pattern` | Generate regex patterns for custom detection |
+| `track_user_message` | Track user messages for repeat offender detection |
+| `get_user_profile` | Get moderation profile for a specific user |
+| `get_high_risk_users` | List users with high violation rates |
+| `reset_user_profile` | Reset a user's moderation history |
+| `stream_check` | Real-time streaming profanity check |
+| `stream_batch` | Stream multiple texts with live results |
+| `get_stream_stats` | Get streaming session statistics |
 
 **Plus 4 workflow prompts** and **5 reference resources** for guided AI interactions.
 

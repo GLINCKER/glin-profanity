@@ -6,6 +6,7 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { createRequire } from 'module';
 import { z } from 'zod';
 import {
   checkProfanity,
@@ -13,6 +14,11 @@ import {
   type Language,
   type FilterConfig,
 } from 'glin-profanity';
+
+// Read version from package.json
+const require = createRequire(import.meta.url);
+const packageJson = require('../package.json');
+export const MCP_VERSION: string = packageJson.version;
 
 // ============================================================================
 // CONSTANTS AND SCHEMAS
@@ -533,7 +539,7 @@ export function registerAllTools(server: McpServer): void {
                 },
                 metadata: {
                   checkedAt: new Date().toISOString(),
-                  version: '1.1.0',
+                  version: MCP_VERSION,
                 },
               },
               null,

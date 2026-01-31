@@ -24,16 +24,21 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { createRequire } from 'module';
 import {
   registerAllTools,
   registerAllResources,
   registerAllPrompts,
 } from './server.js';
 
+// Read version from package.json
+const require = createRequire(import.meta.url);
+const packageJson = require('../package.json');
+
 // Create the MCP server
 const server = new McpServer({
   name: 'glin-profanity',
-  version: '1.2.0',
+  version: packageJson.version,
 });
 
 // Register all tools, resources, and prompts

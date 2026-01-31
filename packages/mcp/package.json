@@ -1,6 +1,6 @@
 {
   "name": "glin-profanity-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP (Model Context Protocol) server for glin-profanity - enables AI assistants like Claude, Cursor, and others to use profanity detection as a tool",
   "type": "module",
   "main": "dist/index.js",

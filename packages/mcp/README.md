@@ -14,7 +14,7 @@ The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) is an open s
 
 ## Features
 
-- **12 Powerful Tools** for comprehensive content moderation
+- **19 Powerful Tools** for comprehensive content moderation
 - **4 Workflow Prompts** for guided AI interactions
 - **5 Reference Resources** for configuration and best practices
 - **24 Language Support** - Arabic, Chinese, English, French, German, Spanish, and more
