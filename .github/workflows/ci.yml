@@ -38,12 +38,12 @@ jobs:
       
     steps:
       - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Needed for codecov and semantic-release
           
       - name: 📦 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -88,7 +88,7 @@ jobs:
           fi
           
       - name: 📈 Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           file: ${{ env.PACKAGE_DIR }}/coverage/lcov.info
           flags: glin-profanity
@@ -97,7 +97,7 @@ jobs:
           verbose: true
           
       - name: 💾 Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: build-artifacts-${{ github.sha }}
           path: |
@@ -106,7 +106,7 @@ jobs:
           retention-days: 7
           
       - name: 💾 Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: test-results-${{ github.sha }}
