@@ -1,7 +1,7 @@
 <h1 align="center">GLIN PROFANITY</h1>
 
 <p align="center">
-  <strong>ML-Powered Profanity Detection for the Modern Web</strong>
+  <strong>The Open-Source AI Guardrail. Profanity, PII, Secrets, Soon: Prompt Injection — One Library, One MCP Server, Runs Offline.</strong>
 </p>
 
 <!-- Badges Row 1: Package Info -->
@@ -56,7 +56,13 @@ This monorepo maintains the following packages:
 
 ## Why Glin Profanity?
 
-Most profanity filters are trivially bypassed. Users type `f*ck`, `sh1t`, or `fսck` (with Cyrillic characters) and walk right through. Glin Profanity doesn't just check against a word list—it understands evasion tactics.
+Modern AI applications need more than a word list. Users evade filters with `f4ck`, `sh1t`, and `fսck` (Cyrillic `ս` → `u`). LLM pipelines leak PII and secrets into logs. Prompt injection slips through unguarded inboxes. Today's moderation problem is a guardrail problem — and most solutions leave you choosing between a Python-only library, a Llama-licensed model, or a paid cloud API.
+
+Glin Profanity is the **MIT-licensed, Node-native, MCP-first** answer. It runs entirely offline, ships a 12 KB core bundle with no mandatory cloud calls, integrates with Claude/Cursor/Windsurf via 19 MCP tools out of the box, and covers 24 languages with leetspeak and Unicode homoglyph evasion detection built in. PII and secrets scanning land Q3 2026; prompt-injection detection is on the same roadmap.
+
+**vs. Meta PurpleLlama** — Python + Llama Community License, requires downloading weights, no Node support, no MCP server.
+**vs. ProtectAI llm-guard** — Python-only, heavy transformer dependencies, no edge/browser runtime.
+**vs. Azure Content Safety** — paid cloud API, data leaves your infra, rate-limited.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -65,7 +71,7 @@ Most profanity filters are trivially bypassed. Users type `f*ck`, `sh1t`, or `f�
 │                                                                             │
 │   Input Text ──►  Unicode       ──►  Leetspeak    ──►  Dictionary  ──► ML  │
 │                   Normalization      Detection         Matching        Check│
-│                   (homoglyphs)       (f4ck→fuck)       (23 langs)     (opt) │
+│                   (homoglyphs)       (f4ck→fuck)       (24 langs)     (opt) │
 │                                                                             │
 │   "fսck"     ──►  "fuck"        ──►  "fuck"       ──►  MATCH       ──► ✓   │
 │                                                                             │
@@ -89,19 +95,21 @@ Tested on Node.js 20, M1 MacBook Pro, single-threaded:
 
 ## Feature Comparison
 
-| Feature | Glin Profanity | bad-words | leo-profanity | obscenity |
-|---------|----------------|-----------|---------------|-----------|
-| Leetspeak detection (`f4ck`, `sh1t`) | Yes | No | No | Partial |
-| Unicode homoglyph detection | Yes | No | No | No |
-| ML toxicity detection | Yes (TensorFlow.js) | No | No | No |
-| Multi-language support | 23 languages | English only | 14 languages | English only |
-| Result caching (LRU) | Yes | No | No | No |
-| Severity levels | Yes | No | No | No |
-| React hook | Yes | No | No | No |
-| Python package | Yes | No | No | No |
-| TypeScript types | Full | Partial | Partial | Full |
-| Bundle size (minified) | 12KB + dictionaries | 8KB | 15KB | 6KB |
-| Active maintenance | Yes | Limited | Limited | Limited |
+| Feature | glin-profanity | obscenity | Detoxify | PurpleLlama | llm-guard |
+|---------|:--------------:|:---------:|:--------:|:-----------:|:---------:|
+| MIT license | Yes | Yes | Apache-2.0 | Llama Community | Apache-2.0 |
+| Node-native | Yes | Yes | No | No | No |
+| Python package | Yes | No | Yes | Yes | Yes |
+| MCP server (19 tools) | Yes | No | No | No | No |
+| Runs fully offline | Yes | Yes | Yes | Yes (needs weights) | Yes |
+| Leetspeak detection | Yes | Partial | No | No | No |
+| Unicode homoglyph detection | Yes | No | No | No | No |
+| Multi-language support | 24 languages | English only | 6 languages | English only | English only |
+| ML toxicity detection | Yes (TensorFlow.js, opt-in) | No | Yes (PyTorch) | Yes (Llama) | Yes (transformers) |
+| Edge / browser runtime | Yes | Yes | No | No | No |
+| Bundle size (core, minified) | 12 KB | 6 KB | N/A | N/A | N/A |
+| Prompt-injection detection | Roadmap Q3 2026 | No | No | Yes | Yes |
+| PII / secrets scanning | Roadmap Q3 2026 | No | No | No | Yes |
 
 ---
 
@@ -375,15 +383,19 @@ See the full [MCP documentation](./packages/mcp/README.md) for setup instruction
 
 ---
 
-## Roadmap
+## Coming in 2026
 
-See our [ROADMAP.md](./ROADMAP.md) for planned features including:
+The following capabilities are on the active roadmap. None of these are shipped yet — don't rely on them in production.
 
-- Streaming support for real-time chat
-- OpenAI function calling integration
-- Image OCR for profanity in images
-- Edge deployment (Cloudflare Workers, Vercel Edge)
-- More framework integrations
+| Feature | ETA | Notes |
+|---------|-----|-------|
+| **Prompt-injection scanner** | Q3 2026 | Rule-based + ONNX model, runs offline, no cloud dependency |
+| **PII & secrets scanner** | Q3 2026 | 100+ patterns (emails, API keys, SSNs, credit cards); Vault redact/restore support |
+| **`glincker/glin-guard-small` on HF Hub** | Q3 2026 | Our own distilled toxicity model, MIT weights, designed for edge inference |
+| **Bluesky Ozone labeler adapter** | Q4 2026 | Drop-in labeler for AT Protocol moderation pipelines |
+| **Compliance presets** | Q4 2026 | Pre-tuned configs for UK OSA, EU DSA, and COPPA requirements |
+
+See [ROADMAP.md](./ROADMAP.md) for the full issue backlog and contribution opportunities.
 
 ---
 
