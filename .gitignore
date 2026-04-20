@@ -229,3 +229,12 @@ dist/
 # IDE specific files
 .idea/
 .vscode/
+
+# Local research / private notes — never commit
+.local-research/
+.local-docs/
+
+# Claude Code internal instructions — local only, not pushed upstream
+CLAUDE.md
+CLAUDE.local.md
+.claude/
