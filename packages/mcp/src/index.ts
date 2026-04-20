@@ -6,7 +6,7 @@
  * to use glin-profanity as a tool for content moderation and profanity detection.
  *
  * Features:
- * - 19 Powerful Tools for content moderation
+ * - 20 Powerful Tools for content moderation
  * - 5 Workflow Prompts for guided AI interactions
  * - 5 Reference Resources for configuration
  * - Conversation Memory for user tracking

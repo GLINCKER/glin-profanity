@@ -14,6 +14,11 @@ import {
   type Language,
   type FilterConfig,
 } from 'glin-profanity';
+import {
+  checkPromptInjection,
+  type PromptInjectionOptions,
+  type InjectionPattern,
+} from 'glin-profanity/scanners';
 
 // Read version from package.json
 const require = createRequire(import.meta.url);
@@ -1445,6 +1450,94 @@ export function registerAllTools(server: McpServer): void {
                     (p) => p.riskScore >= 50,
                   ).length,
                 },
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  // ========== AI GUARDRAIL TOOLS ==========
+
+  server.tool(
+    'check_prompt_injection',
+    'Scan text for prompt injection attacks using rule-based pattern matching. Returns a risk score (0–1), a decision (ALLOW / HITL / BLOCK), matched categories, and per-match position details.',
+    {
+      text: z.string().describe('The text to scan for prompt injection signals'),
+      strictness: z
+        .enum(['lenient', 'moderate', 'strict'])
+        .optional()
+        .default('moderate')
+        .describe(
+          'Detection aggressiveness. lenient = fewer false positives, strict = amplified scoring. Default: moderate',
+        ),
+      blockAt: z
+        .number()
+        .min(0)
+        .max(1)
+        .optional()
+        .default(0.8)
+        .describe('Score threshold at or above which the decision is BLOCK (0–1, default 0.8)'),
+      hitlAt: z
+        .number()
+        .min(0)
+        .max(1)
+        .optional()
+        .default(0.5)
+        .describe(
+          'Score threshold at or above which the decision is HITL (human-in-the-loop) (0–1, default 0.5)',
+        ),
+      customPatterns: z
+        .array(
+          z.object({
+            pattern: z.string().describe('Regex pattern string'),
+            severity: z
+              .enum(['critical', 'high', 'medium', 'low'])
+              .describe('Severity of the pattern'),
+            category: z.string().describe('Category label for the pattern'),
+          }),
+        )
+        .optional()
+        .describe('Additional custom patterns to check alongside built-in rules'),
+    },
+    async (args) => {
+      const customPatterns: InjectionPattern[] | undefined =
+        args.customPatterns?.map((p, i) => ({
+          id: `custom-${i}:${p.category}`,
+          pattern: new RegExp(p.pattern, 'i'),
+          severity: p.severity as InjectionPattern['severity'],
+          category: p.category as InjectionPattern['category'],
+          description: `Custom pattern for category ${p.category}`,
+        }));
+
+      const options: PromptInjectionOptions = {
+        strictness: args.strictness,
+        blockAt: args.blockAt,
+        hitlAt: args.hitlAt,
+        customPatterns,
+      };
+
+      const result = checkPromptInjection(args.text, options);
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(
+              {
+                decision: result.decision,
+                score: result.score,
+                valid: result.valid,
+                reasons: result.reasons,
+                matches: result.matches,
+                scanner: result.scanner,
+                summary:
+                  result.decision === 'ALLOW'
+                    ? 'No prompt injection detected'
+                    : `Prompt injection detected — decision: ${result.decision}, score: ${result.score.toFixed(3)}, categories: ${result.reasons.join(', ')}`,
               },
               null,
               2,
