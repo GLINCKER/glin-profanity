@@ -70,4 +70,19 @@ __all__ = [
     "normalize_nfkd",
     "contains_unicode_obfuscation",
     "detect_character_sets",
+    # Scanner system
+    "Scanner",
+    "ScanResult",
+    "ScanDecision",
+    "ScanMatch",
+    "PromptInjectionScanner",
+    "check_prompt_injection",
+    "default_prompt_injection_scanner",
 ]
+
+from .scanners.base import Scanner, ScanDecision, ScanMatch, ScanResult
+from .scanners.prompt_injection import (
+    PromptInjectionScanner,
+    check_prompt_injection,
+    default_prompt_injection_scanner,
+)
