@@ -19,6 +19,8 @@ export default defineConfig({
     // Framework Integrations
     'src/frameworks/index.ts',
     'src/frameworks/nextjs.ts',
+    // Scanners (AI guardrail — Phase A)
+    'src/scanners/index.ts',
   ],
   format: ['cjs', 'esm'],
   dts: true,

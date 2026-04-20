@@ -90,3 +90,7 @@ export type {
   MLDetectorConfig,
   HybridAnalysisResult,
 } from './ml/types';
+
+// Scanner types — available via 'glin-profanity/scanners' subpath
+export type { Scanner, ScanResult, ScanDecision, ScanContext } from './scanners/base';
+export { PromptInjectionScanner, checkPromptInjection, defaultPromptInjectionScanner } from './scanners/prompt-injection';

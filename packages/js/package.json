@@ -37,6 +37,16 @@
         "default": "./dist/ml/index.js"
       }
     },
+    "./scanners": {
+      "require": {
+        "types": "./dist/scanners/index.d.cts",
+        "default": "./dist/scanners/index.cjs"
+      },
+      "import": {
+        "types": "./dist/scanners/index.d.ts",
+        "default": "./dist/scanners/index.js"
+      }
+    },
     "./ai": {
       "require": {
         "types": "./dist/integrations/index.d.cts",
