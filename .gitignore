@@ -238,3 +238,6 @@ dist/
 CLAUDE.md
 CLAUDE.local.md
 .claude/
+
+# Roadmap kept local — not tracked upstream
+ROADMAP.md
