@@ -1,2 +1,2 @@
 gradio>=4.44.0
-glin-profanity>=3.2.0
+glin-profanity>=3.2.1
