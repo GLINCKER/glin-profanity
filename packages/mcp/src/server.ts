@@ -14,6 +14,11 @@ import {
   type Language,
   type FilterConfig,
 } from 'glin-profanity';
+import {
+  checkPromptInjection,
+  type PromptInjectionOptions,
+  type InjectionPattern,
+} from 'glin-profanity/scanners';
 
 // Read version from package.json
 const require = createRequire(import.meta.url);
@@ -1445,6 +1450,174 @@ export function registerAllTools(server: McpServer): void {
                     (p) => p.riskScore >= 50,
                   ).length,
                 },
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  // ========== AI GUARDRAIL TOOLS ==========
+
+  server.tool(
+    'check_prompt_injection',
+    'Scan text for prompt injection attacks using rule-based pattern matching. Returns a risk score (0-1), a decision (ALLOW / HITL / BLOCK), matched categories, and per-match position details. Custom patterns: max 20 patterns, each regex max 200 chars, 50 ms execution budget per pattern.',
+    {
+      text: z.string().describe('The text to scan for prompt injection signals'),
+      strictness: z
+        .enum(['lenient', 'moderate', 'strict'])
+        .optional()
+        .default('moderate')
+        .describe(
+          'Detection aggressiveness. lenient = fewer false positives, strict = amplified scoring. Default: moderate',
+        ),
+      blockAt: z
+        .number()
+        .min(0)
+        .max(1)
+        .optional()
+        .default(0.8)
+        .describe('Score threshold at or above which the decision is BLOCK (0–1, default 0.8)'),
+      hitlAt: z
+        .number()
+        .min(0)
+        .max(1)
+        .optional()
+        .default(0.5)
+        .describe(
+          'Score threshold at or above which the decision is HITL (human-in-the-loop) (0–1, default 0.5)',
+        ),
+      customPatterns: z
+        .array(
+          z.object({
+            pattern: z
+              .string()
+              .max(200, 'Pattern must be 200 characters or fewer')
+              .describe('Regex pattern string (max 200 chars)'),
+            severity: z
+              .enum(['low', 'medium', 'high', 'critical'])
+              .describe('Severity of the pattern'),
+            category: z
+              .enum([
+                'instruction_override',
+                'jailbreak_persona',
+                'system_prompt_leak',
+                'delimiter_injection',
+                'encoding_bypass',
+                'tool_misuse',
+              ])
+              .describe('Category of the pattern'),
+          }),
+        )
+        .max(20, 'At most 20 custom patterns are allowed')
+        .optional()
+        .describe('Additional custom patterns (max 20, each regex <= 200 chars, 50 ms budget per pattern)'),
+    },
+    async (args) => {
+      // Validate cross-field constraint: hitlAt must be <= blockAt
+      const hitlAt = args.hitlAt ?? 0.5;
+      const blockAt = args.blockAt ?? 0.8;
+      if (hitlAt > blockAt) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                {
+                  error: 'INVALID_THRESHOLDS',
+                  message: `hitlAt (${hitlAt}) must be less than or equal to blockAt (${blockAt})`,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      // Safe custom pattern construction: ReDoS heuristic + try/catch + 50 ms timeout
+      // Rejects (.+)+, (.*)*, *)+ constructs that cause catastrophic backtracking
+      const REDOS_HEURISTIC = /(\.\+\)\+|\.\*\)\*|\*\)\+)/;
+      const skippedReasons: string[] = [];
+
+      const testWithTimeout = (
+        regex: RegExp,
+        text: string,
+        timeoutMs: number,
+      ): Promise<boolean | 'timeout'> =>
+        Promise.race([
+          new Promise<boolean>((resolve) => {
+            resolve(regex.test(text));
+          }),
+          new Promise<'timeout'>((resolve) =>
+            setTimeout(() => resolve('timeout'), timeoutMs),
+          ),
+        ]);
+
+      const safeCustomPatterns: InjectionPattern[] = [];
+      for (const [i, p] of (args.customPatterns ?? []).entries()) {
+        const id = `custom-${i}:${p.category}`;
+
+        // Reject patterns containing catastrophic backtracking constructs
+        if (REDOS_HEURISTIC.test(p.pattern)) {
+          skippedReasons.push(`custom-pattern-invalid:${id}`);
+          continue;
+        }
+
+        // Wrap RegExp construction to avoid tool-call crash on invalid regex syntax
+        let compiled: RegExp;
+        try {
+          compiled = new RegExp(p.pattern, 'i');
+        } catch {
+          skippedReasons.push(`custom-pattern-invalid:${id}`);
+          continue;
+        }
+
+        // Pre-flight test with 50 ms timeout to detect catastrophic backtracking at runtime
+        const probeResult = await testWithTimeout(compiled, args.text, 50);
+        if (probeResult === 'timeout') {
+          skippedReasons.push(`custom-pattern-timeout:${id}`);
+          continue;
+        }
+
+        safeCustomPatterns.push({
+          id,
+          pattern: compiled,
+          severity: p.severity,
+          category: p.category,
+          description: `Custom pattern for category ${p.category}`,
+        });
+      }
+
+      const options: PromptInjectionOptions = {
+        strictness: args.strictness,
+        blockAt: args.blockAt,
+        hitlAt: args.hitlAt,
+        customPatterns: safeCustomPatterns.length > 0 ? safeCustomPatterns : undefined,
+      };
+
+      const result = checkPromptInjection(args.text, options);
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(
+              {
+                decision: result.decision,
+                score: result.score,
+                valid: result.valid,
+                reasons: [...result.reasons, ...skippedReasons],
+                matches: result.matches,
+                scanner: result.scanner,
+                summary:
+                  result.decision === 'ALLOW'
+                    ? 'No prompt injection detected'
+                    : `Prompt injection detected — decision: ${result.decision}, score: ${result.score.toFixed(3)}, categories: ${result.reasons.join(', ')}`,
               },
               null,
               2,
