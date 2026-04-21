@@ -14,18 +14,22 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    env:
+      HUSKY: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm install
+      - name: Install root workspaces
+        run: npm install --ignore-scripts
+      - name: Build glin-profanity
         working-directory: packages/js
-      - run: npm run build
-        working-directory: packages/js
-      - run: npm install
+        run: npm run build
+      - name: Install shootout deps
         working-directory: benchmarks/shootout
+        run: npm install --ignore-scripts
       - name: Run shootout
         working-directory: benchmarks/shootout
         run: node harness.mjs --json > results.json
