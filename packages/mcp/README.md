@@ -19,7 +19,7 @@ The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) is an open s
 ## Features
 
 - **20 Powerful Tools** for comprehensive content moderation
-- **4 Workflow Prompts** for guided AI interactions
+- **5 Workflow Prompts** for guided AI interactions
 - **5 Reference Resources** for configuration and best practices
 - **24 Language Support** - Arabic, Chinese, English, French, German, Spanish, and more
 - **Context-Aware Analysis** - Domain-specific whitelists reduce false positives
@@ -274,7 +274,7 @@ Scan text for prompt injection attacks using rule-based pattern matching.
 
 ---
 
-## Available Prompts (4)
+## Available Prompts (5)
 
 MCP Prompts provide guided workflows for common tasks.
 
