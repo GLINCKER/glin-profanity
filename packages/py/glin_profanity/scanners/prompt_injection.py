@@ -45,9 +45,11 @@ class PromptInjectionScanner:
 
         Args:
             strictness: How aggressively to score matches.
-                - ``lenient``: lower score normalizer, fewer false positives.
+                - ``lenient``: uses a higher normalizer that divides the raw severity
+                  sum more aggressively, producing lower scores and requiring more
+                  evidence to block.
                 - ``moderate`` (default): balanced.
-                - ``strict``: every match is amplified.
+                - ``strict``: uses a lower normalizer so every match is amplified.
             custom_patterns: Additional custom patterns to check alongside the
                 built-in set.
             block_at: Score threshold at or above which the decision is BLOCK
@@ -81,14 +83,14 @@ class PromptInjectionScanner:
         normalizer = STRICTNESS_NORMALIZER.get(effective_strictness, 1.5)
 
         match_details: list[ScanMatch] = []
-        matched_categories: set[str] = set()
+        matched_categories: dict[str, None] = {}
         raw_score = 0.0
 
         for entry in self._all_patterns:
             for m in entry.pattern.finditer(input):
                 weight = SEVERITY_WEIGHTS.get(entry.severity, 0.5)
                 raw_score += weight
-                matched_categories.add(entry.category)
+                matched_categories[entry.category] = None
                 match_details.append(
                     ScanMatch(
                         pattern=entry.id,
@@ -102,7 +104,7 @@ class PromptInjectionScanner:
             return allow_result(self.name, input)
 
         score = min(1.0, raw_score / normalizer)
-        reasons = list(matched_categories)
+        reasons = list(matched_categories.keys())
 
         return block_result(
             self.name,
@@ -115,6 +117,10 @@ class PromptInjectionScanner:
         )
 
 
+default_prompt_injection_scanner = PromptInjectionScanner()
+"""Convenience singleton using default (moderate) settings."""
+
+
 def check_prompt_injection(
     input: str,
     strictness: str = "moderate",
@@ -124,6 +130,10 @@ def check_prompt_injection(
 ) -> ScanResult:
     """
     Scan a single string for prompt injection signals using configurable options.
+
+    When called with all default arguments and no custom_patterns, delegates to
+    the module-level ``default_prompt_injection_scanner`` singleton rather than
+    constructing a new scanner on every call.
 
     Args:
         input: The text to scan.
@@ -136,6 +146,14 @@ def check_prompt_injection(
     Returns:
         A :class:`~.base.ScanResult` with decision, score, and match details.
     """
+    _defaults = (
+        strictness == "moderate"
+        and custom_patterns is None
+        and block_at == 0.8
+        and hitl_at == 0.5
+    )
+    if _defaults:
+        return default_prompt_injection_scanner.scan(input)
     scanner = PromptInjectionScanner(
         strictness=strictness,
         custom_patterns=custom_patterns,
@@ -143,10 +161,6 @@ def check_prompt_injection(
         hitl_at=hitl_at,
     )
     return scanner.scan(input)
-
-
-default_prompt_injection_scanner = PromptInjectionScanner()
-"""Convenience singleton using default (moderate) settings."""
 
 
 __all__ = [

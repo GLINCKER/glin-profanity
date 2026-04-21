@@ -40,10 +40,10 @@ class InjectionPattern:
     pattern: re.Pattern[str]
     """The compiled regex to match against input text."""
 
-    category: str
+    category: InjectionCategory
     """Which attack category this pattern belongs to."""
 
-    severity: str
+    severity: PatternSeverity
     """How dangerous a match on this pattern is considered."""
 
     description: str
