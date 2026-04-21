@@ -42,3 +42,7 @@ export { PII_PATTERNS, luhnCheck, ibanCheck } from './patterns/pii-patterns';
 // Vault
 export type { RestoreStrategy } from './vault';
 export { Vault } from './vault';
+
+// Composite scanner
+export type { CompositeScanner, ScanAllOptions } from './composite';
+export { scanAll, worstDecision } from './composite';

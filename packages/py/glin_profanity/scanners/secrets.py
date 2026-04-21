@@ -7,11 +7,45 @@ Mirrors packages/js/src/scanners/secrets.ts.
 """
 
 import math
-from typing import Optional
+from typing import Optional, TypedDict
 
 from .base import ScanMatch, ScanResult, allow_result, block_result
 from .patterns.secret_patterns import SECRET_PATTERNS, SecretPattern
 from .vault import Vault
+
+# ---------------------------------------------------------------------------
+# Options
+# ---------------------------------------------------------------------------
+
+
+class SecretsOptions(TypedDict, total=False):
+    """Configuration options for SecretsScanner.
+
+    Mirrors the TypeScript ``SecretsOptions`` interface in
+    ``packages/js/src/scanners/secrets.ts``.
+    """
+
+    redact: bool
+    """When True, replace detected secrets with vault placeholders."""
+
+    vault: Optional[Vault]
+    """Vault instance used to store originals when redact is True."""
+
+    custom_patterns: Optional[list["SecretPattern"]]
+    """Extra patterns merged with the built-in set."""
+
+    min_entropy: float
+    """Minimum Shannon entropy for entropy-gated patterns (default: 4.0)."""
+
+    block_on_any: bool
+    """Block on any match (default True)."""
+
+    block_at: float
+    """BLOCK threshold (default 0.8)."""
+
+    hitl_at: float
+    """HITL threshold (default 0.5)."""
+
 
 # ---------------------------------------------------------------------------
 # Shannon entropy
@@ -264,4 +298,4 @@ def scan_secrets(
     ).scan(input)
 
 
-__all__ = ["SecretsScanner", "scan_secrets"]
+__all__ = ["SecretsOptions", "SecretsScanner", "scan_secrets"]
