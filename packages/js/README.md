@@ -73,7 +73,7 @@ function ChatInput() {
 | Leetspeak detection | Catches `f4ck`, `sh1t`, `@ss` |
 | Unicode normalization | Handles Cyrillic/Greek lookalikes |
 | ML toxicity detection | TensorFlow.js integration |
-| 23 languages | Arabic to Turkish |
+| 24 languages | Arabic to Turkish |
 | Result caching | LRU cache for repeated checks |
 | React hook | `useProfanityChecker` built-in |
 
@@ -115,7 +115,7 @@ filter.clearCache();
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `languages` | `string[]` | `['english']` | Languages to check |
-| `allLanguages` | `boolean` | `false` | Check all 23 languages |
+| `allLanguages` | `boolean` | `false` | Check all 24 languages |
 | `detectLeetspeak` | `boolean` | `false` | Enable leetspeak detection |
 | `leetspeakLevel` | `string` | `'basic'` | `basic` / `moderate` / `aggressive` |
 | `normalizeUnicode` | `boolean` | `true` | Normalize Unicode homoglyphs |

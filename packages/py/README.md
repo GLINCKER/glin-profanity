@@ -67,7 +67,7 @@ result = filter.check_profanity("bad content here")
 
 | Feature | Description |
 |---------|-------------|
-| Multi-language | 23 languages supported |
+| Multi-language | 24 languages supported |
 | Context-aware | Reduces false positives |
 | Configurable | Custom word lists, severity levels |
 | High performance | Optimized for speed |
@@ -109,7 +109,7 @@ SeverityLevel.FUZZY  # Fuzzy/approximate match
 
 ## Supported Languages
 
-23 languages: Arabic, Chinese, Czech, Danish, Dutch, English, Esperanto, Finnish, French, German, Hindi, Hungarian, Italian, Japanese, Korean, Norwegian, Persian, Polish, Portuguese, Russian, Spanish, Swedish, Thai, Turkish
+24 languages: Arabic, Chinese, Czech, Danish, Dutch, English, Esperanto, Finnish, French, German, Hindi, Hungarian, Italian, Japanese, Korean, Norwegian, Persian, Polish, Portuguese, Russian, Spanish, Swedish, Thai, Turkish
 
 ## Documentation
 

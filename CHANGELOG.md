@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Unified Scanner interface for pluggable detectors (`Scanner`, `ScanResult`, `ScanDecision`)
+- `PromptInjectionScanner` — 50 patterns across 6 attack categories, decision-based output (ALLOW / HITL / BLOCK)
+- `SecretsScanner` — 110 patterns across AWS, GCP, Azure, GitHub, Slack, Stripe, OpenAI, Anthropic, and more; Shannon entropy detection for high-entropy tokens
+- `PiiScanner` — 27 patterns with Luhn credit-card validation and IBAN mod-97 check
+- `Vault` — placeholder-based redact/restore with 4 strategies (exact, caseInsensitive, fuzzy, combined)
+- `scanAll` / `scan_all` composite scanner (JS + Python) — runs all scanners in one call
+- 4 new MCP tools: `check_prompt_injection`, `scan_secrets`, `scan_pii`, `redact_pii`, `restore_pii` (total MCP tool count: 24)
+- Python parity for all new scanners (`PromptInjectionScanner`, `SecretsScanner`, `PiiScanner`, `Vault`, `scan_all`)
+- VS Code extension scaffold (`packages/vscode-extension`, v0.1.0)
+- Gradio Hugging Face Space (`packages/huggingface-space`) — 5-tab multi-scanner demo
+- Benchmark shootout CI gate (`benchmarks/shootout/`) — F1 regression guard vs obscenity, bad-words, leo-profanity, @2toad/profanity
+
+### Changed
+- Scanner implementations live at `glin-profanity/scanners` subpath export to keep core bundle unchanged; root entry exports types only
+- `ScanMatch.category` now carries pattern family (e.g. `"stripe"`, `"aws_access_key"`) instead of severity
+
+### Fixed
+- PI-034 missing `/i` flag (only matched ALL-CAPS variants)
+- PI-036 removed negative lookbehind for broader runtime support (Safari, older Node)
+- Overlapping match range deduplication in secrets redaction
+
 ## [3.1.0] - 2025-12-30
 
 ### Changed

@@ -58,7 +58,7 @@ This monorepo maintains the following packages:
 
 Modern AI applications need more than a word list. Users evade filters with `f4ck`, `sh1t`, and `fսck` (Cyrillic `ս` → `u`). LLM pipelines leak PII and secrets into logs. Prompt injection slips through unguarded inboxes. Today's moderation problem is a guardrail problem — and most solutions leave you choosing between a Python-only library, a Llama-licensed model, or a paid cloud API.
 
-Glin Profanity is the **MIT-licensed, Node-native, MCP-first** answer. It runs entirely offline, ships a 12 KB core bundle with no mandatory cloud calls, integrates with Claude/Cursor/Windsurf via 19 MCP tools out of the box, and covers 24 languages with leetspeak and Unicode homoglyph evasion detection built in. PII and secrets scanning land Q3 2026; prompt-injection detection is on the same roadmap.
+Glin Profanity is the **MIT-licensed, Node-native, MCP-first** answer. It runs entirely offline, ships a 12 KB core bundle with no mandatory cloud calls, integrates with Claude/Cursor/Windsurf via 24 MCP tools out of the box, and covers 24 languages with leetspeak and Unicode homoglyph evasion detection built in. Prompt-injection, PII, and secrets scanning are all shipped today.
 
 **vs. Meta PurpleLlama** — Python + Llama Community License, requires downloading weights, no Node support, no MCP server.
 **vs. ProtectAI llm-guard** — Python-only, heavy transformer dependencies, no edge/browser runtime.
@@ -82,14 +82,17 @@ Glin Profanity is the **MIT-licensed, Node-native, MCP-first** answer. It runs e
 
 ## Performance Benchmarks
 
-Tested on Node.js 20, M1 MacBook Pro, single-threaded:
+From the CI shootout gate (`benchmarks/shootout/results.md`), Node.js v22, 20-input torture-set batches:
 
-| Operation | Glin Profanity | bad-words | leo-profanity | obscenity |
-|-----------|----------------|-----------|---------------|-----------|
-| Simple check | **21M ops/sec** | 890K ops/sec | 1.2M ops/sec | 650K ops/sec |
-| With leetspeak | **8.5M ops/sec** | N/A | N/A | N/A |
-| Multi-language (3) | **18M ops/sec** | N/A | 400K ops/sec | N/A |
-| Unicode normalization | **15M ops/sec** | N/A | N/A | N/A |
+| Library | ops/sec | F1 (accuracy) | False-Positive Rate |
+|---------|---------|---------------|---------------------|
+| glin-profanity | 990 | **80.6%** | **0.0%** |
+| obscenity | 5,112 | 79.5% | 5.9% |
+| bad-words | 241 | 54.2% | 0.0% |
+| leo-profanity | 338,407 | 34.6% | 0.0% |
+| @2toad/profanity | 839,796 | 56.7% | 0.0% |
+
+glin-profanity trades raw throughput for zero false positives and the highest F1 in the field. See `benchmarks/shootout/results.md` for the full per-category breakdown.
 
 ---
 
@@ -100,7 +103,7 @@ Tested on Node.js 20, M1 MacBook Pro, single-threaded:
 | MIT license | Yes | Yes | Apache-2.0 | Llama Community | Apache-2.0 |
 | Node-native | Yes | Yes | No | No | No |
 | Python package | Yes | No | Yes | Yes | Yes |
-| MCP server (19 tools) | Yes | No | No | No | No |
+| MCP server (24 tools) | Yes | No | No | No | No |
 | Runs fully offline | Yes | Yes | Yes | Yes (needs weights) | Yes |
 | Leetspeak detection | Yes | Partial | No | No | No |
 | Unicode homoglyph detection | Yes | No | No | No | No |
@@ -108,8 +111,8 @@ Tested on Node.js 20, M1 MacBook Pro, single-threaded:
 | ML toxicity detection | Yes (TensorFlow.js, opt-in) | No | Yes (PyTorch) | Yes (Llama) | Yes (transformers) |
 | Edge / browser runtime | Yes | Yes | No | No | No |
 | Bundle size (core, minified) | 12 KB | 6 KB | N/A | N/A | N/A |
-| Prompt-injection detection | Roadmap Q3 2026 | No | No | Yes | Yes |
-| PII / secrets scanning | Roadmap Q3 2026 | No | No | No | Yes |
+| Prompt-injection detection | Yes (shipped) | No | No | Yes | Yes |
+| PII / secrets scanning | Yes (shipped) | No | No | No | Yes |
 
 ---
 
@@ -251,7 +254,7 @@ const result = await checkToxicity("You're the worst player ever");
 
 ## Supported Languages
 
-23 languages with curated dictionaries:
+24 languages with curated dictionaries:
 
 | | | | |
 |---|---|---|---|
@@ -344,7 +347,7 @@ Glin Profanity includes an MCP (Model Context Protocol) server that enables AI a
 }
 ```
 
-### Available Tools (19)
+### Available Tools (24)
 
 | Tool | Description |
 |------|-------------|
@@ -367,8 +370,13 @@ Glin Profanity includes an MCP (Model Context Protocol) server that enables AI a
 | `stream_check` | Real-time streaming profanity check |
 | `stream_batch` | Stream multiple texts with live results |
 | `get_stream_stats` | Get streaming session statistics |
+| `check_prompt_injection` | Scan text for prompt injection attacks (rule-based, 50 patterns) |
+| `scan_secrets` | Detect leaked API keys, tokens, and credentials (110 patterns + entropy) |
+| `scan_pii` | Detect PII: email, phone, SSN, credit card, IBAN, passport, and more |
+| `redact_pii` | Redact PII into reversible vault-backed placeholders |
+| `restore_pii` | Restore PII placeholders to original values via vault session |
 
-**Plus 4 workflow prompts** and **5 reference resources** for guided AI interactions.
+**Plus 5 workflow prompts** and **5 reference resources** for guided AI interactions.
 
 ### Example Prompts for AI Assistants
 
@@ -383,15 +391,30 @@ See the full [MCP documentation](./packages/mcp/README.md) for setup instruction
 
 ---
 
+## Shipped AI Guardrails
+
+The scanner layer is live. Import from `glin-profanity/scanners`:
+
+```js
+import { PromptInjectionScanner, SecretsScanner, PiiScanner, Vault, scanAll } from 'glin-profanity/scanners';
+```
+
+| Scanner | Coverage |
+|---------|----------|
+| `PromptInjectionScanner` | 50 patterns across 6 attack categories |
+| `SecretsScanner` | 110 patterns (AWS, GCP, Azure, GitHub, Stripe, OpenAI, Anthropic, …) + Shannon entropy |
+| `PiiScanner` | 27 patterns with Luhn + IBAN mod-97 validation |
+| `Vault` | Placeholder-based redact/restore with 4 strategies |
+| `scanAll` | Composite scanner — runs all of the above in one call |
+
 ## Coming in 2026
 
-The following capabilities are on the active roadmap. None of these are shipped yet — don't rely on them in production.
+The following capabilities are on the active roadmap.
 
 | Feature | ETA | Notes |
 |---------|-----|-------|
-| **Prompt-injection scanner** | Q3 2026 | Rule-based + ONNX model, runs offline, no cloud dependency |
-| **PII & secrets scanner** | Q3 2026 | 100+ patterns (emails, API keys, SSNs, credit cards); Vault redact/restore support |
 | **`glincker/glin-guard-small` on HF Hub** | Q3 2026 | Our own distilled toxicity model, MIT weights, designed for edge inference |
+| **AI-slop detection** | Q3 2026 | Pattern-based detector for generic AI-generated prose |
 | **Bluesky Ozone labeler adapter** | Q4 2026 | Drop-in labeler for AT Protocol moderation pipelines |
 | **Compliance presets** | Q4 2026 | Pre-tuned configs for UK OSA, EU DSA, and COPPA requirements |
 
