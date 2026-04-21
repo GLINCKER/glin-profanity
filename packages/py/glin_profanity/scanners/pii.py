@@ -6,11 +6,42 @@ Mirrors packages/js/src/scanners/pii.ts.
 @module scanners/pii
 """
 
-from typing import Optional
+from typing import Optional, TypedDict
 
 from .base import ScanMatch, ScanResult, allow_result, block_result
 from .patterns.pii_patterns import PII_PATTERNS, PiiPattern
 from .vault import Vault
+
+# ---------------------------------------------------------------------------
+# Options
+# ---------------------------------------------------------------------------
+
+
+class PiiOptions(TypedDict, total=False):
+    """Configuration options for PiiScanner.
+
+    Mirrors the TypeScript ``PiiOptions`` interface in
+    ``packages/js/src/scanners/pii.ts``.
+    """
+
+    redact: bool
+    """When True, replace detected PII with vault placeholders."""
+
+    vault: Optional[Vault]
+    """Vault instance used to store originals when redact is True."""
+
+    custom_patterns: Optional[list["PiiPattern"]]
+    """Extra patterns merged with the built-in set."""
+
+    block_on_any: bool
+    """Block on any match (default True)."""
+
+    block_at: float
+    """BLOCK threshold (default 0.8)."""
+
+    hitl_at: float
+    """HITL threshold (default 0.5)."""
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -212,4 +243,4 @@ def scan_pii(
     ).scan(input)
 
 
-__all__ = ["PiiScanner", "scan_pii"]
+__all__ = ["PiiOptions", "PiiScanner", "scan_pii"]

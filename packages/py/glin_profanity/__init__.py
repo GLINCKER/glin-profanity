@@ -79,22 +79,28 @@ __all__ = [
     "check_prompt_injection",
     "default_prompt_injection_scanner",
     # Secrets scanner
+    "SecretsOptions",
     "SecretsScanner",
     "scan_secrets",
     # PII scanner
+    "PiiOptions",
     "PiiScanner",
     "scan_pii",
     # Vault
     "Vault",
     "RestoreStrategy",
+    # Composite
+    "scan_all",
+    "worst_decision",
 ]
 
 from .scanners.base import Scanner, ScanDecision, ScanMatch, ScanResult
-from .scanners.pii import PiiScanner, scan_pii
+from .scanners.composite import scan_all, worst_decision
+from .scanners.pii import PiiOptions, PiiScanner, scan_pii
 from .scanners.prompt_injection import (
     PromptInjectionScanner,
     check_prompt_injection,
     default_prompt_injection_scanner,
 )
-from .scanners.secrets import SecretsScanner, scan_secrets
+from .scanners.secrets import SecretsOptions, SecretsScanner, scan_secrets
 from .scanners.vault import RestoreStrategy, Vault
