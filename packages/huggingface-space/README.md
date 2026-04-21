@@ -10,19 +10,19 @@ pinned: false
 license: mit
 ---
 
-# Glin Profanity — Live Demo
+# Glin Profanity Live Demo
 
-Interactive demo for [glin-profanity](https://github.com/GLINCKER/glin-profanity), a lightweight multi-language profanity detection and filtering library.
+Try the open-source AI guardrail — profanity, prompt injection, secrets, PII —
+all in one library, works offline, MIT license, MCP-native.
 
-- **GitHub**: [github.com/GLINCKER/glin-profanity](https://github.com/GLINCKER/glin-profanity)
+- **Repo**: [github.com/GLINCKER/glin-profanity](https://github.com/GLINCKER/glin-profanity)
 - **npm**: [npmjs.com/package/glin-profanity](https://www.npmjs.com/package/glin-profanity)
-- **PyPI**: [pypi.org/project/glin-profanity](https://pypi.org/project/glin-profanity/)
+- **PyPI**: [pypi.org/project/glin-profanity](https://pypi.org/project/glin-profanity)
+- **MCP**: `npx glin-profanity-mcp`
 
-## Features
+## Run locally
 
-- Multi-language profanity detection
-- Leetspeak decoding (`f4ck`, `@ss`, `sh1t`)
-- Unicode / homoglyph normalization (`fúck`, `ｆｕｃｋ`)
-- Severity levels (basic / moderate / aggressive)
-- Context-aware false-positive avoidance
-- Masked output with a configurable replacement token
+```bash
+pip install gradio glin-profanity
+python app.py
+```
