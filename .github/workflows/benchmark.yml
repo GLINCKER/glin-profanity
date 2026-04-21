@@ -1,0 +1,52 @@
+name: Benchmark Shootout
+on:
+  pull_request:
+    paths:
+      - 'packages/js/src/**'
+      - 'benchmarks/shootout/**'
+      - '.github/workflows/benchmark.yml'
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      HUSKY: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install root workspaces
+        run: npm install --ignore-scripts
+      - name: Build glin-profanity
+        working-directory: packages/js
+        run: npm run build
+      - name: Install shootout deps
+        working-directory: benchmarks/shootout
+        run: npm install --ignore-scripts
+      - name: Run shootout
+        working-directory: benchmarks/shootout
+        run: node harness.mjs --json > results.json
+      - name: Compare against baseline
+        working-directory: benchmarks/shootout
+        run: node compare-baseline.mjs results.json baseline.json
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const md = fs.readFileSync('benchmarks/shootout/results.md', 'utf8');
+            const body = `## 🏁 Benchmark Shootout Results\n\n${md}`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });

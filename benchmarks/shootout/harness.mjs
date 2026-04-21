@@ -11,6 +11,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Bench } from 'tinybench';
 
+const JSON_MODE = process.argv.includes('--json');
+
+// In JSON mode, redirect console.log → stderr so stdout stays clean for JSON
+if (JSON_MODE) {
+  // eslint-disable-next-line no-global-assign
+  console.log = (...args) => console.error(...args);
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ---------------------------------------------------------------------------
@@ -245,7 +253,34 @@ md += `- Performance measured with [tinybench](https://github.com/tinylibs/tinyb
 md += `- Bundle sizes are unminified source files; minified + gzipped sizes will be smaller\n`;
 
 writeFileSync(join(__dirname, 'results.md'), md, 'utf8');
-console.log('\nResults written to benchmarks/shootout/results.md');
+console.error('\nResults written to benchmarks/shootout/results.md');
+
+// ---------------------------------------------------------------------------
+// JSON output (--json flag)
+// ---------------------------------------------------------------------------
+if (JSON_MODE) {
+  const perfMap = Object.fromEntries(perfResults.map((r) => [r.name, r]));
+  const libraries = accuracyResults.map((r) => {
+    const perf = perfMap[r.name];
+    return {
+      name: r.name,
+      precision: parseFloat(r.precision.toFixed(4)),
+      recall: parseFloat(r.recall.toFixed(4)),
+      f1: parseFloat(r.f1.toFixed(4)),
+      fpr: parseFloat(r.fpr.toFixed(4)),
+      opsPerSec: Math.round(perf?.opsPerSec ?? 0),
+    };
+  });
+
+  const output = {
+    generatedAt: new Date().toISOString(),
+    node: process.version,
+    libraries,
+  };
+
+  // Write to stdout — CI redirects this to results.json
+  process.stdout.write(JSON.stringify(output, null, 2) + '\n');
+}
 
 // ---------------------------------------------------------------------------
 // Helper
