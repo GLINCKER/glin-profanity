@@ -158,15 +158,23 @@ export class PiiScanner implements Scanner {
  * When two matches overlap, keep the one with the larger span.
  */
 function deduplicateMatches(matches: ScanMatch[]): ScanMatch[] {
+  // Sort by startIndex ascending; for equal startIndex, put larger spans first.
   const sorted = [...matches].sort((a, b) => a.startIndex - b.startIndex || b.endIndex - a.endIndex);
   const result: ScanMatch[] = [];
 
   let lastEnd = -1;
   for (const m of sorted) {
     if (m.startIndex >= lastEnd) {
+      // Non-overlapping: keep this match.
       result.push(m);
       lastEnd = m.endIndex;
+    } else if (m.endIndex > lastEnd && result.length > 0) {
+      // This match overlaps the previous but extends further — it is larger overall.
+      // Replace the last kept match with this one so we keep the widest span.
+      result[result.length - 1] = m;
+      lastEnd = m.endIndex;
     }
+    // Otherwise the current match is fully contained in the previous — skip it.
   }
   return result;
 }

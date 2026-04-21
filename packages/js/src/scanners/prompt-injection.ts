@@ -15,18 +15,15 @@ import { INJECTION_PATTERNS, type InjectionPattern } from './patterns/injection-
 export interface PromptInjectionOptions {
   /**
    * How aggressively to score matches.
-   * - `lenient`: lower score normalizer, fewer false positives.
-   * - `moderate` (default): balanced.
-   * - `strict`: every match is amplified.
+   * - `lenient`: uses a higher normalizer that divides the raw severity sum more
+   *   aggressively, producing lower scores and requiring more evidence to block.
+   * - `moderate` (default): balanced normalizer.
+   * - `strict`: lowest normalizer, so even a small number of pattern matches can
+   *   push the score to BLOCK.
    */
   strictness?: 'lenient' | 'moderate' | 'strict';
   /** Additional custom patterns to check alongside the built-in set. */
   customPatterns?: InjectionPattern[];
-  /**
-   * Minimum score below which results are always ALLOW (default: 0).
-   * @deprecated Use `hitlAt` / `blockAt` thresholds instead.
-   */
-  minScore?: number;
   /** Score threshold at or above which the decision is BLOCK (default: 0.8). */
   blockAt?: number;
   /** Score threshold at or above which the decision is HITL (default: 0.5). */
@@ -46,12 +43,18 @@ const STRICTNESS_NORMALIZER: Record<string, number> = {
   lenient: 2.5,
 };
 
+/** A compiled injection pattern ready for execution. */
+interface CompiledPattern {
+  def: InjectionPattern;
+  re: RegExp;
+}
+
 /** Rule-based scanner that detects prompt injection patterns in text. */
 export class PromptInjectionScanner implements Scanner {
   /** @inheritdoc */
   readonly name = 'prompt-injection';
 
-  private readonly allPatterns: InjectionPattern[];
+  private readonly compiledPatterns: CompiledPattern[];
   private readonly strictness: 'lenient' | 'moderate' | 'strict';
   private readonly blockAt: number;
   private readonly hitlAt: number;
@@ -60,10 +63,17 @@ export class PromptInjectionScanner implements Scanner {
     this.strictness = options.strictness ?? 'moderate';
     this.blockAt = options.blockAt ?? 0.8;
     this.hitlAt = options.hitlAt ?? 0.5;
-    this.allPatterns = [
+    const allPatterns: InjectionPattern[] = [
       ...INJECTION_PATTERNS,
       ...(options.customPatterns ?? []),
     ];
+    this.compiledPatterns = allPatterns.map(def => ({
+      def,
+      re: new RegExp(
+        def.pattern.source,
+        def.pattern.flags.includes('g') ? def.pattern.flags : def.pattern.flags + 'g',
+      ),
+    }));
   }
 
   /** @inheritdoc */
@@ -76,18 +86,19 @@ export class PromptInjectionScanner implements Scanner {
     const matchedCategories = new Set<string>();
     let rawScore = 0;
 
-    for (const entry of this.allPatterns) {
-      const re = new RegExp(entry.pattern.source, entry.pattern.flags.includes('g') ? entry.pattern.flags : entry.pattern.flags + 'g');
+    for (const { def, re } of this.compiledPatterns) {
+      // Reset lastIndex before each scan so the compiled regex is reusable
+      re.lastIndex = 0;
       let m: RegExpExecArray | null;
       while ((m = re.exec(input)) !== null) {
-        const weight = SEVERITY_WEIGHTS[entry.severity] ?? 0.5;
+        const weight = SEVERITY_WEIGHTS[def.severity] ?? 0.5;
         rawScore += weight;
-        matchedCategories.add(entry.category);
+        matchedCategories.add(def.category);
         matchDetails.push({
-          pattern: entry.id,
+          pattern: def.id,
           startIndex: m.index,
           endIndex: m.index + m[0].length,
-          category: entry.category,
+          category: def.category,
         });
         // Avoid infinite loops on zero-length matches
         if (m[0].length === 0) break;

@@ -169,6 +169,17 @@ function fuzzyReplace(text: string, needle: string, replacement: string, toleran
       break;
     }
 
+    // Fast-path: if the window's first character differs from needle's first
+    // character by more than `tolerance` character codes, the Levenshtein
+    // distance can only be >= 1 (from the first char alone). For tolerance ≤ 3
+    // we can skip the full DP entirely when the first chars are clearly
+    // different (i.e. not equal), saving O(n^2) work per position.
+    if (window[0] !== needle[0]) {
+      result += text[i];
+      i++;
+      continue;
+    }
+
     const dist = levenshtein(window, needle);
     if (dist <= tolerance) {
       result += replacement;

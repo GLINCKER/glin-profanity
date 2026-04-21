@@ -47,7 +47,7 @@ describe('SecretsScanner — detection (should BLOCK)', () => {
   });
 
   test('detects Stripe live secret key', () => {
-    // Obvious-fake fixture — format-valid but pattern-only, will not trip secret scanners
+    // Format-valid placeholder — matches the pattern but uses obvious-fake content so GitHub Push Protection does not reject the PR
     const fakeStripeKey = 'sk_live_' + '0'.repeat(24) + 'PLACEHOLDER';
     const result = scanner.scan(`STRIPE_KEY=${fakeStripeKey}`);
     expect(result.decision).toBe('BLOCK');
@@ -83,7 +83,7 @@ describe('SecretsScanner — detection (should BLOCK)', () => {
   });
 
   test('detects Slack bot token (xoxb-)', () => {
-    // Obvious-fake fixture — format-valid but all zeros, will not trip secret scanners
+    // Format-valid placeholder — matches the pattern but uses obvious-fake content so GitHub Push Protection does not reject the PR
     const fakeSlackToken = 'xoxb-0000000000-0000000000-' + '0'.repeat(24);
     const result = scanner.scan(`slack_token=${fakeSlackToken}`);
     expect(result.decision).toBe('BLOCK');

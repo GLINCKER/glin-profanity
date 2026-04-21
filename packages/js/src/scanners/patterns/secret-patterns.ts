@@ -24,6 +24,12 @@ export interface SecretPattern {
   /** Severity of exposure if this secret is leaked. */
   severity: SecretSeverity;
   /**
+   * Short family label used in `ScanMatch.category` and redaction placeholders,
+   * e.g. "aws", "stripe", "github". When omitted, derived from the `id` by
+   * lowercasing the middle segment (e.g. "SEC-STRIPE-001" → "stripe").
+   */
+  family?: string;
+  /**
    * When true, also require Shannon entropy > 4.0 on the matched token
    * before flagging. Reduces false-positives on placeholder/example strings.
    */
@@ -493,7 +499,7 @@ const INFRA_PATTERNS: SecretPattern[] = [
   {
     id: 'SEC-SUPABASE-001',
     name: 'Supabase Service Role Key',
-    pattern: /eyJ[A-Za-z0-9\-_=]+\.eyJ[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_.+\/=]+ (?=.*supabase)/i,
+    pattern: /eyJ[A-Za-z0-9\-_=]+\.eyJ[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_.+\/=]+(?=.*supabase)/i,
     severity: 'critical',
   },
   {

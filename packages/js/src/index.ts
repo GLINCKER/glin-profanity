@@ -91,7 +91,7 @@ export type {
   HybridAnalysisResult,
 } from './ml/types';
 
-// AI guardrail scanners
+// AI guardrail scanner types (runtime implementations in 'glin-profanity/scanners')
 export type {
   Scanner,
   ScanResult,
@@ -99,23 +99,10 @@ export type {
   ScanContext,
   ScanMatch,
 } from './scanners/base';
-export { allowResult, blockResult } from './scanners/base';
 
 export type { PromptInjectionOptions } from './scanners/prompt-injection';
-export {
-  PromptInjectionScanner,
-  checkPromptInjection,
-  defaultPromptInjectionScanner,
-} from './scanners/prompt-injection';
-
 export type { SecretsOptions } from './scanners/secrets';
-export { SecretsScanner, scanSecrets } from './scanners/secrets';
 export type { SecretPattern, SecretSeverity } from './scanners/patterns/secret-patterns';
-
 export type { PiiOptions } from './scanners/pii';
-export { PiiScanner, scanPii } from './scanners/pii';
 export type { PiiPattern, PiiType } from './scanners/patterns/pii-patterns';
-export { luhnCheck, ibanCheck } from './scanners/patterns/pii-patterns';
-
 export type { RestoreStrategy } from './scanners/vault';
-export { Vault } from './scanners/vault';

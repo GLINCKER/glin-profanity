@@ -73,15 +73,17 @@ export function allowResult(scanner: string, input: string): ScanResult {
 }
 
 /**
- * Build a BLOCK or HITL result for a scanner that detected injection signals.
+ * Build a BLOCK, HITL, or ALLOW result based on score thresholds.
+ * Returns BLOCK when score ≥ blockAt, HITL when score ≥ hitlAt, and
+ * ALLOW when score < hitlAt (even though matches were found).
  *
  * @param scanner - Name of the scanner producing the result.
  * @param input - The original input string.
  * @param score - Computed risk score (0..1).
  * @param reasons - List of human-readable flag reasons.
  * @param matches - Optional per-pattern match details.
- * @param blockAt - Threshold above which the decision is BLOCK (default 0.8).
- * @param hitlAt - Threshold above which the decision is HITL (default 0.5).
+ * @param blockAt - Threshold at or above which the decision is BLOCK (default 0.8).
+ * @param hitlAt - Threshold at or above which the decision is HITL (default 0.5).
  */
 export function blockResult(
   scanner: string,

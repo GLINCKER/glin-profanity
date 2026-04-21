@@ -44,8 +44,9 @@ export interface SecretsOptions {
   redact?: boolean;
   /**
    * Vault instance used to store originals when `redact` is true.
-   * If `redact` is true and no vault is provided, a local ephemeral vault
-   * is created per scan (no external restore possible).
+   * A vault must be provided to obtain unique, reversible placeholders.
+   * If `redact` is true but no vault is provided, each detected secret is
+   * replaced with the generic string `[REDACTED]` and cannot be restored.
    */
   vault?: Vault;
   /** Extra patterns merged with the built-in set. */
@@ -125,7 +126,10 @@ export class SecretsScanner implements Scanner {
           pattern: entry.id,
           startIndex: m.index,
           endIndex: m.index + m[0].length,
-          category: entry.severity,
+          // category carries the pattern family, not severity, so callers can
+          // use it for grouping/labelling (e.g. "stripe", "aws") rather than
+          // the risk tier.
+          category: entry.family ?? secretFamily(entry.id),
         });
 
         if (!reasons.includes(entry.name)) {
@@ -162,22 +166,63 @@ export class SecretsScanner implements Scanner {
   }
 
   private redactInput(input: string, matches: ScanMatch[]): string {
-    // Sort descending by startIndex so we can splice from the end
-    const sorted = [...matches].sort((a, b) => b.startIndex - a.startIndex);
+    // Deduplicate overlapping ranges: sort by startIndex asc, then endIndex desc
+    // (larger span first on tie) so we keep the widest match for each region.
+    const deduped = deduplicateMatches(matches);
+    // Splice from highest endIndex down so earlier indices stay valid.
+    const sorted = [...deduped].sort((a, b) => b.endIndex - a.endIndex || b.startIndex - a.startIndex);
 
     let result = input;
     for (const m of sorted) {
       const original = input.slice(m.startIndex, m.endIndex);
-      // Derive the type label from the pattern id (e.g. "SEC-AWS-001" → "AWS_SECRET")
-      const typeLabel = m.category.toUpperCase() + '_SECRET';
+      const typeLabel = m.category.toUpperCase();
       const vault = this.options.vault;
       const placeholder = vault
         ? vault.store(typeLabel, original)
-        : `[REDACTED_${typeLabel}]`;
+        : '[REDACTED]';
       result = result.slice(0, m.startIndex) + placeholder + result.slice(m.endIndex);
     }
     return result;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive a short family label from a pattern id.
+ * e.g. "SEC-STRIPE-001" → "stripe", "SEC-AWS-001" → "aws"
+ */
+function secretFamily(id: string): string {
+  const parts = id.split('-');
+  // id format is "SEC-<FAMILY>-<NUM>" — middle segment(s) form the family
+  if (parts.length >= 3) {
+    return parts.slice(1, parts.length - 1).join('_').toLowerCase();
+  }
+  return id.toLowerCase();
+}
+
+/**
+ * Remove overlapping/duplicate match ranges.
+ * Sorts by startIndex ascending, endIndex descending (largest span first on tie).
+ * Keeps the widest non-overlapping match for each region.
+ */
+function deduplicateMatches(matches: ScanMatch[]): ScanMatch[] {
+  const sorted = [...matches].sort((a, b) => a.startIndex - b.startIndex || b.endIndex - a.endIndex);
+  const result: ScanMatch[] = [];
+  let lastEnd = -1;
+  for (const m of sorted) {
+    if (m.startIndex >= lastEnd) {
+      result.push(m);
+      lastEnd = m.endIndex;
+    } else if (m.endIndex > lastEnd && result.length > 0) {
+      // Current match extends beyond the last kept match — replace it
+      result[result.length - 1] = m;
+      lastEnd = m.endIndex;
+    }
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------
