@@ -1,0 +1,48 @@
+{
+  "name": "glin-profanity-vscode",
+  "displayName": "Glin Profanity — AI Guardrail",
+  "description": "Highlight profanity, PII, secrets, and prompt-injection in your editor.",
+  "version": "0.1.0",
+  "publisher": "glincker",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Linters", "Other"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Glin Profanity",
+      "properties": {
+        "glinProfanity.enableOnSave": { "type": "boolean", "default": true },
+        "glinProfanity.enableOnType": { "type": "boolean", "default": false },
+        "glinProfanity.scanners": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["profanity", "injection", "secrets", "pii"] },
+          "default": ["profanity", "secrets", "pii"]
+        },
+        "glinProfanity.strictness": {
+          "type": "string",
+          "enum": ["lenient", "moderate", "strict"],
+          "default": "moderate"
+        }
+      }
+    },
+    "commands": [
+      { "command": "glinProfanity.scanActiveFile", "title": "Glin Profanity: Scan Active File" },
+      { "command": "glinProfanity.clearDiagnostics", "title": "Glin Profanity: Clear Diagnostics" }
+    ]
+  },
+  "scripts": {
+    "build": "tsup src/extension.ts --format cjs --external vscode",
+    "watch": "tsup src/extension.ts --format cjs --external vscode --watch",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "glin-profanity": "file:../js"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/vscode": "^1.90.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "@vscode/vsce": "^3.0.0"
+  }
+}
