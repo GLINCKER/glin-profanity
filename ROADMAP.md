@@ -114,6 +114,7 @@ Content moderation is a **$14B market in 2026**, growing to **$42B by 2035** (13
 > **Strategy**: Dictionary-first (fast), ML-second (accurate when needed)
 > Based on research: [Detoxify](https://github.com/unitaryai/detoxify), [transformers.js](https://huggingface.co/docs/transformers.js)
 
+- [ ] **Publish `glincker/glin-guard-small` on Hugging Face Hub** — distilled toxicity + injection model, <50MB ONNX, int8-quantised; credibility anchor for the ML story. **Status: backlog (owner working on separately).**
 - [ ] **transformers.js integration** - Optional ONNX model support
   - Use existing models: [pardonmyai](https://huggingface.co/tarekziade/pardonmyai) (97.5% accuracy)
   - Fallback to dictionary when ML unavailable
