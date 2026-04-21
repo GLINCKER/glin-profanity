@@ -18,7 +18,55 @@ import {
   checkPromptInjection,
   type PromptInjectionOptions,
   type InjectionPattern,
+  SecretsScanner,
+  PiiScanner,
+  Vault,
+  type RestoreStrategy,
 } from 'glin-profanity/scanners';
+
+// ============================================================================
+// VAULT REGISTRY — in-memory LRU with 50-entry cap
+// ============================================================================
+
+/** Maximum number of vault sessions kept in memory. */
+const VAULT_REGISTRY_MAX = 50;
+
+interface VaultRegistryEntry {
+  vault: Vault;
+  accessedAt: number;
+}
+
+const vaultRegistry = new Map<string, VaultRegistryEntry>();
+
+function getOrCreateVault(id: string): Vault {
+  const existing = vaultRegistry.get(id);
+  if (existing) {
+    existing.accessedAt = Date.now();
+    return existing.vault;
+  }
+  // Evict LRU entry when at capacity
+  if (vaultRegistry.size >= VAULT_REGISTRY_MAX) {
+    let lruKey = '';
+    let lruTime = Infinity;
+    for (const [k, v] of vaultRegistry.entries()) {
+      if (v.accessedAt < lruTime) {
+        lruTime = v.accessedAt;
+        lruKey = k;
+      }
+    }
+    if (lruKey) vaultRegistry.delete(lruKey);
+  }
+  const vault = new Vault();
+  vaultRegistry.set(id, { vault, accessedAt: Date.now() });
+  return vault;
+}
+
+function generateVaultId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `vault-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 // Read version from package.json
 const require = createRequire(import.meta.url);
@@ -1625,6 +1673,256 @@ export function registerAllTools(server: McpServer): void {
           },
         ],
       };
+    },
+  );
+
+  // ========== SECRETS & PII SCANNER TOOLS ==========
+
+  server.tool(
+    'scan_secrets',
+    'Scan text for leaked credentials, API keys, tokens, and other secrets. Returns a full ScanResult with per-match details including pattern id, family, and character positions.',
+    {
+      text: z
+        .string()
+        .max(50_000, 'Text must be 50,000 characters or fewer')
+        .describe('The text to scan for secrets'),
+      blockOnAny: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe('When true (default), any detected secret causes a BLOCK decision'),
+      minEntropy: z
+        .number()
+        .optional()
+        .default(4.0)
+        .describe('Minimum Shannon entropy required for high-entropy pattern matches (default: 4.0)'),
+    },
+    async (args) => {
+      try {
+        const scanner = new SecretsScanner({
+          blockOnAny: args.blockOnAny,
+          minEntropy: args.minEntropy,
+        });
+        const result = scanner.scan(args.text);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                {
+                  decision: result.decision,
+                  score: result.score,
+                  valid: result.valid,
+                  reasons: result.reasons,
+                  matches: result.matches,
+                  scanner: result.scanner,
+                  summary:
+                    result.decision === 'ALLOW'
+                      ? 'No secrets detected'
+                      : `Secrets detected — decision: ${result.decision}, score: ${result.score.toFixed(3)}, patterns: ${result.reasons.join(', ')}`,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                error: 'SCAN_SECRETS_FAILED',
+                message: error instanceof Error ? error.message : 'Unknown error',
+              }),
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.tool(
+    'scan_pii',
+    'Scan text for Personally Identifiable Information (email, phone, SSN, credit card, IBAN, IP, MAC, passport, date of birth, etc). Returns a full ScanResult with per-match details. Use redact_pii for a reversible vault-backed redaction.',
+    {
+      text: z
+        .string()
+        .max(50_000, 'Text must be 50,000 characters or fewer')
+        .describe('The text to scan for PII'),
+      redact: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe(
+          'When true, returns sanitized text with [REDACTED_<TYPE>] placeholders (no vault — not reversible). For a reversible round-trip call redact_pii instead.',
+        ),
+    },
+    async (args) => {
+      try {
+        const scanner = new PiiScanner({ redact: args.redact });
+        const result = scanner.scan(args.text);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                {
+                  decision: result.decision,
+                  score: result.score,
+                  valid: result.valid,
+                  reasons: result.reasons,
+                  matches: result.matches,
+                  scanner: result.scanner,
+                  ...(args.redact ? { sanitized: result.sanitized } : {}),
+                  summary:
+                    result.decision === 'ALLOW'
+                      ? 'No PII detected'
+                      : `PII detected — decision: ${result.decision}, score: ${result.score.toFixed(3)}, types: ${result.reasons.join(', ')}`,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                error: 'SCAN_PII_FAILED',
+                message: error instanceof Error ? error.message : 'Unknown error',
+              }),
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.tool(
+    'redact_pii',
+    'Redact PII from text using a server-side vault for reversible round-trip. Returns sanitized text with [REDACTED_<TYPE>_N] placeholders, a vaultId to use for restoration, and a list of placeholder+type pairs. Original values never leave the server. Call restore_pii with the same vaultId to get originals back.',
+    {
+      text: z
+        .string()
+        .max(50_000, 'Text must be 50,000 characters or fewer')
+        .describe('The text to redact PII from'),
+      vaultId: z
+        .string()
+        .optional()
+        .describe('Caller-chosen vault session identifier for round-trip. Omit to auto-generate.'),
+    },
+    async (args) => {
+      try {
+        const vaultId = args.vaultId ?? generateVaultId();
+        const vault = getOrCreateVault(vaultId);
+        const scanner = new PiiScanner({ redact: true, vault });
+        const result = scanner.scan(args.text);
+        // Build entries list — placeholders and types only, no originals
+        const entries = (result.matches ?? []).map((m) => ({
+          placeholder: `[REDACTED_${m.category.toUpperCase()}_*]`,
+          type: m.category,
+        }));
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                {
+                  sanitized: result.sanitized,
+                  vaultId,
+                  entries,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                error: 'REDACT_PII_FAILED',
+                message: error instanceof Error ? error.message : 'Unknown error',
+              }),
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.tool(
+    'restore_pii',
+    'Restore PII placeholders in text back to their original values using a vault session created by redact_pii. The vault is maintained server-side — originals were never sent to the AI client.',
+    {
+      sanitized: z
+        .string()
+        .max(50_000, 'Text must be 50,000 characters or fewer')
+        .describe('The sanitized text containing [REDACTED_<TYPE>_N] placeholders'),
+      vaultId: z
+        .string()
+        .describe('The vault session identifier returned by redact_pii'),
+      strategy: z
+        .enum(['exact', 'caseInsensitive', 'fuzzy', 'combined'])
+        .optional()
+        .default('combined')
+        .describe(
+          'Placeholder matching strategy: exact (default), caseInsensitive, fuzzy (Levenshtein ≤ 3), or combined (tries all in order). Default: combined',
+        ),
+    },
+    async (args) => {
+      try {
+        const entry = vaultRegistry.get(args.vaultId);
+        if (!entry) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({
+                  error: 'VAULT_NOT_FOUND',
+                  message: `No vault session found for vaultId: ${args.vaultId}`,
+                }),
+              },
+            ],
+          };
+        }
+        entry.accessedAt = Date.now();
+        const strategy = (args.strategy ?? 'combined') as RestoreStrategy;
+        const restored = entry.vault.restore(args.sanitized, strategy);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({ restored }, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                error: 'RESTORE_PII_FAILED',
+                message: error instanceof Error ? error.message : 'Unknown error',
+              }),
+            },
+          ],
+        };
+      }
     },
   );
 }

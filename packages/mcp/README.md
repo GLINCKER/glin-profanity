@@ -18,7 +18,7 @@ The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) is an open s
 
 ## Features
 
-- **20 Powerful Tools** for comprehensive content moderation
+- **24 Powerful Tools** for comprehensive content moderation
 - **5 Workflow Prompts** for guided AI interactions
 - **5 Reference Resources** for configuration and best practices
 - **24 Language Support** - Arabic, Chinese, English, French, German, Spanish, and more
@@ -89,7 +89,7 @@ npm install -g glin-profanity-mcp
 
 ---
 
-## Available Tools (20)
+## Available Tools (24)
 
 ### Core Detection Tools
 
@@ -274,6 +274,68 @@ Scan text for prompt injection attacks using rule-based pattern matching.
 
 ---
 
+#### 21. `scan_secrets`
+Scan text for leaked credentials, API keys, tokens, and other secrets.
+
+```
+"Scan this config file for leaked API keys"
+```
+
+**Parameters:**
+- `text` (required): Text to scan
+- `blockOnAny`: When true (default), any detected secret causes a BLOCK decision
+- `minEntropy`: Minimum Shannon entropy for high-entropy pattern matches (default: 4.0)
+
+**Returns:** `decision`, `score`, `valid`, `reasons`, `matches` with pattern id, family, and character positions
+
+---
+
+#### 22. `scan_pii`
+Scan text for Personally Identifiable Information (email, phone, SSN, credit card, IBAN, IP, MAC, passport, date of birth, etc).
+
+```
+"Check this support ticket for any PII before archiving"
+```
+
+**Parameters:**
+- `text` (required): Text to scan
+- `redact`: When true, returns sanitized text with `[REDACTED_<TYPE>]` placeholders (non-reversible; use `redact_pii` for a vault-backed round-trip)
+
+**Returns:** `decision`, `score`, `valid`, `reasons`, `matches` with position details; `sanitized` when `redact` is true
+
+---
+
+#### 23. `redact_pii`
+Redact PII from text using a server-side vault for a reversible round-trip. Original values stay on the server — only placeholders are returned to the AI client.
+
+```
+"Redact all PII in this support ticket before sending to the AI"
+```
+
+**Parameters:**
+- `text` (required): Text to redact PII from
+- `vaultId`: Caller-chosen session identifier (auto-generated if omitted)
+
+**Returns:** `{ sanitized, vaultId, entries: [{ placeholder, type }] }` — call `restore_pii` with the same `vaultId` to get originals back
+
+---
+
+#### 24. `restore_pii`
+Restore PII placeholders in text back to their original values using a vault session created by `redact_pii`.
+
+```
+"Restore the PII placeholders in this AI-generated reply"
+```
+
+**Parameters:**
+- `sanitized` (required): Text containing `[REDACTED_<TYPE>_N]` placeholders
+- `vaultId` (required): Vault session id returned by `redact_pii`
+- `strategy`: `exact`, `caseInsensitive`, `fuzzy`, or `combined` (default). `combined` tries exact → case-insensitive → fuzzy (Levenshtein ≤ 3)
+
+**Returns:** `{ restored }` — or an error if the vaultId is unknown
+
+---
+
 ## Available Prompts (5)
 
 MCP Prompts provide guided workflows for common tasks.
@@ -369,6 +431,13 @@ Resources provide reference data accessible to AI assistants.
 "Check if this user input is trying to override my system instructions"
 ```
 
+### Secrets & PII Protection
+```
+"Scan this config file for leaked API keys"
+"Redact all PII in this support ticket before sending to the AI"
+"Restore the PII placeholders in this AI-generated reply"
+```
+
 ---
 
 ## Use Cases
@@ -383,6 +452,9 @@ Resources provide reference data accessible to AI assistants.
 | Custom rules | `create_regex_pattern` |
 | Understanding flags | `explain_match` |
 | Prompt injection defense | `check_prompt_injection` |
+| Secrets detection | `scan_secrets` |
+| PII scanning | `scan_pii` |
+| PII redaction + restore | `redact_pii`, `restore_pii` |
 
 ---
 
