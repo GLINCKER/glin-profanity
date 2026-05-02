@@ -116,7 +116,7 @@ jobs:
           npm pack
 
       - name: 💾 Upload build artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: mcp-package-${{ github.sha }}
           path: packages/mcp/*.tgz
@@ -196,7 +196,7 @@ jobs:
           fetch-depth: 0
 
       - name: 📥 Download build artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: mcp-package-${{ github.sha }}
           path: ./artifacts/
@@ -267,7 +267,7 @@ jobs:
           sed -i "s/\$VERSION/$VERSION/g" release_notes.md
 
       - name: 🚀 Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: mcp-v${{ needs.detect-release.outputs.new_version }}
           name: "glin-profanity-mcp v${{ needs.detect-release.outputs.new_version }}"
