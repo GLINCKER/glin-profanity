@@ -159,15 +159,15 @@
     }
   },
   "peerDependencies": {
-    "react": ">=16.8.0",
+    "@langchain/core": ">=0.1.0",
     "@tensorflow-models/toxicity": ">=1.2.0",
     "@tensorflow/tfjs": ">=4.0.0",
-    "zod": ">=3.0.0",
-    "openai": ">=4.0.0",
-    "@langchain/core": ">=0.1.0",
-    "ai": ">=3.0.0",
     "@xenova/transformers": ">=2.0.0",
-    "tesseract.js": ">=5.0.0"
+    "ai": ">=3.0.0",
+    "openai": ">=4.0.0",
+    "react": ">=16.8.0",
+    "tesseract.js": ">=5.0.0",
+    "zod": ">=3.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -303,16 +303,16 @@
     "@semantic-release/npm": "^12.0.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.4",
-    "@testing-library/react": "^16.3.0",
+    "@testing-library/react": "^16.3.2",
     "@types/jest": "^30.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "jest": "^30.0.5",
-    "jest-environment-jsdom": "^30.0.5",
+    "jest-environment-jsdom": "^30.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "semantic-release": "^24.2.7",
-    "ts-jest": "^29.4.0",
+    "ts-jest": "^29.4.9",
     "tsup": "^8.2.3",
     "tsx": "^4.21.0",
     "typescript": "^5.8.3"
