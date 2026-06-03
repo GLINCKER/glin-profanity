@@ -39,7 +39,7 @@
     "glin-profanity": "file:../js"
   },
   "devDependencies": {
-    "@types/node": "^22",
+    "@types/node": "^25",
     "@types/vscode": "^1.90.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
