@@ -97,7 +97,7 @@ jobs:
           fi
           
       - name: 📈 Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           file: ${{ env.PACKAGE_DIR }}/coverage/lcov.info
           flags: javascript
@@ -115,7 +115,7 @@ jobs:
             js-build-${{ runner.os }}-
             
       - name: 💾 Upload build artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: matrix.node-version == 18  # Only upload once
         with:
           name: js-build-artifacts-${{ github.sha }}
