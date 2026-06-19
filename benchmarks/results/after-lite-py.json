@@ -1,0 +1,68 @@
+{
+  "label": "after",
+  "python": "3.13.9",
+  "generated_at": "2026-06-19T14:34:50.224285+00:00",
+  "benchmarks": [
+    {
+      "name": "init_shootout_config",
+      "avg_us": 2348.57,
+      "ops_per_sec": 426,
+      "iterations": 300
+    },
+    {
+      "name": "torture_set_60_batch",
+      "avg_us": 32.28,
+      "ops_per_sec": 30981,
+      "iterations": 9000
+    },
+    {
+      "name": "basic_clean",
+      "avg_us": 16.2,
+      "ops_per_sec": 61736,
+      "iterations": 20000
+    },
+    {
+      "name": "shootout_clean",
+      "avg_us": 36.63,
+      "ops_per_sec": 27297,
+      "iterations": 20000
+    },
+    {
+      "name": "shootout_evasion_mix",
+      "avg_us": 109.18,
+      "ops_per_sec": 9159,
+      "iterations": 10000
+    },
+    {
+      "name": "context_aware_insult",
+      "avg_us": 66.05,
+      "ops_per_sec": 15139,
+      "iterations": 10000
+    },
+    {
+      "name": "context_aware_whitelist",
+      "avg_us": 11.54,
+      "ops_per_sec": 86661,
+      "iterations": 10000
+    },
+    {
+      "name": "cjk_chinese",
+      "avg_us": 29.28,
+      "ops_per_sec": 34157,
+      "iterations": 10000
+    },
+    {
+      "name": "all_languages_clean",
+      "avg_us": 17.23,
+      "ops_per_sec": 58051,
+      "iterations": 3000
+    },
+    {
+      "name": "shootout_legacy_clean",
+      "avg_us": 2599.48,
+      "ops_per_sec": 385,
+      "iterations": 20000,
+      "has_ac_fast_path": true
+    }
+  ]
+}

@@ -53,6 +53,8 @@ HOMOGLYPHS: dict[str, str] = {
     "τ": "t",  # Greek small tau
     "Τ": "T",  # Greek capital Tau
     "υ": "u",  # Greek small upsilon
+    "Ս": "U",  # Armenian capital seh
+    "ս": "u",  # Armenian small seh
     "Υ": "Y",  # Greek capital Upsilon
     "χ": "x",  # Greek small chi
     "Χ": "X",  # Greek capital Chi

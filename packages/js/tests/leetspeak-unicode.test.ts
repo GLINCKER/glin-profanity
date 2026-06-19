@@ -15,6 +15,41 @@ import {
   containsUnicodeObfuscation,
   detectCharacterSets,
 } from '../src/utils';
+import {
+  normalizeEvasion,
+  collapseSeparatedCharacters,
+  stripHtmlAndDecodeEntities,
+} from '../src/utils/evasion';
+
+describe('Evasion Normalization', () => {
+  describe('stripHtmlAndDecodeEntities', () => {
+    it('should strip tags and decode numeric entities', () => {
+      expect(stripHtmlAndDecodeEntities('sh&#105;t')).toBe('shit');
+      expect(stripHtmlAndDecodeEntities('f<b>u</b>ck')).toBe('fuck');
+      expect(stripHtmlAndDecodeEntities('a<br>ss')).toBe('ass');
+    });
+  });
+
+  describe('collapseSeparatedCharacters', () => {
+    it('should collapse separator obfuscation', () => {
+      expect(collapseSeparatedCharacters('f.u.c.k')).toBe('fuck');
+      expect(collapseSeparatedCharacters('f_u_c_k')).toBe('fuck');
+      expect(collapseSeparatedCharacters('b-i-t-c-h')).toBe('bitch');
+    });
+
+    it('should not collapse normal dotted words', () => {
+      expect(collapseSeparatedCharacters('hello.world')).toBe('hello.world');
+    });
+  });
+
+  describe('normalizeEvasion', () => {
+    it('should expand masked profanity patterns', () => {
+      expect(normalizeEvasion('This is f*cking ridiculous')).toBe('This is fucking ridiculous');
+      expect(normalizeEvasion('holy f*** that was amazing')).toBe('holy fuck that was amazing');
+      expect(normalizeEvasion('go f yourself')).toBe('go fuck yourself');
+    });
+  });
+});
 
 describe('Leetspeak Detection', () => {
   describe('normalizeLeetspeak', () => {
@@ -95,6 +130,7 @@ describe('Unicode Normalization', () => {
       // Greek letters that look like Latin
       expect(normalizeUnicode('fυck')).toBe('fuck'); // Greek upsilon
       expect(normalizeUnicode('fосk')).toBe('fock'); // Cyrillic о
+      expect(normalizeUnicode('fսck')).toBe('fuck'); // Armenian seh
     });
   });
 
@@ -215,6 +251,7 @@ describe('Filter with Leetspeak and Unicode', () => {
     const filter = new Filter({
       languages: ['english'],
       detectLeetspeak: true,
+      leetspeakLevel: 'aggressive',
       normalizeUnicode: true,
       fuzzyToleranceLevel: 0.7,
     });
@@ -224,6 +261,23 @@ describe('Filter with Leetspeak and Unicode', () => {
       expect(filter.isProfane('fück')).toBe(true);
       expect(filter.isProfane('f\u200Buck')).toBe(true); // zero-width in "fuck"
       expect(filter.isProfane('sh!t')).toBe(true);
+    });
+
+    it('should detect shootout evasion categories', () => {
+      const cases = [
+        'shi7e',
+        'f.u.c.k',
+        'a<br>ss',
+        'sh&#105;t',
+        'This is f*cking ridiculous',
+        'holy f*** that was amazing',
+        'go f yourself',
+        'what a f@cking mess',
+        'fսck',
+      ];
+      for (const text of cases) {
+        expect(filter.isProfane(text)).toBe(true);
+      }
     });
   });
 

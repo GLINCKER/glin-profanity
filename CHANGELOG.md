@@ -19,15 +19,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - VS Code extension scaffold (`packages/vscode-extension`, v0.1.0)
 - Gradio Hugging Face Space (`packages/huggingface-space`) — 5-tab multi-scanner demo
 - Benchmark shootout CI gate (`benchmarks/shootout/`) — F1 regression guard vs obscenity, bad-words, leo-profanity, @2toad/profanity
+- Aho-Corasick dictionary matcher (JS + Python) with legacy regex fallback via `disableAhoCorasick` / `disable_aho_corasick`
+- CJK automatic matching by word script — Latin terms use `\b` boundaries; CJK terms match as substrings (including ASCII adjacency)
+- Context-aware profanity filtering (`ContextAnalyzer`) with positive/negative context scoring, phrase whitelists, and gaming domain whitelists (JS + Python parity)
+- Python filter instance pool (`get_pooled_filter`, `create_filter_config`, `clear_filter_pool`) mirroring JS `filterPool`
+- Expanded cross-language parity tests covering CJK matching, context-aware optimization, and `is_profane` agreement
+- Evasion normalization pipeline (`normalizeEvasion`) — HTML tag/entity decoding, separator collapse (`f.u.c.k`), asterisk masking (`f*cking`, `f***`), abbreviated insults (`go f yourself`)
+- Armenian homoglyph support (`ս` → `u`) and aggressive leetspeak `@` → `u` variant for patterns like `f@cking`
+- Added `shite` to English dictionary (covers `shi7e` leetspeak variant)
 
 ### Changed
 - Scanner implementations live at `glin-profanity/scanners` subpath export to keep core bundle unchanged; root entry exports types only
 - `ScanMatch.category` now carries pattern family (e.g. `"stripe"`, `"aws_access_key"`) instead of severity
+- Context-aware mode enables Aho-Corasick candidate discovery even when `wordBoundaries` / `word_boundaries` is `false`
+- `isProfane` / `is_profane` apply context filtering when `enableContextAware` / `enable_context_aware` is enabled
 
 ### Fixed
 - PI-034 missing `/i` flag (only matched ALL-CAPS variants)
 - PI-036 removed negative lookbehind for broader runtime support (Safari, older Node)
 - Overlapping match range deduplication in secrets redaction
+- Python legacy fuzzy matching restricted to `word_boundaries=false` (aligned with JS)
+- Latin word-boundary checks use correct start/end positions (fixes Scunthorpe/classic false positives)
+- Korean NFKD normalization gaps — original/normalized/aggressive three-variant matching in both JS and Python
 
 ## [3.1.0] - 2025-12-30
 

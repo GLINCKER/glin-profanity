@@ -1,29 +1,11 @@
-import { Filter, FilterConfig } from '../filters/Filter';
 import { ProfanityCheckerConfig, ProfanityCheckResult } from './types';
-import globalWhitelistData from '@shared/dictionaries/globalWhitelist.json';
+import { createFilterConfig, getPooledFilter } from './filterPool';
 
-function createFilterConfig(config?: ProfanityCheckerConfig): FilterConfig {
-  const effective: FilterConfig = {
-    ...(config ?? {}),
-    ignoreWords: [
-      ...(globalWhitelistData as { whitelist: string[] }).whitelist,
-      ...(config?.ignoreWords ?? []),
-    ],
-    fuzzyToleranceLevel: config?.fuzzyToleranceLevel ?? 0.8,
-  };
-
-  if (effective.allowObfuscatedMatch && effective.wordBoundaries) {
-    console.warn(
-      '[Glin-Profanity] Obfuscated match enabled → wordBoundaries will be ignored internally.',
-    );
-  }
-
-  return effective;
-}
+export { clearFilterPool } from './filterPool';
 
 export function checkProfanity(text: string, config?: ProfanityCheckerConfig): ProfanityCheckResult {
   const filterConfig = createFilterConfig(config);
-  const filter = new Filter(filterConfig);
+  const filter = getPooledFilter(filterConfig);
   const checkResult = filter.checkProfanity(text);
 
   // Filter based on minSeverity (if provided)
@@ -57,5 +39,6 @@ export async function checkProfanityAsync(text: string, config?: ProfanityChecke
 }
 
 export function isWordProfane(word: string, config?: ProfanityCheckerConfig): boolean {
-  return checkProfanity(word, config).containsProfanity;
+  const filter = getPooledFilter(createFilterConfig(config));
+  return filter.isProfane(word);
 }

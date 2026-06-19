@@ -6,14 +6,30 @@ import re
 from typing import Literal
 
 from glin_profanity.data.dictionary import dictionary
+from glin_profanity.filters.dictionary_aho_corasick import (
+    DictionaryAhoCorasick,
+    DictionaryMatch,
+    DictionarySearchOptions,
+)
+from glin_profanity.nlp.context_analyzer import ContextAnalyzer, ContextConfig
 from glin_profanity.types.types import (
     CheckProfanityResult,
     FilterConfig,
+    Language,
     Match,
     SeverityLevel,
 )
-from glin_profanity.utils.leetspeak import normalize_leetspeak
+from glin_profanity.utils.evasion import normalize_evasion
+from glin_profanity.utils.leetspeak import (
+    normalize_leetspeak,
+    normalize_leetspeak_variants,
+)
 from glin_profanity.utils.unicode import normalize_unicode
+from glin_profanity.utils.word_script import (
+    WordScript,
+    classify_word_script,
+    match_has_word_boundary,
+)
 
 LeetspeakLevel = Literal["basic", "moderate", "aggressive"]
 
@@ -58,6 +74,18 @@ class Filter:
         self.enable_context_aware = config.get("enable_context_aware", False)
         self.context_window = config.get("context_window", 3)
         self.confidence_threshold = config.get("confidence_threshold", 0.7)
+        languages = config.get("languages", ["english"])
+        self.primary_language: Language = languages[0] if languages else "english"
+        self.context_analyzer: ContextAnalyzer | None = None
+        if self.enable_context_aware:
+            domain_whitelists = config.get("domain_whitelists") or {}
+            self.context_analyzer = ContextAnalyzer(
+                ContextConfig(
+                    context_window=self.context_window,
+                    language=self.primary_language,
+                    domain_whitelists=domain_whitelists.get(self.primary_language, []),
+                )
+            )
 
         # Leetspeak and Unicode normalization configuration
         self.detect_leetspeak = config.get("detect_leetspeak", False)
@@ -69,6 +97,7 @@ class Filter:
         self.max_cache_size = config.get("max_cache_size", 1000)
         self._cache: dict[str, CheckProfanityResult] = {}
         self._regex_cache: dict[str, re.Pattern[str]] = {}
+        self.dictionary_matcher: DictionaryAhoCorasick | None = None
 
         # Initialize word sets
         ignore_words_list = config.get("ignore_words", [])
@@ -94,13 +123,54 @@ class Filter:
         if custom_words:
             words.extend(custom_words)
 
-        # Store as set for faster lookup
+        # Store as set for faster lookup; track script per entry for boundary rules
         self.words: set[str] = {word.lower() for word in words}
+        self.word_scripts: dict[str, WordScript] = {}
+        for word in words:
+            key = word.lower()
+            self.word_scripts[key] = classify_word_script(word)
+
+        if self._should_use_aho_corasick(config):
+            self.dictionary_matcher = DictionaryAhoCorasick(list(self.words))
+
+    def _should_use_aho_corasick(self, config: FilterConfig) -> bool:
+        if config.get("disable_aho_corasick"):
+            return False
+        return self.word_boundaries or self.enable_context_aware
+
+    def _get_dictionary_search_options(self) -> DictionarySearchOptions:
+        return DictionarySearchOptions(
+            word_boundaries=self.word_boundaries,
+            case_sensitive=self.case_sensitive,
+            ignore_words=self.ignore_words,
+            word_scripts=self.word_scripts,
+        )
 
     def _debug_log(self, *args: object) -> None:
         """Log debug information if logging is enabled."""
         if self.log_profanity:
             print("[glin-profanity]", *args)  # noqa: T201
+
+    def _get_normalized_variants(self, text: str) -> tuple[str, str]:
+        """Compute normal and aggressive normalized text in one pass."""
+        base = normalize_evasion(text)
+
+        if self.normalize_unicode_enabled:
+            base = normalize_unicode(base)
+
+        if self.detect_leetspeak:
+            return normalize_leetspeak_variants(
+                base,
+                level=self.leetspeak_level,
+                collapse_repeated=True,
+                remove_spaced_chars=True,
+            )
+
+        if self.allow_obfuscated_match and not self.detect_leetspeak:
+            obfuscated = self._normalize_obfuscated(base)
+            return obfuscated, obfuscated
+
+        return base, base
 
     def _normalize_text(self, text: str) -> str:
         """
@@ -114,26 +184,76 @@ class Filter:
         Returns:
             The normalized text
         """
-        normalized = text
+        normal, _ = self._get_normalized_variants(text)
+        return normal
 
-        # Step 1: Apply Unicode normalization (handles homoglyphs, diacritics, etc.)
-        if self.normalize_unicode_enabled:
-            normalized = normalize_unicode(normalized)
+    def _get_text_variants(self, text: str, lowercase: bool) -> dict[str, str]:
+        normal, aggressive = self._get_normalized_variants(text)
+        if lowercase:
+            return {
+                "original": text.lower(),
+                "normalized": normal.lower(),
+                "aggressive": aggressive.lower(),
+            }
+        return {
+            "original": text,
+            "normalized": normal,
+            "aggressive": aggressive,
+        }
 
-        # Step 2: Apply leetspeak normalization
-        if self.detect_leetspeak:
-            normalized = normalize_leetspeak(
-                normalized,
-                level=self.leetspeak_level,
-                collapse_repeated=True,
-                remove_spaced_chars=True,
+    def _evaluate_severity_on_variants(
+        self, word: str, variants: dict[str, str]
+    ) -> SeverityLevel | None:
+        severity = self._evaluate_severity(word, variants["original"])
+        if severity is not None:
+            return severity
+
+        if variants["normalized"] != variants["original"]:
+            severity = self._evaluate_severity(word, variants["normalized"])
+            if severity is not None:
+                return severity
+
+        if (
+            variants["aggressive"] != variants["normalized"]
+            and variants["aggressive"] != variants["original"]
+        ):
+            return self._evaluate_severity(word, variants["aggressive"])
+
+        return None
+
+    def _collect_matches_from_variant(
+        self,
+        dict_word: str,
+        variant_text: str,
+        severity: SeverityLevel,
+        profane_words: set[str],
+        severity_map: dict[str, SeverityLevel],
+        matches: list[Match],
+        use_match_text: bool,
+    ) -> None:
+        regex = self._get_regex(dict_word)
+        script = self._get_word_script(dict_word)
+
+        for match in regex.finditer(variant_text):
+            start = match.start()
+            end = match.end()
+            if not match_has_word_boundary(
+                variant_text, start, end, script, self.word_boundaries
+            ):
+                continue
+
+            matched = match.group(0) if use_match_text else dict_word
+            profane_words.add(matched)
+            if matched not in severity_map:
+                severity_map[matched] = severity
+
+            matches.append(
+                {
+                    "word": matched,
+                    "index": start,
+                    "severity": severity,
+                }
             )
-
-        # Step 3: Apply legacy obfuscation handling (for backward compatibility)
-        if self.allow_obfuscated_match and not self.detect_leetspeak:
-            normalized = self._normalize_obfuscated(normalized)
-
-        return normalized
 
     def _normalize_obfuscated(self, text: str) -> str:
         """
@@ -233,19 +353,33 @@ class Filter:
             return None
         return self._cache.get(key)
 
+    def _get_word_script(self, word: str) -> WordScript:
+        return self.word_scripts.get(word, classify_word_script(word))
+
     def _get_regex(self, word: str) -> re.Pattern[str]:
         """Create regex pattern for word matching."""
-        if word in self._regex_cache:
-            return self._regex_cache[word]
+        script = self._get_word_script(word)
+        cache_key = f"{script}:{word}"
+        if cache_key in self._regex_cache:
+            return self._regex_cache[cache_key]
 
         flags = 0 if self.case_sensitive else re.IGNORECASE
         escaped_word = re.escape(word)
-
-        pattern = rf"\b{escaped_word}\b" if self.word_boundaries else escaped_word
+        use_latin_boundary = self.word_boundaries and script == "latin"
+        boundary = r"\b" if use_latin_boundary else ""
+        pattern = f"{boundary}{escaped_word}{boundary}"
 
         regex = re.compile(pattern, flags)
-        self._regex_cache[word] = regex
+        self._regex_cache[cache_key] = regex
         return regex
+
+    def _get_replacement_regex(self, word: str) -> re.Pattern[str]:
+        escaped = re.escape(word)
+        if not self.word_boundaries:
+            return re.compile(escaped, re.IGNORECASE)
+        if classify_word_script(word) == "cjk":
+            return re.compile(escaped, re.IGNORECASE)
+        return re.compile(rf"\b{escaped}\b", re.IGNORECASE)
 
     def _is_fuzzy_tolerance_match(self, word: str, text: str) -> bool:
         """Check if word matches text within fuzzy tolerance."""
@@ -294,14 +428,449 @@ class Filter:
 
     def _evaluate_severity(self, word: str, text: str) -> SeverityLevel | None:
         """Evaluate the severity level of a match."""
+        script = self._get_word_script(word)
         regex = self._get_regex(word)
+
+        if script == "cjk" and self.word_boundaries:
+            for match in regex.finditer(text):
+                start = match.start()
+                end = match.end()
+                if match_has_word_boundary(text, start, end, script, True):
+                    return SeverityLevel.EXACT
+            return None
 
         if regex.search(text):
             return SeverityLevel.EXACT
-        if self._is_fuzzy_tolerance_match(word, text):
+        if not self.word_boundaries and self._is_fuzzy_tolerance_match(word, text):
             return SeverityLevel.FUZZY
 
         return None
+
+    def _is_profane_with_aho_corasick(self, value: str) -> bool:
+        variants = self._get_text_variants(value, False)
+        options = self._get_dictionary_search_options()
+        matcher = self.dictionary_matcher
+        assert matcher is not None
+
+        if matcher.has_any_match(variants["original"], options):
+            return True
+        if variants["normalized"] != variants["original"] and matcher.has_any_match(
+            variants["normalized"], options
+        ):
+            return True
+        if (
+            variants["aggressive"] != variants["normalized"]
+            and variants["aggressive"] != variants["original"]
+            and matcher.has_any_match(variants["aggressive"], options)
+        ):
+            return True
+        return False
+
+    def _is_profane_legacy(self, value: str) -> bool:
+        variants = self._get_text_variants(value, False)
+
+        for word in self.words:
+            if word.lower() in self.ignore_words:
+                continue
+            if self._evaluate_severity_on_variants(word, variants) is not None:
+                return True
+
+        return False
+
+    def _check_profanity_with_aho_corasick(self, text: str) -> CheckProfanityResult:
+        variants = self._get_text_variants(text, True)
+        profane_words: set[str] = set()
+        severity_map: dict[str, SeverityLevel] = {}
+        options = self._get_dictionary_search_options()
+        matcher = self.dictionary_matcher
+        assert matcher is not None
+
+        for match in matcher.find_matches(variants["original"], options):
+            profane_words.add(match.matched_text)
+            if match.matched_text not in severity_map:
+                severity_map[match.matched_text] = SeverityLevel.EXACT
+
+        if variants["normalized"] != variants["original"]:
+            for match in matcher.find_matches(variants["normalized"], options):
+                profane_words.add(match.dict_word)
+                if match.dict_word not in severity_map:
+                    severity_map[match.dict_word] = SeverityLevel.EXACT
+
+        if (
+            variants["aggressive"] != variants["normalized"]
+            and variants["aggressive"] != variants["original"]
+        ):
+            for match in matcher.find_matches(variants["aggressive"], options):
+                profane_words.add(match.dict_word)
+                if match.dict_word not in severity_map:
+                    severity_map[match.dict_word] = SeverityLevel.EXACT
+
+        return self._build_profanity_result(text, profane_words, severity_map)
+
+    def _check_profanity_legacy_non_context(self, text: str) -> CheckProfanityResult:
+        variants = self._get_text_variants(text, True)
+        profane_words_set: set[str] = set()
+        severity_map: dict[str, SeverityLevel] = {}
+        matches: list[Match] = []
+
+        for dict_word in self.words:
+            if dict_word.lower() in self.ignore_words:
+                continue
+
+            severity = self._evaluate_severity(dict_word, variants["original"])
+            if severity is not None:
+                self._collect_matches_from_variant(
+                    dict_word,
+                    variants["original"],
+                    severity,
+                    profane_words_set,
+                    severity_map,
+                    matches,
+                    True,
+                )
+
+            if variants["normalized"] != variants["original"]:
+                severity = self._evaluate_severity(dict_word, variants["normalized"])
+                if severity is not None:
+                    self._collect_matches_from_variant(
+                        dict_word,
+                        variants["normalized"],
+                        severity,
+                        profane_words_set,
+                        severity_map,
+                        matches,
+                        False,
+                    )
+
+            if (
+                variants["aggressive"] != variants["normalized"]
+                and variants["aggressive"] != variants["original"]
+            ):
+                severity = self._evaluate_severity(dict_word, variants["aggressive"])
+                if severity is not None:
+                    profane_words_set.add(dict_word)
+                    if dict_word not in severity_map:
+                        severity_map[dict_word] = SeverityLevel.EXACT
+
+        result = self._build_profanity_result(text, profane_words_set, severity_map)
+        if matches:
+            result["matches"] = matches
+        result["reason"] = (
+            f"Found {len(matches)} potential profanity matches"
+            if matches
+            else "No profanity detected"
+        )
+        return result
+
+    def _build_profanity_result(
+        self,
+        text: str,
+        profane_words: set[str],
+        severity_map: dict[str, SeverityLevel],
+    ) -> CheckProfanityResult:
+        profane_word_list = list(profane_words)
+        processed_text = text
+
+        if self.replace_with and profane_word_list:
+            for word in profane_word_list:
+                replacement_regex = self._get_replacement_regex(word)
+                processed_text = replacement_regex.sub(self.replace_with, processed_text)
+
+        result: CheckProfanityResult = {
+            "contains_profanity": len(profane_word_list) > 0,
+            "profane_words": profane_word_list,
+            "reason": (
+                f"Found {len(profane_word_list)} potential profanity matches"
+                if profane_word_list
+                else "No profanity detected"
+            ),
+        }
+
+        if self.replace_with:
+            result["processed_text"] = processed_text
+
+        if self.severity_levels and severity_map:
+            result["severity_map"] = severity_map
+
+        return result
+
+    def _passes_context_filter(
+        self, text: str, matched_word: str, match_index: int
+    ) -> bool:
+        if not self.context_analyzer:
+            return True
+        context_result = self.context_analyzer.analyze_context(
+            text, matched_word, match_index
+        )
+        return not (
+            context_result.is_whitelisted
+            or context_result.context_score > self.confidence_threshold
+        )
+
+    def _record_context_aware_match(
+        self,
+        text: str,
+        matched_word: str,
+        match_index: int,
+        severity: SeverityLevel,
+        profane_words: list[str],
+        severity_map: dict[str, SeverityLevel],
+        matches: list[Match],
+        seen: set[str],
+    ) -> None:
+        dedupe_key = f"{matched_word}:{match_index}"
+        if dedupe_key in seen:
+            return
+
+        match_obj: Match = {
+            "word": matched_word,
+            "index": match_index,
+            "severity": severity,
+        }
+
+        if self.context_analyzer:
+            context_result = self.context_analyzer.analyze_context(
+                text, matched_word, match_index
+            )
+            match_obj["context_score"] = context_result.context_score
+            match_obj["reason"] = context_result.reason
+            match_obj["is_whitelisted"] = context_result.is_whitelisted
+            if not self._passes_context_filter(text, matched_word, match_index):
+                return
+
+        seen.add(dedupe_key)
+        profane_words.append(matched_word)
+        if matched_word not in severity_map:
+            severity_map[matched_word] = severity
+        matches.append(match_obj)
+
+    def _collect_context_aware_candidates_from_ac(
+        self,
+        text: str,
+        variants: dict[str, str],
+        profane_words: list[str],
+        severity_map: dict[str, SeverityLevel],
+        matches: list[Match],
+        seen: set[str],
+    ) -> None:
+        options = self._get_dictionary_search_options()
+        matcher = self.dictionary_matcher
+        assert matcher is not None
+
+        def process_ac_match(match: DictionaryMatch, use_matched_text: bool) -> None:
+            self._record_context_aware_match(
+                text,
+                match.matched_text if use_matched_text else match.dict_word,
+                match.start,
+                SeverityLevel.EXACT,
+                profane_words,
+                severity_map,
+                matches,
+                seen,
+            )
+
+        for match in matcher.find_matches(variants["original"], options):
+            process_ac_match(match, True)
+
+        if variants["normalized"] != variants["original"]:
+            for match in matcher.find_matches(variants["normalized"], options):
+                process_ac_match(match, False)
+
+        if (
+            variants["aggressive"] != variants["normalized"]
+            and variants["aggressive"] != variants["original"]
+        ):
+            for match in matcher.find_matches(variants["aggressive"], options):
+                process_ac_match(match, False)
+
+    def _collect_context_aware_candidates_from_legacy(
+        self,
+        text: str,
+        variants: dict[str, str],
+        profane_words: list[str],
+        severity_map: dict[str, SeverityLevel],
+        matches: list[Match],
+        seen: set[str],
+    ) -> None:
+        for dict_word in self.words:
+            if dict_word.lower() in self.ignore_words:
+                continue
+
+            def collect_from_variant(variant_text: str, use_match_text: bool) -> None:
+                severity = self._evaluate_severity(dict_word, variant_text)
+                if severity is None:
+                    return
+
+                regex = self._get_regex(dict_word)
+                script = self._get_word_script(dict_word)
+                for match in regex.finditer(variant_text):
+                    start = match.start()
+                    end = match.end()
+                    if not match_has_word_boundary(
+                        variant_text, start, end, script, self.word_boundaries
+                    ):
+                        continue
+                    self._record_context_aware_match(
+                        text,
+                        match.group(0) if use_match_text else dict_word,
+                        start,
+                        severity,
+                        profane_words,
+                        severity_map,
+                        matches,
+                        seen,
+                    )
+
+            collect_from_variant(variants["original"], True)
+
+            if variants["normalized"] != variants["original"]:
+                collect_from_variant(variants["normalized"], False)
+
+            if (
+                variants["aggressive"] != variants["normalized"]
+                and variants["aggressive"] != variants["original"]
+            ):
+                collect_from_variant(variants["aggressive"], False)
+
+    def _build_context_aware_result(
+        self,
+        text: str,
+        profane_words: list[str],
+        severity_map: dict[str, SeverityLevel],
+        matches: list[Match],
+    ) -> CheckProfanityResult:
+        processed_text = text
+        if self.replace_with and profane_words:
+            for word in dict.fromkeys(profane_words):
+                processed_text = self._get_replacement_regex(word).sub(
+                    self.replace_with, processed_text
+                )
+
+        context_score: float | None = None
+        if matches:
+            context_score = sum(
+                match.get("context_score") or 0.5 for match in matches
+            ) / len(matches)
+
+        result: CheckProfanityResult = {
+            "contains_profanity": len(profane_words) > 0,
+            "profane_words": list(dict.fromkeys(profane_words)),
+            "reason": (
+                f"Found {len(matches)} potential profanity matches"
+                if matches
+                else "No profanity detected"
+            ),
+        }
+
+        if self.replace_with:
+            result["processed_text"] = processed_text
+        if self.severity_levels and severity_map:
+            result["severity_map"] = severity_map
+        if matches:
+            result["matches"] = matches
+        if context_score is not None:
+            result["context_score"] = context_score
+
+        return result
+
+    def _check_profanity_with_context_aware(self, text: str) -> CheckProfanityResult:
+        variants = self._get_text_variants(text, True)
+        profane_words: list[str] = []
+        severity_map: dict[str, SeverityLevel] = {}
+        matches: list[Match] = []
+        seen: set[str] = set()
+
+        if self.dictionary_matcher:
+            self._collect_context_aware_candidates_from_ac(
+                text, variants, profane_words, severity_map, matches, seen
+            )
+        else:
+            self._collect_context_aware_candidates_from_legacy(
+                text, variants, profane_words, severity_map, matches, seen
+            )
+
+        if profane_words:
+            self._debug_log("Detected:", profane_words)
+
+        return self._build_context_aware_result(
+            text, profane_words, severity_map, matches
+        )
+
+    def _has_context_aware_ac_match(self, text: str, variants: dict[str, str]) -> bool:
+        options = self._get_dictionary_search_options()
+        matcher = self.dictionary_matcher
+        assert matcher is not None
+
+        def has_flagged_match(variant_text: str, use_matched_text: bool) -> bool:
+            for match in matcher.find_matches(variant_text, options):
+                matched_word = match.matched_text if use_matched_text else match.dict_word
+                if self._passes_context_filter(text, matched_word, match.start):
+                    return True
+            return False
+
+        if has_flagged_match(variants["original"], True):
+            return True
+        if variants["normalized"] != variants["original"] and has_flagged_match(
+            variants["normalized"], False
+        ):
+            return True
+        if (
+            variants["aggressive"] != variants["normalized"]
+            and variants["aggressive"] != variants["original"]
+            and has_flagged_match(variants["aggressive"], False)
+        ):
+            return True
+        return False
+
+    def _has_context_aware_legacy_match_for_word(
+        self, text: str, variants: dict[str, str], dict_word: str
+    ) -> bool:
+        def check_variant(variant_text: str, use_match_text: bool) -> bool:
+            severity = self._evaluate_severity(dict_word, variant_text)
+            if severity is None:
+                return False
+
+            regex = self._get_regex(dict_word)
+            script = self._get_word_script(dict_word)
+            for match in regex.finditer(variant_text):
+                start = match.start()
+                end = match.end()
+                if not match_has_word_boundary(
+                    variant_text, start, end, script, self.word_boundaries
+                ):
+                    continue
+                matched_word = match.group(0) if use_match_text else dict_word
+                if self._passes_context_filter(text, matched_word, start):
+                    return True
+            return False
+
+        if check_variant(variants["original"], True):
+            return True
+        if variants["normalized"] != variants["original"] and check_variant(
+            variants["normalized"], False
+        ):
+            return True
+        if (
+            variants["aggressive"] != variants["normalized"]
+            and variants["aggressive"] != variants["original"]
+            and check_variant(variants["aggressive"], False)
+        ):
+            return True
+        return False
+
+    def _has_context_aware_legacy_match(self, text: str, variants: dict[str, str]) -> bool:
+        for dict_word in self.words:
+            if dict_word.lower() in self.ignore_words:
+                continue
+            if self._has_context_aware_legacy_match_for_word(text, variants, dict_word):
+                return True
+        return False
+
+    def _is_profane_with_context_aware(self, value: str) -> bool:
+        variants = self._get_text_variants(value, False)
+        if self.dictionary_matcher:
+            return self._has_context_aware_ac_match(value, variants)
+        return self._has_context_aware_legacy_match(value, variants)
 
     def is_profane(self, value: str) -> bool:
         """
@@ -322,17 +891,11 @@ class Filter:
             >>> filter.is_profane("f u c k")
             True
         """
-        # Apply all normalizations
-        input_text = self._normalize_text(value)
-
-        for word in self.words:
-            if (
-                word.lower() not in self.ignore_words
-                and self._evaluate_severity(word, input_text) is not None
-            ):
-                return True
-
-        return False
+        if self.enable_context_aware:
+            return self._is_profane_with_context_aware(value)
+        if self.dictionary_matcher:
+            return self._is_profane_with_aho_corasick(value)
+        return self._is_profane_legacy(value)
 
     def matches(self, word: str) -> bool:
         """
@@ -368,83 +931,19 @@ class Filter:
             self._debug_log("Cache hit for:", text[:50])
             return cached_result
 
-        # Apply all normalizations
-        input_text = self._normalize_text(text)
-        input_lower = input_text.lower()
+        if not self.enable_context_aware:
+            result = (
+                self._check_profanity_with_aho_corasick(text)
+                if self.dictionary_matcher
+                else self._check_profanity_legacy_non_context(text)
+            )
+            if result["contains_profanity"]:
+                self._debug_log("Detected:", result.get("profane_words", []))
+            self._add_to_cache(text, result)
+            return result
 
-        profane_words: list[str] = []
-        severity_map: dict[str, SeverityLevel] = {}
-        matches: list[Match] = []
-
-        # Check each word in dictionary
-        for dict_word in self.words:
-            if dict_word.lower() in self.ignore_words:
-                continue
-
-            severity = self._evaluate_severity(dict_word, input_text)
-            if severity is not None:
-                regex = self._get_regex(dict_word)
-
-                # Find all matches
-                for match in regex.finditer(input_text):
-                    matched_word = match.group(0)
-                    match_index = match.start()
-
-                    profane_words.append(matched_word)
-                    severity_map[matched_word] = severity
-
-                    # Create match object
-                    match_obj: Match = {
-                        "word": matched_word,
-                        "index": match_index,
-                        "severity": severity,
-                    }
-
-                    # TODO: Add context analysis when implemented
-                    matches.append(match_obj)
-
-        # Log detected profanity
-        if profane_words:
-            self._debug_log("Detected:", profane_words)
-
-        # Process text replacement if configured
-        processed_text = text
-        if self.replace_with and profane_words:
-            unique_words = list(set(profane_words))
-            for word in unique_words:
-                escaped = re.escape(word)
-                if self.word_boundaries:
-                    replacement_regex = re.compile(rf"\b{escaped}\b", re.IGNORECASE)
-                else:
-                    replacement_regex = re.compile(escaped, re.IGNORECASE)
-                processed_text = replacement_regex.sub(
-                    self.replace_with, processed_text
-                )
-
-        # Build result
-        result: CheckProfanityResult = {
-            "contains_profanity": len(profane_words) > 0,
-            "profane_words": list(set(profane_words)),
-        }
-
-        if self.replace_with:
-            result["processed_text"] = processed_text
-
-        if self.severity_levels and severity_map:
-            result["severity_map"] = severity_map
-
-        if matches:
-            result["matches"] = matches
-
-        result["reason"] = (
-            f"Found {len(matches)} potential profanity matches"
-            if matches
-            else "No profanity detected"
-        )
-
-        # Cache the result
+        result = self._check_profanity_with_context_aware(text)
         self._add_to_cache(text, result)
-
         return result
 
     def check_profanity_with_min_severity(

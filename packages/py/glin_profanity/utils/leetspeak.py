@@ -66,6 +66,61 @@ AGGRESSIVE_MULTI_CHAR: list[tuple[str, str]] = [
 ]
 
 
+AGGRESSIVE_VOWEL_SUBSTITUTIONS: dict[str, str] = {
+    **AGGRESSIVE_SUBSTITUTIONS,
+    "@": "u",
+}
+
+
+def _apply_substitutions(text: str, substitutions: dict[str, str]) -> str:
+    return "".join(substitutions.get(char, char) for char in text)
+
+
+def _apply_leetspeak_pre_collapse(
+    text: str,
+    level: LeetspeakLevel,
+    remove_spaced_chars: bool,
+    substitutions: dict[str, str],
+) -> str:
+    normalized = text
+
+    if remove_spaced_chars:
+        normalized = collapse_spaced_characters(normalized)
+
+    if level == "aggressive":
+        for pattern, replacement in AGGRESSIVE_MULTI_CHAR:
+            normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
+
+    return _apply_substitutions(normalized, substitutions)
+
+
+def normalize_leetspeak_variants(
+    text: str,
+    level: LeetspeakLevel = "moderate",
+    collapse_repeated: bool = True,
+    remove_spaced_chars: bool = True,
+) -> tuple[str, str]:
+    """Return normal and aggressive leetspeak variants in one pass."""
+    pre_collapsed = _apply_leetspeak_pre_collapse(
+        text, level, remove_spaced_chars, _get_substitution_map(level)
+    )
+    vowel_pre_collapsed = (
+        _apply_leetspeak_pre_collapse(
+            text, level, remove_spaced_chars, AGGRESSIVE_VOWEL_SUBSTITUTIONS
+        )
+        if level == "aggressive"
+        else pre_collapsed
+    )
+
+    if not collapse_repeated:
+        return pre_collapsed, vowel_pre_collapsed
+
+    return (
+        collapse_repeated_characters(pre_collapsed, 2),
+        collapse_repeated_characters(vowel_pre_collapsed, 1),
+    )
+
+
 def normalize_leetspeak(
     text: str,
     level: LeetspeakLevel = "moderate",

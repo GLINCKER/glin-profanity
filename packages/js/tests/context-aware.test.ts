@@ -139,8 +139,19 @@ describe('Context-Aware Filtering', () => {
       
       // Should flag without context awareness
       expect(result.containsProfanity).toBe(true);
+      expect(traditionalFilter.isProfane('This movie is fucking awesome')).toBe(true);
       expect(result.matches).toBeUndefined();
       expect(result.contextScore).toBeUndefined();
+    });
+
+    it('isProfane and checkProfanity agree when context-aware is enabled', () => {
+      const result = filter.checkProfanity('You are a fucking idiot');
+      expect(filter.isProfane('You are a fucking idiot')).toBe(result.containsProfanity);
+      expect(result.containsProfanity).toBe(true);
+
+      const cleanResult = filter.checkProfanity('This movie is the bomb');
+      expect(filter.isProfane('This movie is the bomb')).toBe(cleanResult.containsProfanity);
+      expect(cleanResult.containsProfanity).toBe(false);
     });
   });
 

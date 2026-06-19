@@ -56,7 +56,7 @@ See [results.md](./results.md) for the full auto-generated table.
 
 | Library | Precision | Recall | F1 | FPR |
 |---------|-----------|--------|----|-----|
-| glin-profanity | 100.0% | 67.4% | 80.6% | 0.0% |
+| glin-profanity | 100.0% | 100.0% | 100.0% | 0.0% |
 | obscenity | 96.7% | 67.4% | 79.5% | 5.9% |
 | bad-words | 100.0% | 37.2% | 54.2% | 0.0% |
 | leo-profanity | 100.0% | 20.9% | 34.6% | 0.0% |
@@ -64,21 +64,21 @@ See [results.md](./results.md) for the full auto-generated table.
 
 ### Key findings
 
-- **glin-profanity has the highest F1** among all tested libraries (80.6%) and **zero false positives**
+- **glin-profanity achieves 100% F1** on the torture-set with **zero false positives**, including word-break, HTML-injection, and masked in-sentence evasion categories
 - `obscenity` is the closest competitor on recall but fires a false positive on "Penistone" (a real UK town name)
 - `leo-profanity` and `bad-words` fail on almost all obfuscation categories — any user with basic evasion awareness defeats them
 - `@2toad/profanity` handles `b1tch` and `a$$hole` but misses homoglyphs, word-break separators, and repeated-char variants
-- All libraries currently miss HTML-entity and word-break-separator cases — an open opportunity
+- All libraries currently miss some obfuscation categories — glin-profanity now covers word-break, HTML-injection, and masked in-sentence cases via evasion normalization
 
 ### Performance snapshot
 
 | Library | ops/sec | Notes |
 |---------|---------|-------|
-| @2toad/profanity | 816,827 | Fastest; regex alternation with no text normalization |
-| leo-profanity | 336,304 | Fast; simple set lookup, no normalization |
-| obscenity | 5,191 | Transformer chain adds overhead but enables better detection |
-| glin-profanity | 1,039 | Normalization pipeline runs per call; cache (`cacheResults: true`) closes the gap for repeated inputs |
-| bad-words | 247 | Slowest despite simple approach |
+| @2toad/profanity | ~600,000 | Fastest; regex alternation with no text normalization |
+| leo-profanity | ~280,000 | Fast; simple set lookup, no normalization |
+| obscenity | ~2,900 | Transformer chain adds overhead but enables better detection |
+| glin-profanity | ~2,500 | Normalization pipeline runs per call; cache (`cacheResults: true`) closes the gap for repeated inputs |
+| bad-words | ~160 | Slowest despite simple approach |
 
 > Perf measured with [tinybench](https://github.com/tinylibs/tinybench) on Node 22, 20 inputs per iteration, Apple Silicon M-series.
 > Enable `cacheResults: true` in glin-profanity for applications with repeated inputs — the internal cache removes normalization overhead after the first call.
