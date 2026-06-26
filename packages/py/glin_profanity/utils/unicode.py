@@ -193,6 +193,11 @@ def convert_full_width(text: str) -> str:
     return "".join(result)
 
 
+def homoglyph_to_ascii(char: str) -> str:
+    """Return the ASCII lookalike for a single homoglyph character."""
+    return HOMOGLYPHS.get(char, char)
+
+
 def convert_homoglyphs(text: str) -> str:
     """
     Convert homoglyph characters to their ASCII equivalents.

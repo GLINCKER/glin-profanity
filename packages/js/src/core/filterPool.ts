@@ -65,6 +65,8 @@ export function getPooledFilter(config: FilterConfig): Filter {
   const key = configCacheKey(config);
   const existing = filterPool.get(key);
   if (existing) {
+    filterPool.delete(key);
+    filterPool.set(key, existing);
     return existing;
   }
 

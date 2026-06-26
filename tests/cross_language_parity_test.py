@@ -47,6 +47,7 @@ def python_config_to_js(config: dict[str, Any]) -> dict[str, Any]:
         "cache_results": "cacheResults",
         "max_cache_size": "maxCacheSize",
         "disable_aho_corasick": "disableAhoCorasick",
+        "enable_evasion_normalization": "enableEvasionNormalization",
         "domain_whitelists": "domainWhitelists",
         "log_profanity": "logProfanity",
     }

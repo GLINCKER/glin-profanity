@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Literal
+from typing import Callable, Literal
 
 from glin_profanity.data.dictionary import dictionary
 from glin_profanity.filters.dictionary_aho_corasick import (
@@ -20,6 +20,10 @@ from glin_profanity.types.types import (
     SeverityLevel,
 )
 from glin_profanity.utils.evasion import normalize_evasion
+from glin_profanity.utils.variant_mapping import (
+    is_nested_profane_span,
+    map_variant_span_to_original,
+)
 from glin_profanity.utils.leetspeak import (
     normalize_leetspeak,
     normalize_leetspeak_variants,
@@ -91,6 +95,7 @@ class Filter:
         self.detect_leetspeak = config.get("detect_leetspeak", False)
         self.leetspeak_level: LeetspeakLevel = config.get("leetspeak_level", "moderate")
         self.normalize_unicode_enabled = config.get("normalize_unicode", True)
+        self.enable_evasion_normalization = config.get("enable_evasion_normalization", True)
 
         # Caching configuration
         self.cache_results = config.get("cache_results", False)
@@ -126,12 +131,17 @@ class Filter:
         # Store as set for faster lookup; track script per entry for boundary rules
         self.words: set[str] = {word.lower() for word in words}
         self.word_scripts: dict[str, WordScript] = {}
+        ac_words: list[str] = []
+        seen_ac_keys: set[str] = set()
         for word in words:
             key = word.lower()
             self.word_scripts[key] = classify_word_script(word)
+            if key not in seen_ac_keys:
+                seen_ac_keys.add(key)
+                ac_words.append(word if self.case_sensitive else key)
 
         if self._should_use_aho_corasick(config):
-            self.dictionary_matcher = DictionaryAhoCorasick(list(self.words))
+            self.dictionary_matcher = DictionaryAhoCorasick(ac_words)
 
     def _should_use_aho_corasick(self, config: FilterConfig) -> bool:
         if config.get("disable_aho_corasick"):
@@ -153,7 +163,7 @@ class Filter:
 
     def _get_normalized_variants(self, text: str) -> tuple[str, str]:
         """Compute normal and aggressive normalized text in one pass."""
-        base = normalize_evasion(text)
+        base = normalize_evasion(text) if self.enable_evasion_normalization else text
 
         if self.normalize_unicode_enabled:
             base = normalize_unicode(base)
@@ -201,6 +211,63 @@ class Filter:
             "aggressive": aggressive,
         }
 
+    def _for_each_text_variant(
+        self,
+        variants: dict[str, str],
+        callback: Callable[[str, bool], bool],
+    ) -> bool:
+        if callback(variants["original"], True):
+            return True
+        if variants["normalized"] != variants["original"] and callback(
+            variants["normalized"], False
+        ):
+            return True
+        if (
+            variants["aggressive"] != variants["normalized"]
+            and variants["aggressive"] != variants["original"]
+            and callback(variants["aggressive"], False)
+        ):
+            return True
+        return False
+
+    def _resolve_ac_match_in_original(
+        self,
+        original_text: str,
+        variant_text: str,
+        match: DictionaryMatch,
+        is_original_variant: bool,
+    ) -> tuple[str, int, int]:
+        if is_original_variant and variant_text == original_text:
+            return match.matched_text, match.start, match.end
+
+        span = map_variant_span_to_original(
+            original_text,
+            variant_text,
+            match.start,
+            match.end,
+        )
+        return span.matched_text, span.start, span.end
+
+    def _resolve_regex_match_in_original(
+        self,
+        original_text: str,
+        variant_text: str,
+        match_start: int,
+        match_end: int,
+        matched_word: str,
+        is_original_variant: bool,
+    ) -> tuple[str, int, int]:
+        if is_original_variant and variant_text == original_text:
+            return matched_word, match_start, match_end
+
+        span = map_variant_span_to_original(
+            original_text,
+            variant_text,
+            match_start,
+            match_end,
+        )
+        return span.matched_text, span.start, span.end
+
     def _evaluate_severity_on_variants(
         self, word: str, variants: dict[str, str]
     ) -> SeverityLevel | None:
@@ -225,11 +292,12 @@ class Filter:
         self,
         dict_word: str,
         variant_text: str,
+        original_text: str,
         severity: SeverityLevel,
         profane_words: set[str],
         severity_map: dict[str, SeverityLevel],
         matches: list[Match],
-        use_match_text: bool,
+        is_original_variant: bool,
     ) -> None:
         regex = self._get_regex(dict_word)
         script = self._get_word_script(dict_word)
@@ -242,15 +310,22 @@ class Filter:
             ):
                 continue
 
-            matched = match.group(0) if use_match_text else dict_word
-            profane_words.add(matched)
-            if matched not in severity_map:
-                severity_map[matched] = severity
+            matched_word, resolved_start, _ = self._resolve_regex_match_in_original(
+                original_text,
+                variant_text,
+                start,
+                end,
+                match.group(0) if is_original_variant else dict_word,
+                is_original_variant,
+            )
+            profane_words.add(matched_word)
+            if matched_word not in severity_map:
+                severity_map[matched_word] = severity
 
             matches.append(
                 {
-                    "word": matched,
-                    "index": start,
+                    "word": matched_word,
+                    "index": resolved_start,
                     "severity": severity,
                 }
             )
@@ -281,6 +356,7 @@ class Filter:
     def clear_cache(self) -> None:
         """Clear the result cache."""
         self._cache.clear()
+        self._regex_cache.clear()
 
     def get_cache_size(self) -> int:
         """Get the current cache size."""
@@ -320,6 +396,7 @@ class Filter:
             "detect_leetspeak": self.detect_leetspeak,
             "leetspeak_level": self.leetspeak_level,
             "normalize_unicode": self.normalize_unicode_enabled,
+            "enable_evasion_normalization": self.enable_evasion_normalization,
             "cache_results": self.cache_results,
             "max_cache_size": self.max_cache_size,
         }
@@ -452,19 +529,10 @@ class Filter:
         matcher = self.dictionary_matcher
         assert matcher is not None
 
-        if matcher.has_any_match(variants["original"], options):
-            return True
-        if variants["normalized"] != variants["original"] and matcher.has_any_match(
-            variants["normalized"], options
-        ):
-            return True
-        if (
-            variants["aggressive"] != variants["normalized"]
-            and variants["aggressive"] != variants["original"]
-            and matcher.has_any_match(variants["aggressive"], options)
-        ):
-            return True
-        return False
+        def check_variant(variant_text: str, _is_original: bool) -> bool:
+            return matcher.has_any_match(variant_text, options)
+
+        return self._for_each_text_variant(variants, check_variant)
 
     def _is_profane_legacy(self, value: str) -> bool:
         variants = self._get_text_variants(value, False)
@@ -485,26 +553,19 @@ class Filter:
         matcher = self.dictionary_matcher
         assert matcher is not None
 
-        for match in matcher.find_matches(variants["original"], options):
-            profane_words.add(match.matched_text)
-            if match.matched_text not in severity_map:
-                severity_map[match.matched_text] = SeverityLevel.EXACT
+        def collect_from_variant(variant_text: str, is_original: bool) -> bool:
+            for match in matcher.find_matches(variant_text, options):
+                matched_word, _, _ = self._resolve_ac_match_in_original(
+                    text, variant_text, match, is_original
+                )
+                if not matched_word:
+                    continue
+                profane_words.add(matched_word)
+                if matched_word not in severity_map:
+                    severity_map[matched_word] = SeverityLevel.EXACT
+            return False
 
-        if variants["normalized"] != variants["original"]:
-            for match in matcher.find_matches(variants["normalized"], options):
-                profane_words.add(match.dict_word)
-                if match.dict_word not in severity_map:
-                    severity_map[match.dict_word] = SeverityLevel.EXACT
-
-        if (
-            variants["aggressive"] != variants["normalized"]
-            and variants["aggressive"] != variants["original"]
-        ):
-            for match in matcher.find_matches(variants["aggressive"], options):
-                profane_words.add(match.dict_word)
-                if match.dict_word not in severity_map:
-                    severity_map[match.dict_word] = SeverityLevel.EXACT
-
+        self._for_each_text_variant(variants, collect_from_variant)
         return self._build_profanity_result(text, profane_words, severity_map)
 
     def _check_profanity_legacy_non_context(self, text: str) -> CheckProfanityResult:
@@ -522,6 +583,7 @@ class Filter:
                 self._collect_matches_from_variant(
                     dict_word,
                     variants["original"],
+                    text,
                     severity,
                     profane_words_set,
                     severity_map,
@@ -535,6 +597,7 @@ class Filter:
                     self._collect_matches_from_variant(
                         dict_word,
                         variants["normalized"],
+                        text,
                         severity,
                         profane_words_set,
                         severity_map,
@@ -548,9 +611,16 @@ class Filter:
             ):
                 severity = self._evaluate_severity(dict_word, variants["aggressive"])
                 if severity is not None:
-                    profane_words_set.add(dict_word)
-                    if dict_word not in severity_map:
-                        severity_map[dict_word] = SeverityLevel.EXACT
+                    self._collect_matches_from_variant(
+                        dict_word,
+                        variants["aggressive"],
+                        text,
+                        severity,
+                        profane_words_set,
+                        severity_map,
+                        matches,
+                        False,
+                    )
 
         result = self._build_profanity_result(text, profane_words_set, severity_map)
         if matches:
@@ -562,13 +632,27 @@ class Filter:
         )
         return result
 
+    def _dedupe_nested_profane_words(self, words: list[str]) -> list[str]:
+        return [
+            word
+            for word in words
+            if not any(
+                other != word and is_nested_profane_span(word, other)
+                for other in words
+            )
+        ]
+
     def _build_profanity_result(
         self,
         text: str,
         profane_words: set[str],
         severity_map: dict[str, SeverityLevel],
     ) -> CheckProfanityResult:
-        profane_word_list = list(profane_words)
+        profane_word_list = sorted(
+            self._dedupe_nested_profane_words(list(profane_words)),
+            key=len,
+            reverse=True,
+        )
         processed_text = text
 
         if self.replace_with and profane_word_list:
@@ -635,7 +719,10 @@ class Filter:
             match_obj["context_score"] = context_result.context_score
             match_obj["reason"] = context_result.reason
             match_obj["is_whitelisted"] = context_result.is_whitelisted
-            if not self._passes_context_filter(text, matched_word, match_index):
+            if (
+                context_result.is_whitelisted
+                or context_result.context_score > self.confidence_threshold
+            ):
                 return
 
         seen.add(dedupe_key)
@@ -657,11 +744,16 @@ class Filter:
         matcher = self.dictionary_matcher
         assert matcher is not None
 
-        def process_ac_match(match: DictionaryMatch, use_matched_text: bool) -> None:
+        def process_ac_match(
+            variant_text: str, match: DictionaryMatch, is_original: bool
+        ) -> None:
+            matched_word, start, _ = self._resolve_ac_match_in_original(
+                text, variant_text, match, is_original
+            )
             self._record_context_aware_match(
                 text,
-                match.matched_text if use_matched_text else match.dict_word,
-                match.start,
+                matched_word,
+                start,
                 SeverityLevel.EXACT,
                 profane_words,
                 severity_map,
@@ -669,19 +761,48 @@ class Filter:
                 seen,
             )
 
-        for match in matcher.find_matches(variants["original"], options):
-            process_ac_match(match, True)
+        def collect_from_variant(variant_text: str, is_original: bool) -> bool:
+            for match in matcher.find_matches(variant_text, options):
+                process_ac_match(variant_text, match, is_original)
+            return False
 
-        if variants["normalized"] != variants["original"]:
-            for match in matcher.find_matches(variants["normalized"], options):
-                process_ac_match(match, False)
+        self._for_each_text_variant(variants, collect_from_variant)
 
-        if (
-            variants["aggressive"] != variants["normalized"]
-            and variants["aggressive"] != variants["original"]
-        ):
-            for match in matcher.find_matches(variants["aggressive"], options):
-                process_ac_match(match, False)
+    def _collect_context_aware_candidates_from_legacy_fuzzy(
+        self,
+        text: str,
+        variants: dict[str, str],
+        profane_words: list[str],
+        severity_map: dict[str, SeverityLevel],
+        matches: list[Match],
+        seen: set[str],
+    ) -> None:
+        for dict_word in self.words:
+            if dict_word.lower() in self.ignore_words:
+                continue
+
+            def collect_from_variant(variant_text: str) -> None:
+                if self._evaluate_severity(dict_word, variant_text) != SeverityLevel.FUZZY:
+                    return
+                self._record_context_aware_match(
+                    text,
+                    dict_word,
+                    0,
+                    SeverityLevel.FUZZY,
+                    profane_words,
+                    severity_map,
+                    matches,
+                    seen,
+                )
+
+            collect_from_variant(variants["original"])
+            if variants["normalized"] != variants["original"]:
+                collect_from_variant(variants["normalized"])
+            if (
+                variants["aggressive"] != variants["normalized"]
+                and variants["aggressive"] != variants["original"]
+            ):
+                collect_from_variant(variants["aggressive"])
 
     def _collect_context_aware_candidates_from_legacy(
         self,
@@ -696,9 +817,22 @@ class Filter:
             if dict_word.lower() in self.ignore_words:
                 continue
 
-            def collect_from_variant(variant_text: str, use_match_text: bool) -> None:
+            def collect_from_variant(variant_text: str, is_original: bool) -> None:
                 severity = self._evaluate_severity(dict_word, variant_text)
                 if severity is None:
+                    return
+
+                if not self.word_boundaries and severity == SeverityLevel.FUZZY:
+                    self._record_context_aware_match(
+                        text,
+                        dict_word,
+                        0,
+                        severity,
+                        profane_words,
+                        severity_map,
+                        matches,
+                        seen,
+                    )
                     return
 
                 regex = self._get_regex(dict_word)
@@ -710,10 +844,18 @@ class Filter:
                         variant_text, start, end, script, self.word_boundaries
                     ):
                         continue
+                    matched_word, resolved_start, _ = self._resolve_regex_match_in_original(
+                        text,
+                        variant_text,
+                        start,
+                        end,
+                        match.group(0) if is_original else dict_word,
+                        is_original,
+                    )
                     self._record_context_aware_match(
                         text,
-                        match.group(0) if use_match_text else dict_word,
-                        start,
+                        matched_word,
+                        resolved_start,
                         severity,
                         profane_words,
                         severity_map,
@@ -741,7 +883,11 @@ class Filter:
     ) -> CheckProfanityResult:
         processed_text = text
         if self.replace_with and profane_words:
-            for word in dict.fromkeys(profane_words):
+            for word in sorted(
+                self._dedupe_nested_profane_words(list(dict.fromkeys(profane_words))),
+                key=len,
+                reverse=True,
+            ):
                 processed_text = self._get_replacement_regex(word).sub(
                     self.replace_with, processed_text
                 )
@@ -754,7 +900,9 @@ class Filter:
 
         result: CheckProfanityResult = {
             "contains_profanity": len(profane_words) > 0,
-            "profane_words": list(dict.fromkeys(profane_words)),
+            "profane_words": sorted(
+                self._dedupe_nested_profane_words(list(dict.fromkeys(profane_words)))
+            ),
             "reason": (
                 f"Found {len(matches)} potential profanity matches"
                 if matches
@@ -767,7 +915,9 @@ class Filter:
         if self.severity_levels and severity_map:
             result["severity_map"] = severity_map
         if matches:
-            result["matches"] = matches
+            result["matches"] = sorted(
+                matches, key=lambda match: (match["index"], match["word"])
+            )
         if context_score is not None:
             result["context_score"] = context_score
 
@@ -784,6 +934,10 @@ class Filter:
             self._collect_context_aware_candidates_from_ac(
                 text, variants, profane_words, severity_map, matches, seen
             )
+            if not self.word_boundaries:
+                self._collect_context_aware_candidates_from_legacy_fuzzy(
+                    text, variants, profane_words, severity_map, matches, seen
+                )
         else:
             self._collect_context_aware_candidates_from_legacy(
                 text, variants, profane_words, severity_map, matches, seen
@@ -801,34 +955,27 @@ class Filter:
         matcher = self.dictionary_matcher
         assert matcher is not None
 
-        def has_flagged_match(variant_text: str, use_matched_text: bool) -> bool:
+        def has_flagged_match(variant_text: str, is_original: bool) -> bool:
             for match in matcher.find_matches(variant_text, options):
-                matched_word = match.matched_text if use_matched_text else match.dict_word
-                if self._passes_context_filter(text, matched_word, match.start):
+                matched_word, start, _ = self._resolve_ac_match_in_original(
+                    text, variant_text, match, is_original
+                )
+                if self._passes_context_filter(text, matched_word, start):
                     return True
             return False
 
-        if has_flagged_match(variants["original"], True):
-            return True
-        if variants["normalized"] != variants["original"] and has_flagged_match(
-            variants["normalized"], False
-        ):
-            return True
-        if (
-            variants["aggressive"] != variants["normalized"]
-            and variants["aggressive"] != variants["original"]
-            and has_flagged_match(variants["aggressive"], False)
-        ):
-            return True
-        return False
+        return self._for_each_text_variant(variants, has_flagged_match)
 
     def _has_context_aware_legacy_match_for_word(
         self, text: str, variants: dict[str, str], dict_word: str
     ) -> bool:
-        def check_variant(variant_text: str, use_match_text: bool) -> bool:
+        def check_variant(variant_text: str, is_original: bool) -> bool:
             severity = self._evaluate_severity(dict_word, variant_text)
             if severity is None:
                 return False
+
+            if not self.word_boundaries and severity == SeverityLevel.FUZZY:
+                return self._passes_context_filter(text, dict_word, 0)
 
             regex = self._get_regex(dict_word)
             script = self._get_word_script(dict_word)
@@ -839,8 +986,15 @@ class Filter:
                     variant_text, start, end, script, self.word_boundaries
                 ):
                     continue
-                matched_word = match.group(0) if use_match_text else dict_word
-                if self._passes_context_filter(text, matched_word, start):
+                matched_word, resolved_start, _ = self._resolve_regex_match_in_original(
+                    text,
+                    variant_text,
+                    start,
+                    end,
+                    match.group(0) if is_original else dict_word,
+                    is_original,
+                )
+                if self._passes_context_filter(text, matched_word, resolved_start):
                     return True
             return False
 
@@ -858,6 +1012,40 @@ class Filter:
             return True
         return False
 
+    def _has_context_aware_legacy_fuzzy_match(
+        self, text: str, variants: dict[str, str]
+    ) -> bool:
+        for dict_word in self.words:
+            if dict_word.lower() in self.ignore_words:
+                continue
+            if self._has_context_aware_legacy_fuzzy_match_for_word(
+                text, variants, dict_word
+            ):
+                return True
+        return False
+
+    def _has_context_aware_legacy_fuzzy_match_for_word(
+        self, text: str, variants: dict[str, str], dict_word: str
+    ) -> bool:
+        def check_variant(variant_text: str) -> bool:
+            if self._evaluate_severity(dict_word, variant_text) != SeverityLevel.FUZZY:
+                return False
+            return self._passes_context_filter(text, dict_word, 0)
+
+        if check_variant(variants["original"]):
+            return True
+        if variants["normalized"] != variants["original"] and check_variant(
+            variants["normalized"]
+        ):
+            return True
+        if (
+            variants["aggressive"] != variants["normalized"]
+            and variants["aggressive"] != variants["original"]
+            and check_variant(variants["aggressive"])
+        ):
+            return True
+        return False
+
     def _has_context_aware_legacy_match(self, text: str, variants: dict[str, str]) -> bool:
         for dict_word in self.words:
             if dict_word.lower() in self.ignore_words:
@@ -869,7 +1057,13 @@ class Filter:
     def _is_profane_with_context_aware(self, value: str) -> bool:
         variants = self._get_text_variants(value, False)
         if self.dictionary_matcher:
-            return self._has_context_aware_ac_match(value, variants)
+            if self._has_context_aware_ac_match(value, variants):
+                return True
+            if not self.word_boundaries and self._has_context_aware_legacy_fuzzy_match(
+                value, variants
+            ):
+                return True
+            return False
         return self._has_context_aware_legacy_match(value, variants)
 
     def is_profane(self, value: str) -> bool:

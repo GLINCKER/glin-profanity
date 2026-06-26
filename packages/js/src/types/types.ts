@@ -121,6 +121,12 @@ export interface FilterConfig extends ContextAwareConfig {
    * @internal
    */
   disableAhoCorasick?: boolean;
+
+  /**
+   * Apply evasion normalization (HTML/separators/masking) before matching.
+   * @default true
+   */
+  enableEvasionNormalization?: boolean;
 }
 
 /** Result with minimum severity filtering */

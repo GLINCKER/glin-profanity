@@ -80,6 +80,7 @@ def get_pooled_filter(config: FilterConfig | None = None) -> Filter:
 
     existing = _filter_pool.get(key)
     if existing is not None:
+        _filter_pool.move_to_end(key)
         return existing
 
     filter_instance = Filter(effective)

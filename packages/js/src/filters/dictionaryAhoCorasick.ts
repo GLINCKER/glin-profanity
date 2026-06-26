@@ -1,5 +1,6 @@
 import AhoCorasick from 'modern-ahocorasick';
 import {
+  classifyWordScript,
   matchHasWordBoundary,
   type WordScript,
 } from '../utils/wordScript';
@@ -81,11 +82,34 @@ export class DictionaryAhoCorasick {
   }
 
   hasAnyMatch(text: string, options: DictionarySearchOptions): boolean {
-    return this.findMatches(text, options).length > 0;
+    const haystack = options.caseSensitive ? text : text.toLowerCase();
+
+    for (const [endGraphemeIdx, dictWords] of this.ac.search(haystack)) {
+      for (const dictWord of dictWords) {
+        if (options.ignoreWords.has(dictWord.toLowerCase())) {
+          continue;
+        }
+
+        const wordLen = this.wordGraphemeLengths.get(dictWord) ?? countGraphemes(dictWord);
+        const startGrapheme = endGraphemeIdx - wordLen + 1;
+        const start = graphemeStartToStringIndex(text, startGrapheme);
+        const end = graphemeEndToExclusiveStringIndex(text, endGraphemeIdx);
+        const script =
+          options.wordScripts.get(dictWord.toLowerCase()) ??
+          classifyWordScript(dictWord);
+
+        if (matchHasWordBoundary(text, start, end, script, options.wordBoundaries)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   findMatches(text: string, options: DictionarySearchOptions): DictionaryMatch[] {
     const haystack = options.caseSensitive ? text : text.toLowerCase();
+    // modern-ahocorasick segments by grapheme and returns grapheme indices
     const hits = this.ac.search(haystack);
     const results: DictionaryMatch[] = [];
     const seen = new Set<string>();
@@ -96,7 +120,7 @@ export class DictionaryAhoCorasick {
           continue;
         }
 
-        const wordLen = this.wordGraphemeLengths.get(dictWord) ?? dictWord.length;
+        const wordLen = this.wordGraphemeLengths.get(dictWord) ?? countGraphemes(dictWord);
         const startGrapheme = endGraphemeIdx - wordLen + 1;
         const start = graphemeStartToStringIndex(text, startGrapheme);
         const end = graphemeEndToExclusiveStringIndex(text, endGraphemeIdx);

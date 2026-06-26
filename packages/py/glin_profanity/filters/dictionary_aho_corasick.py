@@ -103,7 +103,29 @@ class DictionaryAhoCorasick:
         }
 
     def has_any_match(self, text: str, options: DictionarySearchOptions) -> bool:
-        return bool(self.find_matches(text, options))
+        haystack = text if options.case_sensitive else text.lower()
+
+        for end_index_inclusive, dict_word in self._automaton.iter(haystack):
+            if dict_word.lower() in options.ignore_words:
+                continue
+
+            word_len = self._word_grapheme_lengths.get(
+                dict_word, _count_graphemes(dict_word)
+            )
+            end_grapheme = _code_point_end_to_grapheme_end(haystack, end_index_inclusive)
+            start_grapheme = end_grapheme - word_len + 1
+            start = _grapheme_start_to_string_index(text, start_grapheme)
+            end = _grapheme_end_to_exclusive_string_index(text, end_grapheme)
+            script = options.word_scripts.get(dict_word.lower()) or classify_word_script(
+                dict_word
+            )
+
+            if match_has_word_boundary(
+                text, start, end, script, options.word_boundaries
+            ):
+                return True
+
+        return False
 
     def find_matches(
         self, text: str, options: DictionarySearchOptions
@@ -121,7 +143,9 @@ class DictionaryAhoCorasick:
             start_grapheme = end_grapheme - word_len + 1
             start = _grapheme_start_to_string_index(text, start_grapheme)
             end = _grapheme_end_to_exclusive_string_index(text, end_grapheme)
-            script = options.word_scripts.get(dict_word, "latin")
+            script = options.word_scripts.get(dict_word.lower()) or classify_word_script(
+                dict_word
+            )
 
             if not match_has_word_boundary(
                 text, start, end, script, options.word_boundaries

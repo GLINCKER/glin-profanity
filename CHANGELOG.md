@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ScanMatch.category` now carries pattern family (e.g. `"stripe"`, `"aws_access_key"`) instead of severity
 - Context-aware mode enables Aho-Corasick candidate discovery even when `wordBoundaries` / `word_boundaries` is `false`
 - `isProfane` / `is_profane` apply context filtering when `enableContextAware` / `enable_context_aware` is enabled
+- Filter instance pools use LRU touch-on-access eviction (JS Map reorder + Python `OrderedDict.move_to_end`)
+- Evasion normalization can be disabled via `enableEvasionNormalization` / `enable_evasion_normalization` (default: on)
 
 ### Fixed
 - PI-034 missing `/i` flag (only matched ALL-CAPS variants)
@@ -41,6 +43,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python legacy fuzzy matching restricted to `word_boundaries=false` (aligned with JS)
 - Latin word-boundary checks use correct start/end positions (fixes Scunthorpe/classic false positives)
 - Korean NFKD normalization gaps — original/normalized/aggressive three-variant matching in both JS and Python
+- Normalized-variant matches map spans back to original text for context analysis and `replaceWith`
+- Context-aware recording analyzes context once per match (no duplicate `analyzeContext` calls)
+- `checkProfanity` AC path records original matched substrings instead of dictionary keys for normalized variants
+- `hasAnyMatch` early-exits on first hit instead of collecting all matches (JS + Python)
+- Case-sensitive mode builds Aho-Corasick automaton from original-case dictionary entries
+- JS `allowObfuscatedMatch` skipped when `detectLeetspeak` is enabled (parity with Python)
+- Python `clear_cache` now clears compiled regex cache
+- Python package exports `get_pooled_filter`, `create_filter_config`, and `clear_filter_pool` from top level
+- Variant span mapping handles homoglyphs, mask chars, and lowercased checkProfanity tiers
+- Context-aware mode supplements AC with legacy fuzzy matching when `wordBoundaries` is disabled
+- ContextAnalyzer locates match tokens by character span instead of estimated offsets
+- Nested profanity dedupe uses word-boundary checks (avoids `ass` inside `classic`)
+- `getConfig()` exports `enableEvasionNormalization` / `enable_evasion_normalization`
 
 ## [3.1.0] - 2025-12-30
 

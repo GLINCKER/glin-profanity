@@ -277,10 +277,14 @@ export function convertFullWidth(text: string): string {
  * @param text - The input text
  * @returns Text with homoglyphs converted
  */
+export function homoglyphToAscii(char: string): string {
+  return HOMOGLYPHS[char] ?? char;
+}
+
 export function convertHomoglyphs(text: string): string {
   return text
     .split('')
-    .map((char) => HOMOGLYPHS[char] || char)
+    .map((char) => homoglyphToAscii(char))
     .join('');
 }
 

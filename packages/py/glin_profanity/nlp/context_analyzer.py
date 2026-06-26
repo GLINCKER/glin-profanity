@@ -234,8 +234,8 @@ class ContextAnalyzer:
     def analyze_context(
         self, text: str, match_word: str, match_index: int
     ) -> ContextAnalysisResult:
-        words = self._tokenize(text)
-        match_word_index = self._find_word_index(words, match_index)
+        tokens = self._tokenize_with_spans(text)
+        match_word_index = self._find_word_index(tokens, match_index)
 
         if match_word_index == -1:
             return ContextAnalysisResult(
@@ -245,8 +245,8 @@ class ContextAnalyzer:
             )
 
         start_index = max(0, match_word_index - self.context_window)
-        end_index = min(len(words), match_word_index + self.context_window + 1)
-        context_words = words[start_index:end_index]
+        end_index = min(len(tokens), match_word_index + self.context_window + 1)
+        context_words = [token["word"] for token in tokens[start_index:end_index]]
         context_text = " ".join(context_words).lower()
 
         phrase_result = self._check_phrase_context(context_text, match_word)
@@ -319,17 +319,39 @@ class ContextAnalyzer:
             return f"Negative context detected{details} - likely profanity"
         return "Neutral context - uncertain classification"
 
-    def _tokenize(self, text: str) -> list[str]:
-        normalized = re.sub(r"[^A-Za-z0-9_\s]", " ", text.lower())
-        return [word for word in normalized.split() if word]
+    def _tokenize_with_spans(self, text: str) -> list[dict[str, int | str]]:
+        tokens: list[dict[str, int | str]] = []
+        for match in re.finditer(r"\S+", text):
+            raw = match.group(0)
+            normalized = re.sub(r"[^\w]", "", raw.lower(), flags=re.UNICODE)
+            if normalized:
+                tokens.append(
+                    {
+                        "word": normalized,
+                        "start": match.start(),
+                        "end": match.end(),
+                    }
+                )
+        return tokens
 
-    def _find_word_index(self, words: list[str], char_index: int) -> int:
-        current_pos = 0
-        for i, word in enumerate(words):
-            if current_pos >= char_index:
+    def _find_word_index(
+        self, tokens: list[dict[str, int | str]], char_index: int
+    ) -> int:
+        if not tokens:
+            return -1
+
+        for i, token in enumerate(tokens):
+            start = int(token["start"])
+            end = int(token["end"])
+            if char_index >= start and char_index < end:
+                return i
+            if char_index < start:
                 return max(0, i - 1)
-            current_pos += len(word) + 1
-        return len(words) - 1
+
+        return len(tokens) - 1
+
+    def _tokenize(self, text: str) -> list[str]:
+        return [str(token["word"]) for token in self._tokenize_with_spans(text)]
 
     def _calculate_sentiment_score(
         self, context_words: list[str], match_position: int
