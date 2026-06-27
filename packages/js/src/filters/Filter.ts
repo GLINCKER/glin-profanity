@@ -879,17 +879,27 @@ class Filter {
       if (this.ignoreWords.has(dictWord.toLowerCase())) continue;
 
       const severity = this.evaluateSeverity(dictWord, variantText);
-      if (severity !== undefined) {
-        this.collectMatchesFromVariant(
-          dictWord,
-          variantText,
-          text,
-          severity,
-          profaneSpans,
-          severityMap,
-          isOriginalVariant,
-        );
+      if (severity === undefined) {
+        continue;
       }
+
+      if (!this.wordBoundaries && severity === SeverityLevel.FUZZY) {
+        if (severityMap[dictWord] === undefined) {
+          profaneSpans.push([dictWord, 0, dictWord.length]);
+          severityMap[dictWord] = severity;
+        }
+        continue;
+      }
+
+      this.collectMatchesFromVariant(
+        dictWord,
+        variantText,
+        text,
+        severity,
+        profaneSpans,
+        severityMap,
+        isOriginalVariant,
+      );
     }
   }
 
@@ -1112,13 +1122,17 @@ class Filter {
     severityMap: Record<string, SeverityLevel>,
     matches: Match[],
     seen: Set<string>,
+    variantKey: 'original' | 'normalized' | 'aggressive' = 'normalized',
   ): void {
+    const variantText = variants[variantKey];
+    const isOriginal = variantKey === 'original';
+
     for (const dictWord of this.words.keys()) {
       if (this.ignoreWords.has(dictWord.toLowerCase())) {
         continue;
       }
 
-      const severity = this.evaluateSeverity(dictWord, variants.normalized);
+      const severity = this.evaluateSeverity(dictWord, variantText);
       if (severity === undefined) {
         continue;
       }
@@ -1139,7 +1153,6 @@ class Filter {
 
       const regex = this.getRegex(dictWord);
       const script = this.getWordScript(dictWord);
-      const variantText = variants.normalized;
       let match: RegExpExecArray | null;
       while ((match = regex.exec(variantText)) !== null) {
         const start = match.index;
@@ -1152,8 +1165,8 @@ class Filter {
           variantText,
           start,
           end,
-          dictWord,
-          false,
+          isOriginal ? match[0] : dictWord,
+          isOriginal,
         );
         this.recordContextAwareMatch(
           text,
@@ -1166,6 +1179,57 @@ class Filter {
           seen,
         );
       }
+    }
+  }
+
+  private collectContextAwareCandidatesFromLegacyWithFallback(
+    text: string,
+    variants: { original: string; normalized: string; aggressive: string },
+    profaneWords: string[],
+    severityMap: Record<string, SeverityLevel>,
+    matches: Match[],
+    seen: Set<string>,
+  ): void {
+    this.collectContextAwareCandidatesFromLegacy(
+      text,
+      variants,
+      profaneWords,
+      severityMap,
+      matches,
+      seen,
+    );
+    if (profaneWords.length > 0) {
+      return;
+    }
+
+    if (variants.original !== variants.normalized) {
+      this.collectContextAwareCandidatesFromLegacy(
+        text,
+        variants,
+        profaneWords,
+        severityMap,
+        matches,
+        seen,
+        'original',
+      );
+    }
+    if (profaneWords.length > 0) {
+      return;
+    }
+
+    if (
+      variants.aggressive !== variants.normalized &&
+      variants.aggressive !== variants.original
+    ) {
+      this.collectContextAwareCandidatesFromLegacy(
+        text,
+        variants,
+        profaneWords,
+        severityMap,
+        matches,
+        seen,
+        'aggressive',
+      );
     }
   }
 
@@ -1251,7 +1315,7 @@ class Filter {
         );
       }
     } else {
-      this.collectContextAwareCandidatesFromLegacy(
+      this.collectContextAwareCandidatesFromLegacyWithFallback(
         text,
         variants,
         profaneWords,

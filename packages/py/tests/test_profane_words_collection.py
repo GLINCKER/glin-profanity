@@ -108,3 +108,35 @@ class TestNormalizedProfaneWordsCollection:
         assert result["profane_words"] == []
         assert result["reason"] == "No profanity detected"
         assert context_filter.is_profane("This movie is the bomb") is False
+
+
+class TestLegacyPathProfaneWords:
+    def test_word_boundaries_disabled_populates_fuzzy_words(self) -> None:
+        legacy = Filter(
+            {
+                "languages": ["english"],
+                "word_boundaries": False,
+                "fuzzy_tolerance_level": 0.6,
+                "disable_aho_corasick": True,
+            }
+        )
+        result = legacy.check_profanity("This movie is the bomb")
+        assert result["contains_profanity"] is True
+        assert len(result["profane_words"]) > 0
+        assert legacy.is_profane("This movie is the bomb") == result["contains_profanity"]
+
+    def test_context_legacy_tier_fallback(self) -> None:
+        context_legacy = Filter(
+            {
+                "languages": ["english"],
+                "detect_leetspeak": True,
+                "enable_context_aware": True,
+                "disable_aho_corasick": True,
+            }
+        )
+        for text in ("fuuuuuck", "f@ck"):
+            assert context_legacy.is_profane(text) is True
+            result = context_legacy.check_profanity(text)
+            assert result["contains_profanity"] is True
+            assert len(result["profane_words"]) > 0
+            assert result["profane_words"] == [text]

@@ -645,8 +645,23 @@ class Filter:
                 continue
 
             severity = self._evaluate_severity(dict_word, variant_text)
-            if severity is not None:
-                self._collect_matches_from_variant(
+            if severity is None:
+                continue
+
+            if not self.word_boundaries and severity == SeverityLevel.FUZZY:
+                if dict_word not in severity_map:
+                    profane_spans.append((dict_word, 0, len(dict_word)))
+                    severity_map[dict_word] = severity
+                    matches.append(
+                        {
+                            "word": dict_word,
+                            "index": 0,
+                            "severity": severity,
+                        }
+                    )
+                continue
+
+            self._collect_matches_from_variant(
                     dict_word,
                     variant_text,
                     text,
@@ -935,12 +950,16 @@ class Filter:
         severity_map: dict[str, SeverityLevel],
         matches: list[Match],
         seen: set[str],
+        variant_key: str = "normalized",
     ) -> None:
+        variant_text = variants[variant_key]
+        is_original = variant_key == "original"
+
         for dict_word in self.words:
             if dict_word.lower() in self.ignore_words:
                 continue
 
-            severity = self._evaluate_severity(dict_word, variants["normalized"])
+            severity = self._evaluate_severity(dict_word, variant_text)
             if severity is None:
                 continue
 
@@ -959,7 +978,6 @@ class Filter:
 
             regex = self._get_regex(dict_word)
             script = self._get_word_script(dict_word)
-            variant_text = variants["normalized"]
             for match in regex.finditer(variant_text):
                 start = match.start()
                 end = match.end()
@@ -972,8 +990,8 @@ class Filter:
                     variant_text,
                     start,
                     end,
-                    dict_word,
-                    False,
+                    match.group(0) if is_original else dict_word,
+                    is_original,
                 )
                 self._record_context_aware_match(
                     text,
@@ -985,6 +1003,48 @@ class Filter:
                     matches,
                     seen,
                 )
+
+    def _collect_context_aware_candidates_from_legacy_with_fallback(
+        self,
+        text: str,
+        variants: dict[str, str],
+        profane_words: list[str],
+        severity_map: dict[str, SeverityLevel],
+        matches: list[Match],
+        seen: set[str],
+    ) -> None:
+        self._collect_context_aware_candidates_from_legacy(
+            text, variants, profane_words, severity_map, matches, seen
+        )
+        if profane_words:
+            return
+
+        if variants["original"] != variants["normalized"]:
+            self._collect_context_aware_candidates_from_legacy(
+                text,
+                variants,
+                profane_words,
+                severity_map,
+                matches,
+                seen,
+                variant_key="original",
+            )
+        if profane_words:
+            return
+
+        if (
+            variants["aggressive"] != variants["normalized"]
+            and variants["aggressive"] != variants["original"]
+        ):
+            self._collect_context_aware_candidates_from_legacy(
+                text,
+                variants,
+                profane_words,
+                severity_map,
+                matches,
+                seen,
+                variant_key="aggressive",
+            )
 
     def _build_context_aware_result(
         self,
@@ -1056,7 +1116,7 @@ class Filter:
                     text, variants, profane_words, severity_map, matches, seen
                 )
         else:
-            self._collect_context_aware_candidates_from_legacy(
+            self._collect_context_aware_candidates_from_legacy_with_fallback(
                 text, variants, profane_words, severity_map, matches, seen
             )
 
