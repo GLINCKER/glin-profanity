@@ -176,6 +176,8 @@ const AGGRESSIVE_VOWEL_SUBSTITUTIONS: Record<string, string> = {
   '@': 'u',
 };
 
+export { MODERATE_SUBSTITUTIONS, AGGRESSIVE_SUBSTITUTIONS };
+
 function applyCharSubstitutionsWithMap(
   text: string,
   substitutions: Record<string, string>,

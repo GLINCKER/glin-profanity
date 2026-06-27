@@ -208,4 +208,35 @@ describe('Context-Aware Filtering', () => {
       expect(result.reason).toBeDefined();
     });
   });
+
+  describe('Result shape parity', () => {
+    it('includes reason on AC path', () => {
+      const acFilter = new Filter({
+        languages: ['english'],
+        detectLeetspeak: true,
+      });
+      const result = acFilter.checkProfanity('fuuuuuck');
+      expect(result.reason).toBe('Found 1 potential profanity matches');
+    });
+
+    it('aligns containsProfanity with isProfane for whitelisted context', () => {
+      const result = filter.checkProfanity('This movie is the bomb');
+      expect(result.containsProfanity).toBe(false);
+      expect(result.reason).toBe('No profanity detected');
+      expect(filter.isProfane('This movie is the bomb')).toBe(result.containsProfanity);
+    });
+
+    it('aligns containsProfanity with isProfane for repeated chars', () => {
+      const leetFilter = new Filter({
+        languages: ['english'],
+        detectLeetspeak: true,
+        enableContextAware: true,
+      });
+      const result = leetFilter.checkProfanity('fuuuuuck');
+      expect(result.containsProfanity).toBe(true);
+      expect(result.profaneWords).toEqual(['fuuuuuck']);
+      expect(result.reason).toBe('Found 1 potential profanity matches');
+      expect(leetFilter.isProfane('fuuuuuck')).toBe(result.containsProfanity);
+    });
+  });
 });

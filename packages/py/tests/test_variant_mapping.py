@@ -3,6 +3,7 @@
 from glin_profanity.utils.variant_mapping import (
     is_nested_profane_span,
     map_variant_span_to_original,
+    trim_profane_span_edges,
 )
 
 
@@ -44,6 +45,22 @@ class TestVariantMapping:
         assert span.matched_text == "fuck"
         assert span.start == 6
         assert span.end == 10
+
+    def test_maps_accent_stripped_variant_to_original_word(self) -> None:
+        original = " mamá se fue?"
+        variant = " mama se fue?"
+        span = map_variant_span_to_original(original, variant, 1, 5)
+        assert span.matched_text == "mamá"
+
+    def test_maps_leetspeak_parenthesis_substitution(self) -> None:
+        original = "(miro su camel toe bien marcado en sus tangas)"
+        variant = "cmiro su camel toe bien marcado en sus tangas)"
+        span = map_variant_span_to_original(original, variant, 9, 18)
+        assert span.matched_text == "camel toe"
+
+    def test_trims_leading_dots_from_gay(self) -> None:
+        span = trim_profane_span_edges("Sei un...gay?", 7, 12)
+        assert span.matched_text == "gay"
 
 
 class TestNestedProfaneSpan:

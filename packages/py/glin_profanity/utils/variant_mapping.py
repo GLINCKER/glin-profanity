@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 
+from glin_profanity.utils.leetspeak import AGGRESSIVE_SUBSTITUTIONS, MODERATE_SUBSTITUTIONS
 from glin_profanity.utils.unicode import homoglyph_to_ascii
 
 _LEET_TO_ASCII = {
@@ -21,7 +23,15 @@ _LEET_TO_ASCII = {
     "9": "g",
 }
 
+_LEET_SUBSTITUTIONS: dict[str, str] = {
+    **MODERATE_SUBSTITUTIONS,
+    **AGGRESSIVE_SUBSTITUTIONS,
+}
+
 _SKIPPABLE_ORIGINAL_CHARS = {"*", ".", "_", "-", " "}
+
+# Keep leetspeak/masking symbols when they belong to the obfuscated token.
+_EDGE_MASKING_CHARS = frozenset("@$!#*")
 
 
 @dataclass(frozen=True)
@@ -29,6 +39,13 @@ class OriginalSpan:
     start: int
     end: int
     matched_text: str
+
+
+def _normalize_char_for_align(char: str) -> str:
+    mapped = homoglyph_to_ascii(char)
+    decomposed = unicodedata.normalize("NFKD", mapped)
+    base = "".join(c for c in decomposed if unicodedata.combining(c) == 0)
+    return base.lower()
 
 
 def _chars_equal(left: str, right: str) -> bool:
@@ -39,14 +56,25 @@ def _chars_align(original_char: str, variant_char: str) -> bool:
     if _chars_equal(original_char, variant_char):
         return True
 
+    original_norm = _normalize_char_for_align(original_char)
+    variant_norm = _normalize_char_for_align(variant_char)
+    if original_norm and original_norm == variant_norm:
+        return True
+
     mapped = _LEET_TO_ASCII.get(original_char) or _LEET_TO_ASCII.get(
         original_char.lower()
     )
-    if mapped is not None and _chars_equal(mapped, variant_char):
+    if mapped is not None and mapped.lower() == variant_norm:
+        return True
+
+    substituted = _LEET_SUBSTITUTIONS.get(original_char) or _LEET_SUBSTITUTIONS.get(
+        original_char.lower()
+    )
+    if substituted is not None and substituted.lower() == variant_norm:
         return True
 
     homoglyph = homoglyph_to_ascii(original_char)
-    if homoglyph != original_char and _chars_equal(homoglyph, variant_char):
+    if homoglyph != original_char and _normalize_char_for_align(homoglyph) == variant_norm:
         return True
 
     return False
@@ -54,6 +82,46 @@ def _chars_align(original_char: str, variant_char: str) -> bool:
 
 def _is_skippable_original_char(char: str) -> bool:
     return char in _SKIPPABLE_ORIGINAL_CHARS
+
+
+def _is_combining_mark(char: str) -> bool:
+    return bool(char) and unicodedata.combining(char) != 0
+
+
+def _should_trim_edge_punctuation(char: str) -> bool:
+    if char in _EDGE_MASKING_CHARS:
+        return False
+    if char in {".", "_", "-"}:
+        return True
+    category = unicodedata.category(char)
+    return category.startswith("P") or category.startswith("Z")
+
+
+def trim_profane_span_edges(text: str, start: int, end: int) -> OriginalSpan:
+    """Drop leading/trailing whitespace and outer punctuation from a profane span."""
+    if start >= end:
+        return OriginalSpan(start=start, end=end, matched_text="")
+
+    while start < end and text[start].isspace():
+        start += 1
+    while start < end and text[end - 1].isspace():
+        end -= 1
+
+    while start < end and text[start] in {".", "_", "-"}:
+        start += 1
+    while start < end and text[end - 1] in {".", "_", "-"}:
+        end -= 1
+
+    while start < end and _should_trim_edge_punctuation(text[start]):
+        start += 1
+    while start < end and _should_trim_edge_punctuation(text[end - 1]):
+        end -= 1
+
+    return OriginalSpan(start=start, end=end, matched_text=text[start:end])
+
+
+def _finalize_span(original: str, start: int, end: int) -> OriginalSpan:
+    return trim_profane_span_edges(original, start, end)
 
 
 def _fallback_span(
@@ -65,15 +133,11 @@ def _fallback_span(
 
     idx = original.lower().find(needle.lower())
     if idx >= 0:
-        return OriginalSpan(
-            start=idx,
-            end=idx + len(needle),
-            matched_text=original[idx : idx + len(needle)],
-        )
+        return _finalize_span(original, idx, idx + len(needle))
 
     start = min(variant_start, len(original))
     end = min(variant_end, len(original))
-    return OriginalSpan(start=start, end=end, matched_text=original[start:end])
+    return _finalize_span(original, start, end)
 
 
 def map_variant_span_to_original(
@@ -87,11 +151,7 @@ def map_variant_span_to_original(
         return OriginalSpan(start=0, end=0, matched_text="")
 
     if original == variant:
-        return OriginalSpan(
-            start=variant_start,
-            end=variant_end,
-            matched_text=original[variant_start:variant_end],
-        )
+        return _finalize_span(original, variant_start, variant_end)
 
     original_index = 0
     variant_index = 0
@@ -112,6 +172,10 @@ def map_variant_span_to_original(
         variant_char = variant[variant_index]
         original_char = original[original_index]
 
+        if _is_combining_mark(original_char):
+            original_index += 1
+            continue
+
         if _chars_align(original_char, variant_char):
             variant_index += 1
             original_index += 1
@@ -123,20 +187,57 @@ def map_variant_span_to_original(
 
         original_index += 1
 
-    if orig_start == -1:
-        orig_start = 0
-    if orig_end == -1:
-        orig_end = len(original)
+    if orig_end == -1 and variant_index >= variant_end:
+        orig_end = original_index
 
-    matched_text = original[orig_start:orig_end]
-    if not matched_text or orig_start >= orig_end:
+    if orig_start == -1 or orig_end == -1:
         return _fallback_span(original, variant, variant_start, variant_end)
 
-    return OriginalSpan(
-        start=orig_start,
-        end=orig_end,
-        matched_text=matched_text,
-    )
+    if orig_start >= orig_end:
+        return _fallback_span(original, variant, variant_start, variant_end)
+
+    matched_text = original[orig_start:orig_end]
+    if not matched_text:
+        return _fallback_span(original, variant, variant_start, variant_end)
+
+    return _finalize_span(original, orig_start, orig_end)
+
+
+ProfaneSpan = tuple[str, int, int]
+
+
+def dedupe_profane_spans_by_overlap(spans: list[ProfaneSpan]) -> list[ProfaneSpan]:
+    """Keep longest original-text span when starts or ranges overlap."""
+    if not spans:
+        return []
+
+    ordered = sorted(spans, key=lambda item: (item[1], -(item[2] - item[1])))
+    kept: list[ProfaneSpan] = []
+
+    for candidate in ordered:
+        word, start, end = candidate
+        length = end - start
+
+        if any(
+            start >= kept_start
+            and end <= kept_end
+            and (kept_end - kept_start) > length
+            for _, kept_start, kept_end in kept
+        ):
+            continue
+
+        kept = [
+            item
+            for item in kept
+            if not (
+                item[1] >= start
+                and item[2] <= end
+                and length > (item[2] - item[1])
+            )
+        ]
+        kept.append((word, start, end))
+
+    return kept
 
 
 _NESTED_WORD_BOUNDARY = re.compile(r"\w")

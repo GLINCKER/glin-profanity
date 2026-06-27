@@ -3,6 +3,7 @@
  * Assumes normalization is order-preserving (no reordering of characters).
  */
 
+import { AGGRESSIVE_SUBSTITUTIONS, MODERATE_SUBSTITUTIONS } from './leetspeak';
 import { homoglyphToAscii } from './unicode';
 
 export interface OriginalSpan {
@@ -25,7 +26,27 @@ const LEET_TO_ASCII: Record<string, string> = {
   '9': 'g',
 };
 
+const LEET_SUBSTITUTIONS: Record<string, string> = {
+  ...MODERATE_SUBSTITUTIONS,
+  ...AGGRESSIVE_SUBSTITUTIONS,
+};
+
 const SKIPPABLE_ORIGINAL_CHARS = new Set(['*', '.', '_', '-', ' ']);
+
+/** Keep leetspeak/masking symbols when they belong to the obfuscated token. */
+const EDGE_MASKING_CHARS = new Set(['@', '$', '!', '#', '*']);
+
+function normalizeCharForAlign(char: string): string {
+  const mapped = homoglyphToAscii(char);
+  const decomposed = mapped.normalize('NFKD');
+  let base = '';
+  for (const codePoint of decomposed) {
+    if (!/\p{M}/u.test(codePoint)) {
+      base += codePoint;
+    }
+  }
+  return base.toLowerCase();
+}
 
 function charsEqual(a: string, b: string): boolean {
   return a === b || a.toLowerCase() === b.toLowerCase();
@@ -36,13 +57,25 @@ function charsAlign(originalChar: string, variantChar: string): boolean {
     return true;
   }
 
+  const originalNorm = normalizeCharForAlign(originalChar);
+  const variantNorm = normalizeCharForAlign(variantChar);
+  if (originalNorm && originalNorm === variantNorm) {
+    return true;
+  }
+
   const leet = LEET_TO_ASCII[originalChar] ?? LEET_TO_ASCII[originalChar.toLowerCase()];
-  if (leet !== undefined && charsEqual(leet, variantChar)) {
+  if (leet !== undefined && leet.toLowerCase() === variantNorm) {
+    return true;
+  }
+
+  const substituted =
+    LEET_SUBSTITUTIONS[originalChar] ?? LEET_SUBSTITUTIONS[originalChar.toLowerCase()];
+  if (substituted !== undefined && substituted.toLowerCase() === variantNorm) {
     return true;
   }
 
   const homoglyph = homoglyphToAscii(originalChar);
-  if (homoglyph !== originalChar && charsEqual(homoglyph, variantChar)) {
+  if (homoglyph !== originalChar && normalizeCharForAlign(homoglyph) === variantNorm) {
     return true;
   }
 
@@ -51,6 +84,54 @@ function charsAlign(originalChar: string, variantChar: string): boolean {
 
 function isSkippableOriginalChar(char: string): boolean {
   return SKIPPABLE_ORIGINAL_CHARS.has(char);
+}
+
+function isCombiningMark(char: string): boolean {
+  return /\p{M}/u.test(char);
+}
+
+function shouldTrimEdgePunctuation(char: string): boolean {
+  if (EDGE_MASKING_CHARS.has(char)) {
+    return false;
+  }
+  if ('._-'.includes(char)) {
+    return true;
+  }
+  return /\p{P}|\p{Z}/u.test(char);
+}
+
+/** Drop leading/trailing whitespace and outer punctuation from a profane span. */
+export function trimProfaneSpanEdges(text: string, start: number, end: number): OriginalSpan {
+  if (start >= end) {
+    return { start, end, matchedText: '' };
+  }
+
+  while (start < end && /\s/u.test(text[start]!)) {
+    start++;
+  }
+  while (start < end && /\s/u.test(text[end - 1]!)) {
+    end--;
+  }
+
+  while (start < end && '._-'.includes(text[start]!)) {
+    start++;
+  }
+  while (start < end && '._-'.includes(text[end - 1]!)) {
+    end--;
+  }
+
+  while (start < end && shouldTrimEdgePunctuation(text[start]!)) {
+    start++;
+  }
+  while (start < end && shouldTrimEdgePunctuation(text[end - 1]!)) {
+    end--;
+  }
+
+  return { start, end, matchedText: text.slice(start, end) };
+}
+
+function finalizeSpan(original: string, start: number, end: number): OriginalSpan {
+  return trimProfaneSpanEdges(original, start, end);
 }
 
 function fallbackSpan(
@@ -68,21 +149,14 @@ function fallbackSpan(
   const lowerNeedle = needle.toLowerCase();
   const idx = lowerOriginal.indexOf(lowerNeedle);
   if (idx >= 0) {
-    return {
-      start: idx,
-      end: idx + needle.length,
-      matchedText: original.slice(idx, idx + needle.length),
-    };
+    return finalizeSpan(original, idx, idx + needle.length);
   }
 
-  return {
-    start: Math.min(variantStart, original.length),
-    end: Math.min(variantEnd, original.length),
-    matchedText: original.slice(
-      Math.min(variantStart, original.length),
-      Math.min(variantEnd, original.length),
-    ),
-  };
+  return finalizeSpan(
+    original,
+    Math.min(variantStart, original.length),
+    Math.min(variantEnd, original.length),
+  );
 }
 
 /**
@@ -100,11 +174,7 @@ export function mapVariantSpanToOriginal(
   }
 
   if (original === variant) {
-    return {
-      start: variantStart,
-      end: variantEnd,
-      matchedText: original.slice(variantStart, variantEnd),
-    };
+    return finalizeSpan(original, variantStart, variantEnd);
   }
 
   let originalIndex = 0;
@@ -129,6 +199,11 @@ export function mapVariantSpanToOriginal(
     const variantChar = variant[variantIndex]!;
     const originalChar = original[originalIndex]!;
 
+    if (isCombiningMark(originalChar)) {
+      originalIndex++;
+      continue;
+    }
+
     if (charsAlign(originalChar, variantChar)) {
       variantIndex++;
       originalIndex++;
@@ -143,19 +218,66 @@ export function mapVariantSpanToOriginal(
     originalIndex++;
   }
 
-  if (origStart === -1) {
-    origStart = 0;
-  }
-  if (origEnd === -1) {
-    origEnd = original.length;
+  if (origEnd === -1 && variantIndex >= variantEnd) {
+    origEnd = originalIndex;
   }
 
-  const matchedText = original.slice(origStart, origEnd);
-  if (!matchedText || origStart >= origEnd) {
+  if (origStart === -1 || origEnd === -1) {
     return fallbackSpan(original, variant, variantStart, variantEnd);
   }
 
-  return { start: origStart, end: origEnd, matchedText };
+  if (origStart >= origEnd) {
+    return fallbackSpan(original, variant, variantStart, variantEnd);
+  }
+
+  const matchedText = original.slice(origStart, origEnd);
+  if (!matchedText) {
+    return fallbackSpan(original, variant, variantStart, variantEnd);
+  }
+
+  return finalizeSpan(original, origStart, origEnd);
+}
+
+export interface ProfaneSpan {
+  word: string;
+  start: number;
+  end: number;
+}
+
+/** Keep longest original-text span when starts or ranges overlap. */
+export function dedupeProfaneSpansByOverlap(
+  spans: Array<[string, number, number]>,
+): Array<[string, number, number]> {
+  if (spans.length === 0) {
+    return [];
+  }
+
+  const ordered = [...spans].sort(
+    (left, right) => left[1] - right[1] || right[2] - right[1] - (left[2] - left[1]),
+  );
+  let kept: Array<[string, number, number]> = [];
+
+  for (const candidate of ordered) {
+    const [word, start, end] = candidate;
+    const length = end - start;
+
+    if (
+      kept.some(
+        ([, keptStart, keptEnd]) =>
+          start >= keptStart && end <= keptEnd && keptEnd - keptStart > length,
+      )
+    ) {
+      continue;
+    }
+
+    kept = kept.filter(
+      ([, keptStart, keptEnd]) =>
+        !(keptStart >= start && keptEnd <= end && length > keptEnd - keptStart),
+    );
+    kept.push([word, start, end]);
+  }
+
+  return kept;
 }
 
 /** True when `shorter` is a word-bounded substring of `longer` (avoids ass/classic). */

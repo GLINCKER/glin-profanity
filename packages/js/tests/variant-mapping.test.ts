@@ -1,4 +1,4 @@
-import { mapVariantSpanToOriginal, isNestedProfaneSpan } from '../src/utils/variantMapping';
+import { mapVariantSpanToOriginal, isNestedProfaneSpan, trimProfaneSpanEdges } from '../src/utils/variantMapping';
 
 describe('mapVariantSpanToOriginal', () => {
   test('maps collapsed separators back to original span', () => {
@@ -44,6 +44,25 @@ describe('mapVariantSpanToOriginal', () => {
     expect(span.matchedText).toBe('fuck');
     expect(span.start).toBe(6);
     expect(span.end).toBe(10);
+  });
+
+  test('maps accent-stripped variant back to original word', () => {
+    const original = ' mamá se fue?';
+    const variant = ' mama se fue?';
+    const span = mapVariantSpanToOriginal(original, variant, 1, 5);
+    expect(span.matchedText).toBe('mamá');
+  });
+
+  test('maps leetspeak parenthesis substitution back to original span', () => {
+    const original = '(miro su camel toe bien marcado en sus tangas)';
+    const variant = 'cmiro su camel toe bien marcado en sus tangas)';
+    const span = mapVariantSpanToOriginal(original, variant, 9, 18);
+    expect(span.matchedText).toBe('camel toe');
+  });
+
+  test('trims leading dots from gay span edges', () => {
+    const span = trimProfaneSpanEdges('Sei un...gay?', 7, 12);
+    expect(span.matchedText).toBe('gay');
   });
 });
 

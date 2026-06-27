@@ -4,7 +4,7 @@ import { ContextAnalyzer } from '../nlp/contextAnalyzer';
 import { DictionaryAhoCorasick, type DictionaryMatch } from './dictionaryAhoCorasick';
 import { normalizeLeetspeak, normalizeLeetspeakVariants } from '../utils/leetspeak';
 import { normalizeEvasion } from '../utils/evasion';
-import { mapVariantSpanToOriginal, isNestedProfaneSpan } from '../utils/variantMapping';
+import { mapVariantSpanToOriginal, isNestedProfaneSpan, dedupeProfaneSpansByOverlap } from '../utils/variantMapping';
 import { normalizeUnicode } from '../utils/unicode';
 import {
   classifyWordScript,
@@ -256,16 +256,8 @@ class Filter {
     originalText: string,
     variantText: string,
     match: DictionaryMatch,
-    isOriginalVariant: boolean,
+    _isOriginalVariant: boolean,
   ): { matchedWord: string; start: number; end: number } {
-    if (isOriginalVariant && variantText === originalText) {
-      return {
-        matchedWord: match.matchedText,
-        start: match.start,
-        end: match.end,
-      };
-    }
-
     const span = mapVariantSpanToOriginal(
       originalText,
       variantText,
@@ -284,13 +276,9 @@ class Filter {
     variantText: string,
     matchStart: number,
     matchEnd: number,
-    matchedWord: string,
-    isOriginalVariant: boolean,
+    _matchedWord: string,
+    _isOriginalVariant: boolean,
   ): { matchedWord: string; start: number; end: number } {
-    if (isOriginalVariant && variantText === originalText) {
-      return { matchedWord, start: matchStart, end: matchEnd };
-    }
-
     const span = mapVariantSpanToOriginal(
       originalText,
       variantText,
@@ -354,12 +342,80 @@ class Filter {
     return undefined;
   }
 
+  private profaneWordsFromSpans(
+    spans: Array<[string, number, number]>,
+    severityMap: Record<string, SeverityLevel>,
+  ): { profaneWords: Set<string>; severityMap: Record<string, SeverityLevel> } {
+    const deduped = dedupeProfaneSpansByOverlap(spans);
+    const profaneWords = new Set<string>();
+    const resolvedSeverityMap: Record<string, SeverityLevel> = {};
+
+    for (const [word] of deduped) {
+      if (!word) {
+        continue;
+      }
+      profaneWords.add(word);
+      resolvedSeverityMap[word] = severityMap[word] ?? SeverityLevel.EXACT;
+    }
+
+    return { profaneWords, severityMap: resolvedSeverityMap };
+  }
+
+  private collectProfaneSpansFromVariantAc(
+    text: string,
+    variantText: string,
+  ): Array<[string, number, number]> {
+    const matcher = this.dictionaryMatcher;
+    if (!matcher) {
+      return [];
+    }
+
+    const options = this.getDictionarySearchOptions();
+    const spans: Array<[string, number, number]> = [];
+
+    for (const match of matcher.findMatches(variantText, options)) {
+      const resolved = this.resolveAcMatchInOriginal(text, variantText, match, false);
+      if (resolved.matchedWord) {
+        spans.push([resolved.matchedWord, resolved.start, resolved.end]);
+      }
+    }
+
+    return spans;
+  }
+
+  private collectProfaneSpansAc(
+    text: string,
+    variants: { original: string; normalized: string; aggressive: string },
+    containsProfanity = false,
+  ): Array<[string, number, number]> {
+    let spans = this.collectProfaneSpansFromVariantAc(text, variants.normalized);
+    if (spans.length > 0 || !containsProfanity) {
+      return dedupeProfaneSpansByOverlap(spans);
+    }
+
+    if (variants.original !== variants.normalized) {
+      spans = this.collectProfaneSpansFromVariantAc(text, variants.original);
+      if (spans.length > 0) {
+        return dedupeProfaneSpansByOverlap(spans);
+      }
+    }
+
+    if (
+      variants.aggressive !== variants.normalized &&
+      variants.aggressive !== variants.original
+    ) {
+      spans = this.collectProfaneSpansFromVariantAc(text, variants.aggressive);
+    }
+
+    return dedupeProfaneSpansByOverlap(spans);
+  }
+
   private collectMatchesFromVariant(
     dictWord: string,
     variantText: string,
     originalText: string,
     severity: SeverityLevel,
-    profaneWords: Set<string>,
+    profaneSpans: Array<[string, number, number]>,
     severityMap: Record<string, SeverityLevel>,
     isOriginalVariant: boolean,
   ): void {
@@ -380,7 +436,10 @@ class Filter {
         isOriginalVariant ? match[0] : dictWord,
         isOriginalVariant,
       );
-      profaneWords.add(resolved.matchedWord);
+      if (!resolved.matchedWord) {
+        continue;
+      }
+      profaneSpans.push([resolved.matchedWord, resolved.start, resolved.end]);
       if (severityMap[resolved.matchedWord] === undefined) {
         severityMap[resolved.matchedWord] = severity;
       }
@@ -794,89 +853,102 @@ class Filter {
 
   private checkProfanityWithAhoCorasick(text: string): CheckProfanityResult {
     const variants = this.getTextVariants(text, true);
-    const profaneWords = new Set<string>();
     const severityMap: Record<string, SeverityLevel> = {};
-    const options = this.getDictionarySearchOptions();
-    const matcher = this.dictionaryMatcher!;
+    const containsProfanity = this.isProfaneWithAhoCorasick(text);
+    const profaneSpans = this.collectProfaneSpansAc(text, variants, containsProfanity);
+    const resolved = this.profaneWordsFromSpans(profaneSpans, severityMap);
 
-    this.forEachTextVariant(variants, (variantText, isOriginal) => {
-      for (const match of matcher.findMatches(variantText, options)) {
-        const resolved = this.resolveAcMatchInOriginal(
-          text,
+    return this.buildProfanityResult(
+      text,
+      resolved.profaneWords,
+      resolved.severityMap,
+      containsProfanity,
+    );
+  }
+
+  private collectLegacySpansFromVariant(
+    text: string,
+    variants: { original: string; normalized: string; aggressive: string },
+    variantKey: 'original' | 'normalized' | 'aggressive',
+    isOriginalVariant: boolean,
+    profaneSpans: Array<[string, number, number]>,
+    severityMap: Record<string, SeverityLevel>,
+  ): void {
+    const variantText = variants[variantKey];
+    for (const dictWord of this.words.keys()) {
+      if (this.ignoreWords.has(dictWord.toLowerCase())) continue;
+
+      const severity = this.evaluateSeverity(dictWord, variantText);
+      if (severity !== undefined) {
+        this.collectMatchesFromVariant(
+          dictWord,
           variantText,
-          match,
-          isOriginal,
+          text,
+          severity,
+          profaneSpans,
+          severityMap,
+          isOriginalVariant,
         );
-        if (!resolved.matchedWord) {
-          continue;
-        }
-        profaneWords.add(resolved.matchedWord);
-        if (severityMap[resolved.matchedWord] === undefined) {
-          severityMap[resolved.matchedWord] = SeverityLevel.EXACT;
-        }
       }
-      return false;
-    });
-
-    return this.buildProfanityResult(text, profaneWords, severityMap);
+    }
   }
 
   private checkProfanityLegacyNonContext(text: string): CheckProfanityResult {
     const variants = this.getTextVariants(text, true);
-    const profaneWords = new Set<string>();
+    const profaneSpans: Array<[string, number, number]> = [];
     const severityMap: Record<string, SeverityLevel> = {};
+    let containsProfanity = false;
 
     for (const dictWord of this.words.keys()) {
       if (this.ignoreWords.has(dictWord.toLowerCase())) continue;
 
-      let severity = this.evaluateSeverity(dictWord, variants.original);
-      if (severity !== undefined) {
-        this.collectMatchesFromVariant(
-          dictWord,
-          variants.original,
-          text,
-          severity,
-          profaneWords,
-          severityMap,
-          true,
-        );
-      }
-
-      if (variants.normalized !== variants.original) {
-        severity = this.evaluateSeverity(dictWord, variants.normalized);
-        if (severity !== undefined) {
-          this.collectMatchesFromVariant(
-            dictWord,
-            variants.normalized,
-            text,
-            severity,
-            profaneWords,
-            severityMap,
-            false,
-          );
-        }
-      }
-
-      if (
-        variants.aggressive !== variants.normalized &&
-        variants.aggressive !== variants.original
-      ) {
-        severity = this.evaluateSeverity(dictWord, variants.aggressive);
-        if (severity !== undefined) {
-          this.collectMatchesFromVariant(
-            dictWord,
-            variants.aggressive,
-            text,
-            severity,
-            profaneWords,
-            severityMap,
-            false,
-          );
-        }
+      if (this.evaluateSeverityOnVariants(dictWord, variants) !== undefined) {
+        containsProfanity = true;
       }
     }
 
-    return this.buildProfanityResult(text, profaneWords, severityMap);
+    this.collectLegacySpansFromVariant(
+      text,
+      variants,
+      'normalized',
+      false,
+      profaneSpans,
+      severityMap,
+    );
+    if (profaneSpans.length === 0 && containsProfanity) {
+      if (variants.original !== variants.normalized) {
+        this.collectLegacySpansFromVariant(
+          text,
+          variants,
+          'original',
+          true,
+          profaneSpans,
+          severityMap,
+        );
+      }
+      if (
+        profaneSpans.length === 0 &&
+        variants.aggressive !== variants.normalized &&
+        variants.aggressive !== variants.original
+      ) {
+        this.collectLegacySpansFromVariant(
+          text,
+          variants,
+          'aggressive',
+          false,
+          profaneSpans,
+          severityMap,
+        );
+      }
+    }
+
+    const resolved = this.profaneWordsFromSpans(profaneSpans, severityMap);
+    return this.buildProfanityResult(
+      text,
+      resolved.profaneWords,
+      resolved.severityMap,
+      containsProfanity,
+    );
   }
 
   private recordContextAwareMatch(
@@ -932,31 +1004,76 @@ class Filter {
     severityMap: Record<string, SeverityLevel>,
     matches: Match[],
     seen: Set<string>,
+    variantKey: 'original' | 'normalized' | 'aggressive' = 'normalized',
   ): void {
     const options = this.getDictionarySearchOptions();
     const matcher = this.dictionaryMatcher!;
+    const variantText = variants[variantKey];
 
-    this.forEachTextVariant(variants, (variantText, isOriginal) => {
-      for (const match of matcher.findMatches(variantText, options)) {
-        const resolved = this.resolveAcMatchInOriginal(
-          text,
-          variantText,
-          match,
-          isOriginal,
-        );
-        this.recordContextAwareMatch(
-          text,
-          resolved.matchedWord,
-          resolved.start,
-          SeverityLevel.EXACT,
-          profaneWords,
-          severityMap,
-          matches,
-          seen,
-        );
-      }
-      return false;
-    });
+    for (const match of matcher.findMatches(variantText, options)) {
+      const resolved = this.resolveAcMatchInOriginal(text, variantText, match, false);
+      this.recordContextAwareMatch(
+        text,
+        resolved.matchedWord,
+        resolved.start,
+        SeverityLevel.EXACT,
+        profaneWords,
+        severityMap,
+        matches,
+        seen,
+      );
+    }
+  }
+
+  private collectContextAwareCandidatesFromAcWithFallback(
+    text: string,
+    variants: { original: string; normalized: string; aggressive: string },
+    profaneWords: string[],
+    severityMap: Record<string, SeverityLevel>,
+    matches: Match[],
+    seen: Set<string>,
+  ): void {
+    this.collectContextAwareCandidatesFromAc(
+      text,
+      variants,
+      profaneWords,
+      severityMap,
+      matches,
+      seen,
+    );
+    if (profaneWords.length > 0) {
+      return;
+    }
+
+    if (variants.original !== variants.normalized) {
+      this.collectContextAwareCandidatesFromAc(
+        text,
+        variants,
+        profaneWords,
+        severityMap,
+        matches,
+        seen,
+        'original',
+      );
+    }
+    if (profaneWords.length > 0) {
+      return;
+    }
+
+    if (
+      variants.aggressive !== variants.normalized &&
+      variants.aggressive !== variants.original
+    ) {
+      this.collectContextAwareCandidatesFromAc(
+        text,
+        variants,
+        profaneWords,
+        severityMap,
+        matches,
+        seen,
+        'aggressive',
+      );
+    }
   }
 
   private collectContextAwareCandidatesFromLegacyFuzzy(
@@ -972,34 +1089,19 @@ class Filter {
         continue;
       }
 
-      const collectFromVariant = (variantText: string) => {
-        if (this.evaluateSeverity(dictWord, variantText) !== SeverityLevel.FUZZY) {
-          return;
-        }
-        this.recordContextAwareMatch(
-          text,
-          dictWord,
-          0,
-          SeverityLevel.FUZZY,
-          profaneWords,
-          severityMap,
-          matches,
-          seen,
-        );
-      };
-
-      collectFromVariant(variants.original);
-
-      if (variants.normalized !== variants.original) {
-        collectFromVariant(variants.normalized);
+      if (this.evaluateSeverity(dictWord, variants.normalized) !== SeverityLevel.FUZZY) {
+        continue;
       }
-
-      if (
-        variants.aggressive !== variants.normalized &&
-        variants.aggressive !== variants.original
-      ) {
-        collectFromVariant(variants.aggressive);
-      }
+      this.recordContextAwareMatch(
+        text,
+        dictWord,
+        0,
+        SeverityLevel.FUZZY,
+        profaneWords,
+        severityMap,
+        matches,
+        seen,
+      );
     }
   }
 
@@ -1016,70 +1118,53 @@ class Filter {
         continue;
       }
 
-      const collectFromVariant = (
-        variantText: string,
-        isOriginal: boolean,
-      ) => {
-        const severity = this.evaluateSeverity(dictWord, variantText);
-        if (severity === undefined) {
-          return;
-        }
-
-        if (!this.wordBoundaries && severity === SeverityLevel.FUZZY) {
-          this.recordContextAwareMatch(
-            text,
-            dictWord,
-            0,
-            severity,
-            profaneWords,
-            severityMap,
-            matches,
-            seen,
-          );
-          return;
-        }
-
-        const regex = this.getRegex(dictWord);
-        const script = this.getWordScript(dictWord);
-        let match: RegExpExecArray | null;
-        while ((match = regex.exec(variantText)) !== null) {
-          const start = match.index;
-          const end = match.index + match[0].length;
-          if (!matchHasWordBoundary(variantText, start, end, script, this.wordBoundaries)) {
-            continue;
-          }
-          const resolved = this.resolveRegexMatchInOriginal(
-            text,
-            variantText,
-            start,
-            end,
-            isOriginal ? match[0] : dictWord,
-            isOriginal,
-          );
-          this.recordContextAwareMatch(
-            text,
-            resolved.matchedWord,
-            resolved.start,
-            severity,
-            profaneWords,
-            severityMap,
-            matches,
-            seen,
-          );
-        }
-      };
-
-      collectFromVariant(variants.original, true);
-
-      if (variants.normalized !== variants.original) {
-        collectFromVariant(variants.normalized, false);
+      const severity = this.evaluateSeverity(dictWord, variants.normalized);
+      if (severity === undefined) {
+        continue;
       }
 
-      if (
-        variants.aggressive !== variants.normalized &&
-        variants.aggressive !== variants.original
-      ) {
-        collectFromVariant(variants.aggressive, false);
+      if (!this.wordBoundaries && severity === SeverityLevel.FUZZY) {
+        this.recordContextAwareMatch(
+          text,
+          dictWord,
+          0,
+          severity,
+          profaneWords,
+          severityMap,
+          matches,
+          seen,
+        );
+        continue;
+      }
+
+      const regex = this.getRegex(dictWord);
+      const script = this.getWordScript(dictWord);
+      const variantText = variants.normalized;
+      let match: RegExpExecArray | null;
+      while ((match = regex.exec(variantText)) !== null) {
+        const start = match.index;
+        const end = match.index + match[0].length;
+        if (!matchHasWordBoundary(variantText, start, end, script, this.wordBoundaries)) {
+          continue;
+        }
+        const resolved = this.resolveRegexMatchInOriginal(
+          text,
+          variantText,
+          start,
+          end,
+          dictWord,
+          false,
+        );
+        this.recordContextAwareMatch(
+          text,
+          resolved.matchedWord,
+          resolved.start,
+          severity,
+          profaneWords,
+          severityMap,
+          matches,
+          seen,
+        );
       }
     }
   }
@@ -1089,14 +1174,15 @@ class Filter {
     profaneWords: string[],
     severityMap: Record<string, SeverityLevel>,
     matches: Match[],
+    containsProfanity?: boolean,
   ): CheckProfanityResult {
+    const profaneWordList = this.dedupeNestedProfaneWords(
+      Array.from(new Set(profaneWords)),
+    ).sort((a, b) => b.length - a.length || a.localeCompare(b));
     let processedText = text;
 
-    if (this.replaceWith && profaneWords.length > 0) {
-      const uniqueWords = this.dedupeNestedProfaneWords(
-        Array.from(new Set(profaneWords)),
-      ).sort((a, b) => b.length - a.length);
-      for (const word of uniqueWords) {
+    if (this.replaceWith && profaneWordList.length > 0) {
+      for (const word of profaneWordList) {
         processedText = processedText.replace(
           this.getReplacementRegex(word),
           this.replaceWith,
@@ -1113,9 +1199,14 @@ class Filter {
       contextScore = totalScore / matches.length;
     }
 
+    const flagged =
+      containsProfanity !== undefined
+        ? containsProfanity
+        : profaneWordList.length > 0;
+
     return {
-      containsProfanity: profaneWords.length > 0,
-      profaneWords: this.dedupeNestedProfaneWords(Array.from(new Set(profaneWords))).sort(),
+      containsProfanity: flagged,
+      profaneWords: profaneWordList,
       processedText: this.replaceWith ? processedText : undefined,
       severityMap:
         this.severityLevels && Object.keys(severityMap).length > 0
@@ -1126,22 +1217,22 @@ class Filter {
           ? [...matches].sort((a, b) => a.index - b.index || a.word.localeCompare(b.word))
           : undefined,
       contextScore,
-      reason:
-        matches.length > 0
-          ? `Found ${matches.length} potential profanity matches`
-          : 'No profanity detected',
+      reason: flagged
+        ? `Found ${profaneWordList.length} potential profanity matches`
+        : 'No profanity detected',
     };
   }
 
   private checkProfanityWithContextAware(text: string): CheckProfanityResult {
     const variants = this.getTextVariants(text, true);
+    const containsProfanity = this.isProfaneWithContextAware(text);
     const profaneWords: string[] = [];
     const severityMap: Record<string, SeverityLevel> = {};
     const matches: Match[] = [];
     const seen = new Set<string>();
 
     if (this.dictionaryMatcher) {
-      this.collectContextAwareCandidatesFromAc(
+      this.collectContextAwareCandidatesFromAcWithFallback(
         text,
         variants,
         profaneWords,
@@ -1174,7 +1265,13 @@ class Filter {
       this.debugLog('Detected:', profaneWords);
     }
 
-    return this.buildContextAwareResult(text, profaneWords, severityMap, matches);
+    return this.buildContextAwareResult(
+      text,
+      profaneWords,
+      severityMap,
+      matches,
+      containsProfanity,
+    );
   }
 
   private getReplacementRegex(word: string): RegExp {
@@ -1202,9 +1299,10 @@ class Filter {
     text: string,
     profaneWords: Set<string>,
     severityMap: Record<string, SeverityLevel>,
+    containsProfanity?: boolean,
   ): CheckProfanityResult {
     const profaneWordList = this.dedupeNestedProfaneWords(Array.from(profaneWords)).sort(
-      (a, b) => b.length - a.length,
+      (a, b) => b.length - a.length || a.localeCompare(b),
     );
     let processedText = text;
 
@@ -1217,14 +1315,22 @@ class Filter {
       }
     }
 
+    const flagged =
+      containsProfanity !== undefined
+        ? containsProfanity
+        : profaneWordList.length > 0;
+
     return {
-      containsProfanity: profaneWordList.length > 0,
+      containsProfanity: flagged,
       profaneWords: profaneWordList,
       processedText: this.replaceWith ? processedText : undefined,
       severityMap:
         this.severityLevels && Object.keys(severityMap).length > 0
           ? severityMap
           : undefined,
+      reason: flagged
+        ? `Found ${profaneWordList.length} potential profanity matches`
+        : 'No profanity detected',
     };
   }
 
