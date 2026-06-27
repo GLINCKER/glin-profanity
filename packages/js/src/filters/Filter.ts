@@ -48,6 +48,11 @@ class Filter {
   private confidenceThreshold: number;
   private contextAnalyzer?: ContextAnalyzer;
   private primaryLanguage: Language;
+  private allLanguages: boolean;
+  private languages: Language[];
+  private customWords: string[];
+  private disableAhoCorasick: boolean;
+  private domainWhitelists?: FilterConfig['domainWhitelists'];
   // Leetspeak and Unicode detection
   private detectLeetspeak: boolean;
   private leetspeakLevel: LeetspeakLevel;
@@ -95,6 +100,11 @@ class Filter {
     this.contextWindow = config?.contextWindow ?? 3;
     this.confidenceThreshold = config?.confidenceThreshold ?? 0.7;
     this.primaryLanguage = config?.languages?.[0] || defaultLanguage;
+    this.allLanguages = config?.allLanguages ?? false;
+    this.languages = config?.languages ?? [defaultLanguage];
+    this.customWords = config?.customWords ? [...config.customWords] : [];
+    this.disableAhoCorasick = config?.disableAhoCorasick ?? false;
+    this.domainWhitelists = config?.domainWhitelists;
 
     if (this.enableContextAware) {
       this.contextAnalyzer = new ContextAnalyzer({
@@ -418,6 +428,7 @@ class Filter {
     profaneSpans: Array<[string, number, number]>,
     severityMap: Record<string, SeverityLevel>,
     isOriginalVariant: boolean,
+    matches?: Match[],
   ): void {
     const regex = this.getRegex(dictWord);
     const script = this.getWordScript(dictWord);
@@ -443,6 +454,11 @@ class Filter {
       if (severityMap[resolved.matchedWord] === undefined) {
         severityMap[resolved.matchedWord] = severity;
       }
+      matches?.push({
+        word: resolved.matchedWord,
+        index: resolved.start,
+        severity,
+      });
     }
   }
 
@@ -504,7 +520,9 @@ class Filter {
    */
   public getConfig(): FilterConfig {
     return {
-      languages: [this.primaryLanguage],
+      languages: [...this.languages],
+      allLanguages: this.allLanguages,
+      customWords: [...this.customWords],
       caseSensitive: this.caseSensitive,
       wordBoundaries: this.wordBoundaries,
       replaceWith: this.replaceWith,
@@ -516,13 +534,49 @@ class Filter {
       enableContextAware: this.enableContextAware,
       contextWindow: this.contextWindow,
       confidenceThreshold: this.confidenceThreshold,
+      domainWhitelists: this.domainWhitelists,
       detectLeetspeak: this.detectLeetspeak,
       leetspeakLevel: this.leetspeakLevel,
       normalizeUnicode: this.normalizeUnicodeEnabled,
       enableEvasionNormalization: this.enableEvasionNormalization,
       cacheResults: this.cacheResults,
       maxCacheSize: this.maxCacheSize,
+      disableAhoCorasick: this.disableAhoCorasick,
     };
+  }
+
+  private resultCacheKey(text: string): string {
+    const fingerprint = JSON.stringify({
+      ignoreWords: Array.from(this.ignoreWords).sort(),
+      replaceWith: this.replaceWith ?? null,
+      wordBoundaries: this.wordBoundaries,
+      caseSensitive: this.caseSensitive,
+      detectLeetspeak: this.detectLeetspeak,
+      leetspeakLevel: this.leetspeakLevel,
+      normalizeUnicode: this.normalizeUnicodeEnabled,
+      enableEvasionNormalization: this.enableEvasionNormalization,
+      enableContextAware: this.enableContextAware,
+      contextWindow: this.contextWindow,
+      confidenceThreshold: this.confidenceThreshold,
+      fuzzyToleranceLevel: this.fuzzyToleranceLevel,
+      allowObfuscatedMatch: this.allowObfuscatedMatch,
+      severityLevels: this.severityLevels,
+      wordCount: this.words.size,
+    });
+    return `${fingerprint}\0${text}`;
+  }
+
+  private static formatProfanityReason(
+    flagged: boolean,
+    profaneWordList: string[],
+  ): string {
+    if (!flagged) {
+      return 'No profanity detected';
+    }
+    if (profaneWordList.length > 0) {
+      return `Found ${profaneWordList.length} potential profanity matches`;
+    }
+    return 'Profanity detected';
   }
 
   /**
@@ -873,6 +927,7 @@ class Filter {
     isOriginalVariant: boolean,
     profaneSpans: Array<[string, number, number]>,
     severityMap: Record<string, SeverityLevel>,
+    matches: Match[],
   ): void {
     const variantText = variants[variantKey];
     for (const dictWord of this.words.keys()) {
@@ -887,6 +942,11 @@ class Filter {
         if (severityMap[dictWord] === undefined) {
           profaneSpans.push([dictWord, 0, dictWord.length]);
           severityMap[dictWord] = severity;
+          matches.push({
+            word: dictWord,
+            index: 0,
+            severity,
+          });
         }
         continue;
       }
@@ -899,6 +959,7 @@ class Filter {
         profaneSpans,
         severityMap,
         isOriginalVariant,
+        matches,
       );
     }
   }
@@ -907,6 +968,7 @@ class Filter {
     const variants = this.getTextVariants(text, true);
     const profaneSpans: Array<[string, number, number]> = [];
     const severityMap: Record<string, SeverityLevel> = {};
+    const matches: Match[] = [];
     let containsProfanity = false;
 
     for (const dictWord of this.words.keys()) {
@@ -924,6 +986,7 @@ class Filter {
       false,
       profaneSpans,
       severityMap,
+      matches,
     );
     if (profaneSpans.length === 0 && containsProfanity) {
       if (variants.original !== variants.normalized) {
@@ -934,6 +997,7 @@ class Filter {
           true,
           profaneSpans,
           severityMap,
+          matches,
         );
       }
       if (
@@ -948,17 +1012,23 @@ class Filter {
           false,
           profaneSpans,
           severityMap,
+          matches,
         );
       }
     }
 
     const resolved = this.profaneWordsFromSpans(profaneSpans, severityMap);
-    return this.buildProfanityResult(
+    const result = this.buildProfanityResult(
       text,
       resolved.profaneWords,
       resolved.severityMap,
       containsProfanity,
     );
+    if (matches.length > 0) {
+      const dedupedWords = new Set(result.profaneWords);
+      result.matches = matches.filter((match) => dedupedWords.has(match.word));
+    }
+    return result;
   }
 
   private recordContextAwareMatch(
@@ -1281,9 +1351,7 @@ class Filter {
           ? [...matches].sort((a, b) => a.index - b.index || a.word.localeCompare(b.word))
           : undefined,
       contextScore,
-      reason: flagged
-        ? `Found ${profaneWordList.length} potential profanity matches`
-        : 'No profanity detected',
+      reason: Filter.formatProfanityReason(flagged, profaneWordList),
     };
   }
 
@@ -1392,9 +1460,7 @@ class Filter {
         this.severityLevels && Object.keys(severityMap).length > 0
           ? severityMap
           : undefined,
-      reason: flagged
-        ? `Found ${profaneWordList.length} potential profanity matches`
-        : 'No profanity detected',
+      reason: Filter.formatProfanityReason(flagged, profaneWordList),
     };
   }
 
@@ -1424,7 +1490,7 @@ class Filter {
    */
   checkProfanity(text: string): CheckProfanityResult {
     // Check cache first
-    const cacheKey = text;
+    const cacheKey = this.resultCacheKey(text);
     const cachedResult = this.getFromCache(cacheKey);
     if (cachedResult) {
       this.debugLog('Cache hit for:', text.substring(0, 50));

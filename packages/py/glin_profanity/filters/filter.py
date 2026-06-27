@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Callable, Literal
 
@@ -82,6 +83,11 @@ class Filter:
         self.confidence_threshold = config.get("confidence_threshold", 0.7)
         languages = config.get("languages", ["english"])
         self.primary_language: Language = languages[0] if languages else "english"
+        self._all_languages = config.get("all_languages", False)
+        self._languages: list[Language] = list(languages or ["english"])
+        self._custom_words: list[str] = list(config.get("custom_words") or [])
+        self._disable_aho_corasick = bool(config.get("disable_aho_corasick", False))
+        self._domain_whitelists = config.get("domain_whitelists")
         self.context_analyzer: ContextAnalyzer | None = None
         if self.enable_context_aware:
             domain_whitelists = config.get("domain_whitelists") or {}
@@ -449,6 +455,9 @@ class Filter:
             >>> # Later, restore: new_filter = Filter(json.load(open('filter.config.json')))
         """
         return {
+            "languages": list(self._languages),
+            "all_languages": self._all_languages,
+            "custom_words": list(self._custom_words),
             "case_sensitive": self.case_sensitive,
             "word_boundaries": self.word_boundaries,
             "replace_with": self.replace_with,
@@ -460,13 +469,47 @@ class Filter:
             "enable_context_aware": self.enable_context_aware,
             "context_window": self.context_window,
             "confidence_threshold": self.confidence_threshold,
+            "domain_whitelists": self._domain_whitelists,
             "detect_leetspeak": self.detect_leetspeak,
             "leetspeak_level": self.leetspeak_level,
             "normalize_unicode": self.normalize_unicode_enabled,
             "enable_evasion_normalization": self.enable_evasion_normalization,
             "cache_results": self.cache_results,
             "max_cache_size": self.max_cache_size,
+            "disable_aho_corasick": self._disable_aho_corasick,
         }
+
+    def _result_cache_key(self, text: str) -> str:
+        fingerprint = json.dumps(
+            {
+                "ignore_words": sorted(self.ignore_words),
+                "replace_with": self.replace_with,
+                "word_boundaries": self.word_boundaries,
+                "case_sensitive": self.case_sensitive,
+                "detect_leetspeak": self.detect_leetspeak,
+                "leetspeak_level": self.leetspeak_level,
+                "normalize_unicode": self.normalize_unicode_enabled,
+                "enable_evasion_normalization": self.enable_evasion_normalization,
+                "enable_context_aware": self.enable_context_aware,
+                "context_window": self.context_window,
+                "confidence_threshold": self.confidence_threshold,
+                "fuzzy_tolerance_level": self.fuzzy_tolerance_level,
+                "allow_obfuscated_match": self.allow_obfuscated_match,
+                "severity_levels": self.severity_levels,
+                "word_count": len(self.words),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return f"{fingerprint}\0{text}"
+
+    @staticmethod
+    def _format_profanity_reason(flagged: bool, profane_word_list: list[str]) -> str:
+        if not flagged:
+            return "No profanity detected"
+        if profane_word_list:
+            return f"Found {len(profane_word_list)} potential profanity matches"
+        return "Profanity detected"
 
     def get_word_count(self) -> int:
         """
@@ -773,11 +816,7 @@ class Filter:
         result: CheckProfanityResult = {
             "contains_profanity": flagged,
             "profane_words": profane_word_list,
-            "reason": (
-                f"Found {len(profane_word_list)} potential profanity matches"
-                if flagged
-                else "No profanity detected"
-            ),
+            "reason": self._format_profanity_reason(flagged, profane_word_list),
         }
 
         if self.replace_with:
@@ -1079,11 +1118,7 @@ class Filter:
         result: CheckProfanityResult = {
             "contains_profanity": flagged,
             "profane_words": profane_word_list,
-            "reason": (
-                f"Found {len(profane_word_list)} potential profanity matches"
-                if flagged
-                else "No profanity detected"
-            ),
+            "reason": self._format_profanity_reason(flagged, profane_word_list),
         }
 
         if self.replace_with and profane_word_list:
@@ -1301,7 +1336,8 @@ class Filter:
             True
         """
         # Check cache first
-        cached_result = self._get_from_cache(text)
+        cache_key = self._result_cache_key(text)
+        cached_result = self._get_from_cache(cache_key)
         if cached_result is not None:
             self._debug_log("Cache hit for:", text[:50])
             return cached_result
@@ -1314,11 +1350,11 @@ class Filter:
             )
             if result["contains_profanity"]:
                 self._debug_log("Detected:", result.get("profane_words", []))
-            self._add_to_cache(text, result)
+            self._add_to_cache(cache_key, result)
             return result
 
         result = self._check_profanity_with_context_aware(text)
-        self._add_to_cache(text, result)
+        self._add_to_cache(cache_key, result)
         return result
 
     def check_profanity_with_min_severity(
