@@ -62,3 +62,15 @@ class TestFilterPool:
         assert pooled.check_profanity(text)["contains_profanity"] == direct.check_profanity(
             text
         )["contains_profanity"]
+
+    def test_premerged_config_shares_same_pool_instance(self) -> None:
+        raw = get_pooled_filter({"languages": ["english"], "ignore_words": ["customword"]})
+        premerged = get_pooled_filter(
+            create_filter_config({"languages": ["english"], "ignore_words": ["customword"]})
+        )
+        assert raw is premerged
+
+    def test_create_filter_config_is_idempotent(self) -> None:
+        once = create_filter_config({"ignore_words": ["customword"]})
+        twice = create_filter_config(once)
+        assert (once.get("ignore_words") or []) == (twice.get("ignore_words") or [])

@@ -60,9 +60,44 @@ describe('mapVariantSpanToOriginal', () => {
     expect(span.matchedText).toBe('camel toe');
   });
 
+  test('does not stretch a fully masked word across following words', () => {
+    // "f******" -> "fuck": the masked letters must not consume the rest of
+    // the sentence. The word is not literally recoverable, so the span drops.
+    const original = 'throat f****** myself while f****** your face';
+    const variant = 'throat fuck myself while fuck your face';
+    const span = mapVariantSpanToOriginal(original, variant, 7, 11);
+    expect(span.matchedText).toBe('');
+  });
+
+  test('does not stretch span across unicode punctuation drift', () => {
+    // "…" -> ".." shifts indices; the mapped span for "cazzo" stays tight.
+    const original = 'amico…cazzo ci stavi';
+    const variant = 'amico..cazzo ci stavi';
+    const span = mapVariantSpanToOriginal(original, variant, 7, 12);
+    expect(span.matchedText).toBe('cazzo');
+  });
+
   test('trims leading dots from gay span edges', () => {
     const span = trimProfaneSpanEdges('Sei un...gay?', 7, 12);
     expect(span.matchedText).toBe('gay');
+  });
+
+  test('maps profanity after emoji variation selector without FE0F in span', () => {
+    const original = '❤️fuck';
+    const variant = '❤fuck';
+    const span = mapVariantSpanToOriginal(original, variant, 1, 5);
+    expect(span.matchedText).toBe('fuck');
+    expect(span.start).toBe(2);
+    expect(span.end).toBe(6);
+  });
+
+  test('maps profanity after keycap-style emoji without variation selector bleed', () => {
+    const original = '#️fuck';
+    const variant = '#fuck';
+    const span = mapVariantSpanToOriginal(original, variant, 1, 5);
+    expect(span.matchedText).toBe('fuck');
+    expect(span.start).toBe(2);
+    expect(span.end).toBe(6);
   });
 });
 
@@ -73,5 +108,10 @@ describe('isNestedProfaneSpan', () => {
 
   test('does not treat ass in classic as nested', () => {
     expect(isNestedProfaneSpan('ass', 'classic')).toBe(false);
+  });
+
+  test('uses Unicode word boundaries (matches Python \\w semantics)', () => {
+    // ß is a word character in Unicode \w; ass after ß is not word-bounded.
+    expect(isNestedProfaneSpan('ass', 'xßass')).toBe(false);
   });
 });

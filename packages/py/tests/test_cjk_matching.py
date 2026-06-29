@@ -27,10 +27,19 @@ class TestWordScriptUtilities:
         assert classify_word_script("sm") == "latin"
         assert classify_word_script("fuck") == "latin"
 
-    def test_has_latin_word_boundary_matches_js_b_semantics(self) -> None:
+    def test_has_latin_word_boundary_matches_unicode_w_semantics(self) -> None:
         assert has_latin_word_boundary("hello fuck world", 6, 10) is True
         assert has_latin_word_boundary("scunthorpe", 5, 9) is False
         assert has_latin_word_boundary("classic", 2, 5) is False
+        assert has_latin_word_boundary("Ok cuántos quieres tener", 3, 5) is False
+        assert has_latin_word_boundary("por fin adiós", 8, 11) is False
+
+    def test_latin_boundary_treats_cjk_neighbors_as_boundary(self) -> None:
+        # Pinyin/abbrev profanity embedded in CJK is a standalone token.
+        assert has_latin_word_boundary("我的jb大", 2, 4) is True
+        assert has_latin_word_boundary("SM部屋", 0, 2) is True
+        # A Latin substring inside a Latin word is still not a boundary.
+        assert has_latin_word_boundary("passion", 1, 4) is False
 
     def test_has_cjk_word_boundary_allows_substring_including_ascii_adjacency(
         self,
@@ -39,6 +48,23 @@ class TestWordScriptUtilities:
         assert has_cjk_word_boundary("hello操world", 5, 6) is True
         assert has_cjk_word_boundary("hello他妈的", 5, 8) is True
         assert has_cjk_word_boundary("123エッチ456", 3, 6) is True
+
+    def test_has_cjk_word_boundary_rejects_single_char_inside_compound(self) -> None:
+        assert has_cjk_word_boundary("性格", 0, 1) is False
+        assert has_cjk_word_boundary("明るい性格", 4, 5) is False
+        assert has_cjk_word_boundary("性", 0, 1) is True
+
+    def test_has_cjk_word_boundary_allows_unambiguous_single_profanity(self) -> None:
+        # Unambiguous profane single chars match even between CJK neighbors.
+        assert has_cjk_word_boundary("挨肏", 1, 2) is True
+        assert has_cjk_word_boundary("肏她", 0, 1) is True
+        assert has_cjk_word_boundary("被我肏屄的", 2, 3) is True  # 肏
+        assert has_cjk_word_boundary("被我肏屄的", 3, 4) is True  # 屄
+        # Ambiguous single chars keep the strict neighbor rule (no false hits).
+        assert has_cjk_word_boundary("骚扰", 0, 1) is False
+        assert has_cjk_word_boundary("逼近", 0, 1) is False
+        assert has_cjk_word_boundary("淫雨", 0, 1) is False
+        assert has_cjk_word_boundary("性格", 0, 1) is False
 
 
 class TestCjkAutomaticMatchingStrategy:
@@ -54,6 +80,14 @@ class TestCjkAutomaticMatchingStrategy:
         assert self.chinese_filter.is_profane("你他妈的") is True
         assert len(self.chinese_filter.check_profanity("他妈的")["profane_words"]) > 0
 
+    def test_unambiguous_single_char_detected_in_cjk_context(self) -> None:
+        assert self.chinese_filter.is_profane("挨肏") is True
+        assert self.chinese_filter.is_profane("肏她") is True
+        assert self.chinese_filter.check_profanity("肏她")["profane_words"] == ["肏"]
+        # Ambiguous single chars must not false-positive inside normal words.
+        assert self.chinese_filter.is_profane("受到骚扰") is False
+        assert self.chinese_filter.is_profane("性格很好") is False
+
     def test_japanese_detection_with_default_word_boundaries(self) -> None:
         assert self.japanese_filter.is_profane("このエッチな話") is True
         assert self.japanese_filter.is_profane("エッチ") is True
@@ -65,6 +99,27 @@ class TestCjkAutomaticMatchingStrategy:
     def test_japanese_ascii_entries_still_use_latin_boundaries(self) -> None:
         assert self.japanese_filter.is_profane("hello xx world") is True
         assert self.japanese_filter.is_profane("xxtra") is False
+
+    def test_latin_abbrev_in_cjk_context_detected(self) -> None:
+        f = Filter(
+            {
+                "languages": [],
+                "custom_words": ["jb"],
+                "normalize_unicode": True,
+                "detect_leetspeak": True,
+            }
+        )
+        assert f.is_profane("我的jb大不大") is True
+        # Must not over-flag a Latin substring inside a Latin word.
+        ass = Filter(
+            {
+                "languages": [],
+                "custom_words": ["ass"],
+                "normalize_unicode": True,
+                "detect_leetspeak": True,
+            }
+        )
+        assert ass.is_profane("passion fruit") is False
 
     def test_detects_cjk_profanity_wrapped_in_or_adjacent_to_ascii(self) -> None:
         assert self.chinese_filter.is_profane("hello他妈的") is True

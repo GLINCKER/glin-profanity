@@ -12,12 +12,12 @@ export function stripHtmlAndDecodeEntities(text: string): string {
 
   result = result.replace(/&#(\d+);/g, (_, dec: string) => {
     const code = parseInt(dec, 10);
-    return Number.isFinite(code) ? String.fromCharCode(code) : _;
+    return Number.isFinite(code) ? String.fromCodePoint(code) : _;
   });
 
   result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => {
     const code = parseInt(hex, 16);
-    return Number.isFinite(code) ? String.fromCharCode(code) : _;
+    return Number.isFinite(code) ? String.fromCodePoint(code) : _;
   });
 
   return result

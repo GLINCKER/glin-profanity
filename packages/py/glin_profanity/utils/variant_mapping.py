@@ -135,9 +135,10 @@ def _fallback_span(
     if idx >= 0:
         return _finalize_span(original, idx, idx + len(needle))
 
-    start = min(variant_start, len(original))
-    end = min(variant_end, len(original))
-    return _finalize_span(original, start, end)
+    # The variant word is not literally present in the original (e.g. it was
+    # reconstructed from a fully masked token like "f******"). Returning a
+    # guessed coordinate slice here only produces garbage spans, so drop it.
+    return OriginalSpan(start=0, end=0, matched_text="")
 
 
 def map_variant_span_to_original(
@@ -157,10 +158,14 @@ def map_variant_span_to_original(
     variant_index = 0
     orig_start = -1
     orig_end = -1
+    last_aligned_norm = ""
+    skipped_separator = False
 
     while variant_index < len(variant) and original_index <= len(original):
         if variant_index == variant_start and orig_start == -1:
             orig_start = original_index
+            last_aligned_norm = ""
+            skipped_separator = False
         if variant_index == variant_end:
             orig_end = original_index
             break
@@ -177,15 +182,34 @@ def map_variant_span_to_original(
             continue
 
         if _chars_align(original_char, variant_char):
+            last_aligned_norm = _normalize_char_for_align(original_char) or original_char.lower()
+            skipped_separator = False
             variant_index += 1
             original_index += 1
             continue
 
         if _is_skippable_original_char(original_char):
             original_index += 1
+            skipped_separator = True
             continue
 
-        original_index += 1
+        # An extra original word character does not match the variant char.
+        # Only tolerate it when it is a collapsed repeat ("fuuuck" -> "fuck")
+        # that directly follows the previously aligned char with no separator
+        # in between. Otherwise the variant char was removed/masked in the
+        # original ("f******" -> "fuck") or positions drifted (NFKD punctuation
+        # like "…" -> ".."): stop and let the caller fall back to a literal
+        # lookup instead of consuming unrelated words.
+        original_norm = _normalize_char_for_align(original_char) or original_char.lower()
+        if (
+            not skipped_separator
+            and last_aligned_norm
+            and original_norm == last_aligned_norm
+        ):
+            original_index += 1
+            continue
+
+        break
 
     if orig_end == -1 and variant_index >= variant_end:
         orig_end = original_index

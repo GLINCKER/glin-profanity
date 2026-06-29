@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import warnings
 from collections import OrderedDict
 from pathlib import Path
@@ -13,6 +14,7 @@ from glin_profanity.types.types import FilterConfig
 
 FILTER_POOL_MAX = 32
 _filter_pool: OrderedDict[str, Filter] = OrderedDict()
+_pool_lock = threading.Lock()
 
 _GLOBAL_WHITELIST_PATH = (
     Path(__file__).resolve().parent.parent
@@ -20,19 +22,31 @@ _GLOBAL_WHITELIST_PATH = (
     / "dictionaries"
     / "globalWhitelist.json"
 )
+_global_whitelist_cache: list[str] | None = None
 
 
-def _load_global_whitelist() -> list[str]:
-    with _GLOBAL_WHITELIST_PATH.open(encoding="utf-8") as handle:
-        data = json.load(handle)
-    return list(data.get("whitelist", []))
+def _get_global_whitelist() -> list[str]:
+    """Return the shared global whitelist (loaded once per process)."""
+    global _global_whitelist_cache
+    if _global_whitelist_cache is None:
+        with _GLOBAL_WHITELIST_PATH.open(encoding="utf-8") as handle:
+            data = json.load(handle)
+        _global_whitelist_cache = list(data.get("whitelist", []))
+    return _global_whitelist_cache
 
 
 def create_filter_config(config: FilterConfig | None = None) -> FilterConfig:
     """Build effective filter config, merging the shared global whitelist."""
     effective: dict[str, Any] = dict(config or {})
-    user_ignore = effective.get("ignore_words") or []
-    effective["ignore_words"] = [*_load_global_whitelist(), *user_ignore]
+    user_ignore = list(effective.get("ignore_words") or [])
+    global_words = _get_global_whitelist()
+    global_set = set(global_words)
+    # Idempotent: calling create_filter_config on an already-merged config must
+    # not duplicate global whitelist entries (which would inflate the pool key).
+    effective["ignore_words"] = [
+        *global_words,
+        *[word for word in user_ignore if word not in global_set],
+    ]
     effective.setdefault("fuzzy_tolerance_level", 0.8)
 
     if effective.get("allow_obfuscated_match") and effective.get("word_boundaries", True):
@@ -78,20 +92,22 @@ def get_pooled_filter(config: FilterConfig | None = None) -> Filter:
     effective = create_filter_config(config)
     key = config_cache_key(effective)
 
-    existing = _filter_pool.get(key)
-    if existing is not None:
-        _filter_pool.move_to_end(key)
-        return existing
+    with _pool_lock:
+        existing = _filter_pool.get(key)
+        if existing is not None:
+            _filter_pool.move_to_end(key)
+            return existing
 
-    filter_instance = Filter(effective)
-    if len(_filter_pool) >= FILTER_POOL_MAX:
-        oldest_key = next(iter(_filter_pool))
-        del _filter_pool[oldest_key]
+        filter_instance = Filter(effective)
+        if len(_filter_pool) >= FILTER_POOL_MAX:
+            oldest_key = next(iter(_filter_pool))
+            del _filter_pool[oldest_key]
 
-    _filter_pool[key] = filter_instance
-    return filter_instance
+        _filter_pool[key] = filter_instance
+        return filter_instance
 
 
 def clear_filter_pool() -> None:
     """Clear all pooled Filter instances (intended for tests)."""
-    _filter_pool.clear()
+    with _pool_lock:
+        _filter_pool.clear()

@@ -1,11 +1,10 @@
 import { ProfanityCheckerConfig, ProfanityCheckResult } from './types';
-import { createFilterConfig, getPooledFilter } from './filterPool';
+import { getPooledFilter } from './filterPool';
 
-export { clearFilterPool } from './filterPool';
+export { clearFilterPool, createFilterConfig } from './filterPool';
 
 export function checkProfanity(text: string, config?: ProfanityCheckerConfig): ProfanityCheckResult {
-  const filterConfig = createFilterConfig(config);
-  const filter = getPooledFilter(filterConfig);
+  const filter = getPooledFilter(config);
   const checkResult = filter.checkProfanity(text);
 
   // Filter based on minSeverity (if provided)
@@ -39,6 +38,5 @@ export async function checkProfanityAsync(text: string, config?: ProfanityChecke
 }
 
 export function isWordProfane(word: string, config?: ProfanityCheckerConfig): boolean {
-  const filter = getPooledFilter(createFilterConfig(config));
-  return filter.isProfane(word);
+  return getPooledFilter(config).isProfane(word);
 }

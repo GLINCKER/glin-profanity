@@ -14,8 +14,15 @@ type GraphemeSegmenterConstructor = new (
 ) => GraphemeSegmenterInstance;
 
 const GraphemeSegmenter = (
-  Intl as unknown as { Segmenter: GraphemeSegmenterConstructor }
+  Intl as unknown as { Segmenter?: GraphemeSegmenterConstructor }
 ).Segmenter;
+
+if (typeof GraphemeSegmenter !== 'function') {
+  throw new Error(
+    'glin-profanity requires Intl.Segmenter (Node 18+ or a modern browser) for ' +
+      'Aho-Corasick dictionary matching. Upgrade your runtime or polyfill Intl.Segmenter.',
+  );
+}
 
 export interface DictionaryMatch {
   dictWord: string;
@@ -75,9 +82,11 @@ export class DictionaryAhoCorasick {
   private readonly wordGraphemeLengths: Map<string, number>;
 
   constructor(words: string[]) {
-    this.ac = new AhoCorasick(words);
+    // Drop empty entries: an empty keyword would "match" at every position.
+    const nonEmpty = words.filter((word) => word.length > 0);
+    this.ac = new AhoCorasick(nonEmpty);
     this.wordGraphemeLengths = new Map(
-      words.map((word) => [word, countGraphemes(word)]),
+      nonEmpty.map((word) => [word, countGraphemes(word)]),
     );
   }
 
@@ -124,7 +133,9 @@ export class DictionaryAhoCorasick {
         const startGrapheme = endGraphemeIdx - wordLen + 1;
         const start = graphemeStartToStringIndex(text, startGrapheme);
         const end = graphemeEndToExclusiveStringIndex(text, endGraphemeIdx);
-        const script = options.wordScripts.get(dictWord) ?? 'latin';
+        const script =
+          options.wordScripts.get(dictWord.toLowerCase()) ??
+          classifyWordScript(dictWord);
 
         if (
           !matchHasWordBoundary(text, start, end, script, options.wordBoundaries)

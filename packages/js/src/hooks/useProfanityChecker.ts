@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { checkProfanity, checkProfanityAsync } from '../core';
-import { createFilterConfig, getPooledFilter } from '../core/filterPool';
+import { getPooledFilter } from '../core/filterPool';
 import type { ProfanityCheckerConfig } from '../core/types';
 import type { CheckProfanityResult } from '../types/types';
 
@@ -8,10 +8,10 @@ export type { ProfanityCheckerConfig };
 
 export const useProfanityChecker = (config?: ProfanityCheckerConfig) => {
   const [result, setResult] = useState<CheckProfanityResult | null>(null);
-  const filterRef = useRef(getPooledFilter(createFilterConfig(config)));
+  const filterRef = useRef(getPooledFilter(config));
 
   useEffect(() => {
-    filterRef.current = getPooledFilter(createFilterConfig(config));
+    filterRef.current = getPooledFilter(config);
   }, [config]);
 
   const checkText = useCallback((text: string) => {

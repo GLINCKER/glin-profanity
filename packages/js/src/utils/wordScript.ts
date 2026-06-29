@@ -1,14 +1,23 @@
 /**
  * Word-script classification and boundary checks for Latin vs CJK dictionary entries.
  *
- * Latin entries use JavaScript `\b` semantics (ASCII word chars only).
- * CJK entries use substring matching when word boundaries are enabled (no `\b`).
+ * Latin entries use Unicode-aware `\w` semantics (Python `\w` / JS `\b` with `u`).
+ * CJK entries use substring matching with a minimum grapheme length guard.
  */
 
 export type WordScript = 'latin' | 'cjk';
 
-/** Mirrors JavaScript `\b` word character class without the `u` flag. */
-const LATIN_WORD_CHAR = /[A-Za-z0-9_]/;
+/** Single-grapheme CJK hits require non-CJK neighbors (avoids 性 in 性格). */
+export const CJK_MIN_STANDALONE_GRAPHEMES = 2;
+
+/**
+ * Single CJK characters that are unambiguously profane regardless of neighbors.
+ * Unlike 性/骚/逼/淫/奸/賤/妓/尻/糞/裸 (which have common benign uses such as
+ * 性格/骚扰/逼近/淫雨/奸细/贫贱/芸妓/お尻/粪便/裸露), these characters effectively
+ * only occur in profane contexts, so we keep flagging them even when surrounded
+ * by other CJK characters (e.g. 挨肏, 肏她, 肏屄).
+ */
+export const UNAMBIGUOUS_CJK_SINGLE_PROFANITY = new Set('肏屄屌膣姦姘');
 
 /**
  * Returns true when the code point belongs to a CJK-related script block.
@@ -46,10 +55,29 @@ export function classifyWordScript(word: string): WordScript {
   return 'latin';
 }
 
-/** JavaScript `\b` boundary at index (between word and non-word ASCII chars). */
+/** Unicode-aware word character (Python `\w` / JS `\b` with `u` flag). */
+export function isUnicodeWordChar(char: string): boolean {
+  if (!char) {
+    return false;
+  }
+  if (char === '_') {
+    return true;
+  }
+  return /[\p{L}\p{N}]/u.test(char);
+}
+
+/**
+ * Word boundary at index using Unicode-aware `\w` semantics.
+ *
+ * CJK neighbors are treated as non-word for Latin tokens: CJK has no spaces,
+ * so a Latin/pinyin token embedded in CJK (e.g. `jb` in `我的jb大`) should still
+ * be recognized as a standalone token rather than a continuation.
+ */
 export function isLatinWordBoundaryBefore(text: string, index: number): boolean {
-  const leftIsWord = index > 0 && LATIN_WORD_CHAR.test(text[index - 1]!);
-  const rightIsWord = index < text.length && LATIN_WORD_CHAR.test(text[index]!);
+  const leftIsWord =
+    index > 0 && isUnicodeWordChar(text[index - 1]!) && !isCjkCharacter(text[index - 1]!);
+  const rightIsWord =
+    index < text.length && isUnicodeWordChar(text[index]!) && !isCjkCharacter(text[index]!);
   return leftIsWord !== rightIsWord;
 }
 
@@ -59,12 +87,47 @@ export function hasLatinWordBoundary(text: string, start: number, end: number): 
   );
 }
 
+function graphemeCountInSpan(text: string, start: number, end: number): number {
+  let count = 0;
+  let index = 0;
+
+  while (index < text.length) {
+    const segStart = index;
+    index += 1;
+    while (index < text.length && /\p{M}/u.test(text[index]!)) {
+      index += 1;
+    }
+    if (index > start && segStart < end) {
+      count += 1;
+    }
+    if (segStart >= end) {
+      break;
+    }
+  }
+  return count;
+}
+
 /**
- * CJK boundary: substring match anywhere (including ASCII-adjacent / wrapped text).
- * Latin `\b` does not apply to CJK scripts; adjacency checks would miss obfuscation
- * such as `hello他妈的`, `x乳x`, or `123エッチ456`.
+ * CJK boundary: multi-grapheme substring matches anywhere; single-grapheme
+ * matches require non-CJK neighbors (e.g. x乳x, hello操world).
  */
-export function hasCjkWordBoundary(_text: string, _start: number, _end: number): boolean {
+export function hasCjkWordBoundary(text: string, start: number, end: number): boolean {
+  if (graphemeCountInSpan(text, start, end) >= CJK_MIN_STANDALONE_GRAPHEMES) {
+    return true;
+  }
+
+  if (UNAMBIGUOUS_CJK_SINGLE_PROFANITY.has(text.slice(start, end))) {
+    return true;
+  }
+
+  const before = start > 0 ? text[start - 1]! : '';
+  const after = end < text.length ? text[end]! : '';
+  if (before && isCjkCharacter(before)) {
+    return false;
+  }
+  if (after && isCjkCharacter(after)) {
+    return false;
+  }
   return true;
 }
 

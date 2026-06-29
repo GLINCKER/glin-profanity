@@ -8,7 +8,11 @@ from typing import Iterable
 
 import ahocorasick
 
-from glin_profanity.utils.word_script import WordScript, match_has_word_boundary
+from glin_profanity.utils.word_script import (
+    WordScript,
+    classify_word_script,
+    match_has_word_boundary,
+)
 
 
 @dataclass(frozen=True)

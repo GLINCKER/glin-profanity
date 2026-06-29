@@ -136,6 +136,14 @@ class Filter:
         if custom_words:
             words.extend(custom_words)
 
+        # Accent-folded aliases: the normalized text variant strips diacritics
+        # (normalize_unicode), so an accented entry like "erección" would never
+        # match a user who typed "ereccion". Register the diacritic-free form as
+        # an extra alias so both spellings are caught. A length floor avoids
+        # short ambiguous folds (e.g. año -> ano, which would over-flag).
+        if self.normalize_unicode_enabled:
+            words = self._with_accent_folded_aliases(words)
+
         # Store as set for faster lookup; track script per entry for boundary rules
         self.words: set[str] = {word.lower() for word in words}
         self.word_scripts: dict[str, WordScript] = {}
@@ -150,6 +158,23 @@ class Filter:
 
         if self._should_use_aho_corasick(config):
             self.dictionary_matcher = DictionaryAhoCorasick(ac_words)
+
+    _ACCENT_ALIAS_MIN_LENGTH = 4
+
+    def _with_accent_folded_aliases(self, words: list[str]) -> list[str]:
+        """Append diacritic-stripped aliases for accented dictionary entries."""
+        seen = {word.lower() for word in words}
+        extra: list[str] = []
+        for word in words:
+            folded = normalize_unicode(word)
+            folded_key = folded.lower()
+            if folded_key == word.lower() or folded_key in seen:
+                continue
+            if len(folded_key.replace(" ", "")) < self._ACCENT_ALIAS_MIN_LENGTH:
+                continue
+            seen.add(folded_key)
+            extra.append(folded)
+        return words + extra
 
     def _should_use_aho_corasick(self, config: FilterConfig) -> bool:
         if config.get("disable_aho_corasick"):

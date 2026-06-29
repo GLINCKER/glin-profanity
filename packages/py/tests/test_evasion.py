@@ -14,6 +14,9 @@ class TestEvasionUtilities:
         assert strip_html_and_decode_entities("sh&#105;t") == "shit"
         assert strip_html_and_decode_entities("f<b>u</b>ck") == "fuck"
         assert strip_html_and_decode_entities("a<br>ss") == "ass"
+        # Astral code points (Python chr handles these natively).
+        assert strip_html_and_decode_entities("&#128512;") == "😀"
+        assert strip_html_and_decode_entities("&#x1F600;") == "😀"
 
     def test_collapse_separated_characters(self) -> None:
         assert collapse_separated_characters("f.u.c.k") == "fuck"
@@ -73,3 +76,22 @@ class TestEvasionFilterDetection:
 
     def test_armenian_homoglyph_normalizes_to_ascii(self) -> None:
         assert normalize_unicode("fսck") == "fuck"
+
+    def test_extended_homoglyph_categories(self) -> None:
+        # Kept in sync with the JS HOMOGLYPHS table.
+        assert normalize_unicode("у") == "u"  # Cyrillic small u -> u (not y)
+        assert normalize_unicode("к") == "k"  # Cyrillic small ka
+        assert normalize_unicode("ℝ") == "R"  # double-struck capital R
+        assert normalize_unicode("ⓐ") == "a"  # circled a
+        assert normalize_unicode("ʀ") == "R"  # small-cap R
+        assert normalize_unicode("ɐ") == "a"  # turned a
+        assert normalize_unicode("¢") == "c"  # cent sign
+
+    def test_japanese_dakuten_survives_diacritic_folding(self) -> None:
+        # ゾ must not collapse to ソ (that made クソ match ゾクゾク); ビ stays ビ.
+        assert normalize_unicode("ゾクゾク") == "ゾクゾク"
+        assert normalize_unicode("ビッチ") == "ビッチ"
+        assert normalize_unicode("クソゲー") == "クソゲー"
+        # Latin diacritic folding must still work.
+        assert normalize_unicode("café") == "cafe"
+        assert normalize_unicode("erección") == "ereccion"

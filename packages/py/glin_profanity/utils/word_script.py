@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
-import re
+import unicodedata
 from typing import Literal
 
 WordScript = Literal["latin", "cjk"]
 
-# Mirrors JavaScript ``\\b`` word character class without the ``u`` flag.
-_LATIN_WORD_CHAR = re.compile(r"[A-Za-z0-9_]")
+# Single-grapheme CJK hits require non-CJK neighbors (avoids 性 in 性格).
+CJK_MIN_STANDALONE_GRAPHEMES = 2
+
+# Single CJK characters that are unambiguously profane regardless of neighbors.
+# Unlike 性/骚/逼/淫/奸/賤/妓/尻/糞/裸 (which have common benign uses such as
+# 性格/骚扰/逼近/淫雨/奸细/贫贱/芸妓/お尻/粪便/裸露), these characters effectively
+# only occur in profane contexts, so we keep flagging them even when surrounded
+# by other CJK characters (e.g. 挨肏, 肏她, 肏屄).
+UNAMBIGUOUS_CJK_SINGLE_PROFANITY = frozenset("肏屄屌膣姦姘")
 
 
 def is_cjk_character(char: str) -> bool:
@@ -43,10 +50,33 @@ def classify_word_script(word: str) -> WordScript:
     return "latin"
 
 
+def is_unicode_word_char(char: str) -> bool:
+    """Unicode-aware word character (Python ``\\w`` / JS ``\\b`` with ``u`` flag)."""
+    if not char:
+        return False
+    if char == "_":
+        return True
+    category = unicodedata.category(char)
+    return category[0] in {"L", "N"}
+
+
 def is_latin_word_boundary_before(text: str, index: int) -> bool:
-    """JavaScript ``\\b`` boundary at index (between word and non-word ASCII chars)."""
-    left_is_word = index > 0 and bool(_LATIN_WORD_CHAR.match(text[index - 1]))
-    right_is_word = index < len(text) and bool(_LATIN_WORD_CHAR.match(text[index]))
+    """Word boundary at index using Unicode-aware ``\\w`` semantics.
+
+    CJK neighbors are treated as non-word for Latin tokens: CJK has no spaces,
+    so a Latin/pinyin token embedded in CJK (e.g. ``jb`` in ``我的jb大``) should
+    still be recognized as a standalone token rather than a continuation.
+    """
+    left_is_word = (
+        index > 0
+        and is_unicode_word_char(text[index - 1])
+        and not is_cjk_character(text[index - 1])
+    )
+    right_is_word = (
+        index < len(text)
+        and is_unicode_word_char(text[index])
+        and not is_cjk_character(text[index])
+    )
     return left_is_word != right_is_word
 
 
@@ -56,8 +86,39 @@ def has_latin_word_boundary(text: str, start: int, end: int) -> bool:
     )
 
 
-def has_cjk_word_boundary(_text: str, _start: int, _end: int) -> bool:
-    """Substring match anywhere, including ASCII-adjacent or digit-wrapped CJK."""
+def _grapheme_count_in_span(text: str, start: int, end: int) -> int:
+    count = 0
+    index = 0
+    length = len(text)
+    while index < length:
+        seg_start = index
+        index += 1
+        while index < length and unicodedata.category(text[index]) in {"Mn", "Me", "Mc"}:
+            index += 1
+        if index > start and seg_start < end:
+            count += 1
+        if seg_start >= end:
+            break
+    return count
+
+
+def has_cjk_word_boundary(text: str, start: int, end: int) -> bool:
+    """
+    CJK boundary: multi-grapheme substring matches anywhere; single-grapheme
+    matches require non-CJK neighbors (e.g. x乳x, hello操world).
+    """
+    if _grapheme_count_in_span(text, start, end) >= CJK_MIN_STANDALONE_GRAPHEMES:
+        return True
+
+    if text[start:end] in UNAMBIGUOUS_CJK_SINGLE_PROFANITY:
+        return True
+
+    before = text[start - 1] if start > 0 else ""
+    after = text[end] if end < len(text) else ""
+    if before and is_cjk_character(before):
+        return False
+    if after and is_cjk_character(after):
+        return False
     return True
 
 

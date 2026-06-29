@@ -219,6 +219,12 @@ export class ContextAnalyzer {
     tokens: Array<{ word: string; start: number; end: number }>,
     charIndex: number,
   ): number {
+    // No tokens (e.g. text has no word characters): signal "not found" with -1
+    // so the caller's fallback path runs, matching Python's _find_word_index.
+    if (tokens.length === 0) {
+      return -1;
+    }
+
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i]!;
       if (charIndex >= token.start && charIndex < token.end) {
@@ -228,7 +234,7 @@ export class ContextAnalyzer {
         return Math.max(0, i - 1);
       }
     }
-    return Math.max(0, tokens.length - 1);
+    return tokens.length - 1;
   }
 
   private calculateSentimentScore(contextWords: string[], matchPosition: number): number {

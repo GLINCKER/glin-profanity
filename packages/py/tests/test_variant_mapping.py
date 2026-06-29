@@ -62,6 +62,22 @@ class TestVariantMapping:
         span = trim_profane_span_edges("Sei un...gay?", 7, 12)
         assert span.matched_text == "gay"
 
+    def test_maps_profane_word_after_emoji_variation_selector(self) -> None:
+        original = "❤️fuck"
+        variant = "❤fuck"
+        span = map_variant_span_to_original(original, variant, 1, 5)
+        assert span.matched_text == "fuck"
+        assert span.start == 2
+        assert span.end == 6
+
+    def test_maps_profane_word_after_keycap_style_emoji(self) -> None:
+        original = "#️fuck"
+        variant = "#fuck"
+        span = map_variant_span_to_original(original, variant, 1, 5)
+        assert span.matched_text == "fuck"
+        assert span.start == 2
+        assert span.end == 6
+
 
 class TestNestedProfaneSpan:
     def test_detects_nested_spans(self) -> None:
@@ -69,3 +85,6 @@ class TestNestedProfaneSpan:
 
     def test_ignores_ass_inside_classic(self) -> None:
         assert not is_nested_profane_span("ass", "classic")
+
+    def test_unicode_word_boundary_before_ass(self) -> None:
+        assert not is_nested_profane_span("ass", "xßass")

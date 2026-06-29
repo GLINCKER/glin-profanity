@@ -3,8 +3,10 @@
  * Assumes normalization is order-preserving (no reordering of characters).
  */
 
+import { hasNonZeroCombiningClass } from './combiningClass';
 import { AGGRESSIVE_SUBSTITUTIONS, MODERATE_SUBSTITUTIONS } from './leetspeak';
 import { homoglyphToAscii } from './unicode';
+import { isUnicodeWordChar } from './wordScript';
 
 export interface OriginalSpan {
   start: number;
@@ -41,7 +43,7 @@ function normalizeCharForAlign(char: string): string {
   const decomposed = mapped.normalize('NFKD');
   let base = '';
   for (const codePoint of decomposed) {
-    if (!/\p{M}/u.test(codePoint)) {
+    if (!hasNonZeroCombiningClass(codePoint)) {
       base += codePoint;
     }
   }
@@ -87,7 +89,7 @@ function isSkippableOriginalChar(char: string): boolean {
 }
 
 function isCombiningMark(char: string): boolean {
-  return /\p{M}/u.test(char);
+  return hasNonZeroCombiningClass(char);
 }
 
 function shouldTrimEdgePunctuation(char: string): boolean {
@@ -152,11 +154,10 @@ function fallbackSpan(
     return finalizeSpan(original, idx, idx + needle.length);
   }
 
-  return finalizeSpan(
-    original,
-    Math.min(variantStart, original.length),
-    Math.min(variantEnd, original.length),
-  );
+  // The variant word is not literally present in the original (e.g. it was
+  // reconstructed from a fully masked token like "f******"). Returning a
+  // guessed coordinate slice here only produces garbage spans, so drop it.
+  return { start: 0, end: 0, matchedText: '' };
 }
 
 /**
@@ -181,10 +182,14 @@ export function mapVariantSpanToOriginal(
   let variantIndex = 0;
   let origStart = -1;
   let origEnd = -1;
+  let lastAlignedNorm = '';
+  let skippedSeparator = false;
 
   while (variantIndex < variant.length && originalIndex <= original.length) {
     if (variantIndex === variantStart && origStart === -1) {
       origStart = originalIndex;
+      lastAlignedNorm = '';
+      skippedSeparator = false;
     }
     if (variantIndex === variantEnd) {
       origEnd = originalIndex;
@@ -205,6 +210,8 @@ export function mapVariantSpanToOriginal(
     }
 
     if (charsAlign(originalChar, variantChar)) {
+      lastAlignedNorm = normalizeCharForAlign(originalChar) || originalChar.toLowerCase();
+      skippedSeparator = false;
       variantIndex++;
       originalIndex++;
       continue;
@@ -212,10 +219,24 @@ export function mapVariantSpanToOriginal(
 
     if (isSkippableOriginalChar(originalChar)) {
       originalIndex++;
+      skippedSeparator = true;
       continue;
     }
 
-    originalIndex++;
+    // An extra original word character does not match the variant char.
+    // Only tolerate it when it is a collapsed repeat ("fuuuck" -> "fuck")
+    // that directly follows the previously aligned char with no separator
+    // in between. Otherwise the variant char was removed/masked in the
+    // original ("f******" -> "fuck") or positions drifted (NFKD punctuation
+    // like "…" -> ".."): stop and let the caller fall back to a literal
+    // lookup instead of consuming unrelated words.
+    const originalNorm = normalizeCharForAlign(originalChar) || originalChar.toLowerCase();
+    if (!skippedSeparator && lastAlignedNorm && originalNorm === lastAlignedNorm) {
+      originalIndex++;
+      continue;
+    }
+
+    break;
   }
 
   if (origEnd === -1 && variantIndex >= variantEnd) {
@@ -293,10 +314,10 @@ export function isNestedProfaneSpan(shorter: string, longer: string): boolean {
       return false;
     }
 
-    const beforeOk = idx === 0 || !/\w/.test(longer[idx - 1]!);
+    const beforeOk = idx === 0 || !isUnicodeWordChar(longer[idx - 1]!);
     const afterIdx = idx + shorter.length;
     const afterOk =
-      afterIdx === longer.length || !/\w/.test(longer[afterIdx]!);
+      afterIdx === longer.length || !isUnicodeWordChar(longer[afterIdx]!);
 
     if (beforeOk && afterOk) {
       return true;

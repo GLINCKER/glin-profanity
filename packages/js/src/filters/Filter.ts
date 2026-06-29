@@ -159,6 +159,15 @@ class Filter {
       words = [...words, ...config.customWords];
     }
 
+    // Accent-folded aliases: the normalized text variant strips diacritics
+    // (normalizeUnicode), so an accented entry like "erección" would never
+    // match a user who typed "ereccion". Register the diacritic-free form as
+    // an extra alias so both spellings are caught. A length floor avoids short
+    // ambiguous folds (e.g. año -> ano, which would over-flag).
+    if (this.normalizeUnicodeEnabled) {
+      words = this.withAccentFoldedAliases(words);
+    }
+
     this.words = new Map();
     this.wordScripts = new Map();
     const acWords: string[] = [];
@@ -175,6 +184,26 @@ class Filter {
     this.dictionaryMatcher = this.shouldUseAhoCorasick(config)
       ? new DictionaryAhoCorasick(acWords)
       : null;
+  }
+
+  private static readonly ACCENT_ALIAS_MIN_LENGTH = 4;
+
+  private withAccentFoldedAliases(words: string[]): string[] {
+    const seen = new Set(words.map((word) => word.toLowerCase()));
+    const extra: string[] = [];
+    for (const word of words) {
+      const folded = normalizeUnicode(word);
+      const foldedKey = folded.toLowerCase();
+      if (foldedKey === word.toLowerCase() || seen.has(foldedKey)) {
+        continue;
+      }
+      if (foldedKey.replace(/ /g, '').length < Filter.ACCENT_ALIAS_MIN_LENGTH) {
+        continue;
+      }
+      seen.add(foldedKey);
+      extra.push(folded);
+    }
+    return [...words, ...extra];
   }
 
   private shouldUseAhoCorasick(config?: FilterConfig): boolean {

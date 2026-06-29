@@ -15,15 +15,26 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 JS_ENTRY = REPO_ROOT / "packages" / "js" / "dist" / "index.cjs"
+JS_PACKAGE = REPO_ROOT / "packages" / "js"
 
 sys.path.insert(0, str(REPO_ROOT / "packages" / "py"))
 from glin_profanity import Filter  # noqa: E402
 from glin_profanity.types.types import SeverityLevel  # noqa: E402
 
-pytestmark = pytest.mark.skipif(
-    not JS_ENTRY.exists(),
-    reason="JavaScript dist not built; run `npm run build` in packages/js",
-)
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_js_dist_built() -> None:
+    if JS_ENTRY.exists():
+        return
+    subprocess.run(
+        ["npm", "run", "build"],
+        cwd=JS_PACKAGE,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    if not JS_ENTRY.exists():
+        pytest.fail("JavaScript dist build did not produce index.cjs")
 
 
 def python_config_to_js(config: dict[str, Any]) -> dict[str, Any]:

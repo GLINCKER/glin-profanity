@@ -183,6 +183,43 @@ const ZERO_WIDTH_CHARS = [
   '\u3164', // Hangul filler
 ];
 
+// Combining Japanese (han)dakuten. These are nonspacing marks (\p{Mn}) but
+// encode a phonemic kana distinction, so they must survive diacritic folding.
+const KANA_VOICED_SOUND_MARKS = new Set(['\u3099', '\u309A']);
+
+/**
+ * Return true for Basic Latin and Latin Extended letters (not Cyrillic/CJK/etc.).
+ */
+export function isLatinScriptLetter(char: string): boolean {
+  const code = char.codePointAt(0);
+  if (code === undefined || !/\p{L}/u.test(char)) {
+    return false;
+  }
+  return (code >= 0x41 && code <= 0x24f) || (code >= 0x1e00 && code <= 0x1eff);
+}
+
+/**
+ * Skip homoglyph and leetspeak normalization when text contains non-Latin letters.
+ */
+export function textShouldSkipLatinObfuscationNormalization(text: string): boolean {
+  let latinLetters = 0;
+  let nonLatinLetters = 0;
+  for (const char of text) {
+    if (!/\p{L}/u.test(char)) {
+      continue;
+    }
+    if (isLatinScriptLetter(char)) {
+      latinLetters += 1;
+    } else {
+      nonLatinLetters += 1;
+    }
+  }
+  if (nonLatinLetters === 0) {
+    return false;
+  }
+  return nonLatinLetters >= latinLetters;
+}
+
 /**
  * Normalizes Unicode text for consistent profanity detection.
  * Handles various Unicode tricks used to evade filters.
@@ -311,8 +348,16 @@ export function normalizeNFKD(
   let normalized = text.normalize('NFKD');
 
   if (removeDiacritics) {
-    // Remove combining diacritical marks (U+0300 to U+036F)
-    normalized = normalized.replace(/[\u0300-\u036f]/g, '');
+    // Remove nonspacing combining marks, but keep Japanese voiced/semi-voiced
+    // sound marks: ソ vs ゾ (and ハ/バ/パ) is a phonemic kana distinction, not a
+    // foldable diacritic. Dropping it makes クソ match ゾクゾク (ゾ→ソ) and ビッチ
+    // collapse to ヒッチ. Recompose with NFC afterwards so the kept marks fold
+    // back into precomposed kana (ソ + ゙ -> ゾ).
+    normalized = normalized.replace(
+      /\p{Mn}/gu,
+      (mark) => (KANA_VOICED_SOUND_MARKS.has(mark) ? mark : '')
+    );
+    normalized = normalized.normalize('NFC');
   }
 
   return normalized;

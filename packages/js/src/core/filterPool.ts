@@ -6,12 +6,17 @@ import globalWhitelistData from '@shared/dictionaries/globalWhitelist.json';
 const FILTER_POOL_MAX = 32;
 const filterPool = new Map<string, Filter>();
 
+const GLOBAL_WHITELIST = (globalWhitelistData as { whitelist: string[] }).whitelist;
+const GLOBAL_WHITELIST_SET = new Set(GLOBAL_WHITELIST);
+
 export function createFilterConfig(config?: ProfanityCheckerConfig): FilterConfig {
+  const userIgnore = config?.ignoreWords ?? [];
   const effective: FilterConfig = {
     ...(config ?? {}),
+    // Idempotent: pre-merged configs must not duplicate global whitelist entries.
     ignoreWords: [
-      ...(globalWhitelistData as { whitelist: string[] }).whitelist,
-      ...(config?.ignoreWords ?? []),
+      ...GLOBAL_WHITELIST,
+      ...userIgnore.filter((word) => !GLOBAL_WHITELIST_SET.has(word)),
     ],
     fuzzyToleranceLevel: config?.fuzzyToleranceLevel ?? 0.8,
   };
@@ -54,15 +59,21 @@ function normalizeConfigForKey(config: FilterConfig): FilterConfig {
 }
 
 function configCacheKey(config: FilterConfig): string {
-  return JSON.stringify(normalizeConfigForKey(config));
+  const normalized = normalizeConfigForKey(config);
+  // Stable key regardless of object insertion order (matches Python sort_keys=True).
+  const sortedEntries = Object.keys(normalized)
+    .sort()
+    .map((key) => [key, normalized[key as keyof FilterConfig]] as const);
+  return JSON.stringify(Object.fromEntries(sortedEntries));
 }
 
 /**
  * Returns a shared Filter instance for the given configuration.
  * Instances are evicted in FIFO order when the pool exceeds FILTER_POOL_MAX.
  */
-export function getPooledFilter(config: FilterConfig): Filter {
-  const key = configCacheKey(config);
+export function getPooledFilter(config?: ProfanityCheckerConfig): Filter {
+  const effective = createFilterConfig(config);
+  const key = configCacheKey(effective);
   const existing = filterPool.get(key);
   if (existing) {
     filterPool.delete(key);
@@ -70,7 +81,7 @@ export function getPooledFilter(config: FilterConfig): Filter {
     return existing;
   }
 
-  const filter = new Filter(config);
+  const filter = new Filter(effective);
   if (filterPool.size >= FILTER_POOL_MAX) {
     const oldestKey = filterPool.keys().next().value;
     if (oldestKey) {

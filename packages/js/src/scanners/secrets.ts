@@ -5,7 +5,7 @@
  */
 
 import type { Scanner, ScanResult, ScanContext, ScanMatch } from './base';
-import { allowResult, blockResult } from './base';
+import { allowResult, blockResult, coerceScanInput } from './base';
 import { SECRET_PATTERNS, type SecretPattern } from './patterns/secret-patterns';
 import type { Vault } from './vault';
 
@@ -116,6 +116,7 @@ export class SecretsScanner implements Scanner {
 
   /** @inheritdoc */
   scan(input: string, _ctx?: ScanContext): ScanResult {
+    input = coerceScanInput(input);
     const matches: ScanMatch[] = [];
     const reasons: string[] = [];
     let sanitized = input;

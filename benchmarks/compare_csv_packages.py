@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import time
 from pathlib import Path
@@ -18,11 +19,105 @@ OUTPUT_XLSX = Path(
     "/Users/wlike/Downloads/glin_profanity_comparison_2026-06-24.xlsx"
 )
 
-FILTER_CONFIG = {
-    "all_languages": True,
+# Override every language dictionary with the saylo curated word lists.
+SAYLO_DICT_DIR = Path(
+    "/Users/wlike/Documents/saylo/saylo_dialog_safety/config/dictionaries"
+)
+
+# Sentinel language key meaning "scan against every saylo dictionary at once".
+ALL_LANGUAGES_KEY = "all"
+
+FILTER_CONFIG_BASE = {
     "detect_leetspeak": True,
     "normalize_unicode": True,
 }
+
+
+def load_saylo_dictionaries() -> dict[str, list[str]]:
+    """Load every ``<language>.json`` (a plain string array) from saylo."""
+    if not SAYLO_DICT_DIR.exists():
+        raise SystemExit(f"saylo dictionary dir not found: {SAYLO_DICT_DIR}")
+    dicts: dict[str, list[str]] = {}
+    for path in sorted(SAYLO_DICT_DIR.glob("*.json")):
+        with path.open(encoding="utf-8") as handle:
+            data = json.load(handle)
+        if not isinstance(data, list):
+            raise SystemExit(f"Unexpected format (need array) in {path}")
+        dicts[path.stem] = [str(word) for word in data]
+    if not dicts:
+        raise SystemExit(f"No dictionaries loaded from {SAYLO_DICT_DIR}")
+    print(
+        "Loaded saylo dictionaries: "
+        + ", ".join(f"{lang}={len(words)}" for lang, words in dicts.items())
+    )
+    return dicts
+
+
+def words_for_language_key(
+    saylo_dicts: dict[str, list[str]], language_key: str
+) -> list[str]:
+    """Return the saylo word list for a language key (or all combined).
+
+    English profanity is overlaid onto every single-language dictionary because
+    cross-language chat texts very frequently contain English slurs (e.g. a
+    German/Italian sentence with "fuck"/"cock"); without this overlay those hits
+    are silently missed.
+    """
+    if language_key == ALL_LANGUAGES_KEY:
+        combined: list[str] = []
+        for words in saylo_dicts.values():
+            combined.extend(words)
+        return combined
+    if language_key not in saylo_dicts:
+        # Saylo has no dictionary for this language: fall back to all words so we
+        # never silently under-detect.
+        combined = []
+        for words in saylo_dicts.values():
+            combined.extend(words)
+        return combined
+    words = list(saylo_dicts[language_key])
+    if language_key != "english":
+        words.extend(saylo_dicts.get("english", []))
+    return words
+
+# CSV locale tags -> glin-profanity dictionary language keys
+LOCALE_TO_LANGUAGE: dict[str, str] = {
+    "en-US": "english",
+    "es-ES": "spanish",
+    "pt-BR": "portuguese",
+    "ja-JP": "japanese",
+    "zh-Hant-TW": "chinese",
+    "zh-Hans-CN": "chinese",
+    "fr-FR": "french",
+    "de-DE": "german",
+    "it-IT": "italian",
+}
+
+PREFIX_TO_LANGUAGE: dict[str, str] = {
+    "en": "english",
+    "es": "spanish",
+    "pt": "portuguese",
+    "ja": "japanese",
+    "zh": "chinese",
+    "fr": "french",
+    "de": "german",
+    "it": "italian",
+}
+
+
+def locale_to_language(locale: object) -> str:
+    """Map CSV ``language`` column value to a dictionary language key.
+
+    A missing/``-`` locale means "language unknown" -> scan with every
+    dictionary (``ALL_LANGUAGES_KEY``).
+    """
+    raw = str(locale or "").strip()
+    if not raw or raw == "-":
+        return ALL_LANGUAGES_KEY
+    if raw in LOCALE_TO_LANGUAGE:
+        return LOCALE_TO_LANGUAGE[raw]
+    prefix = raw.split("-", 1)[0].lower()
+    return PREFIX_TO_LANGUAGE.get(prefix, ALL_LANGUAGES_KEY)
 
 
 def unload_glin_profanity() -> None:
@@ -31,24 +126,29 @@ def unload_glin_profanity() -> None:
             del sys.modules[name]
 
 
-def load_filter(package_parent: Path):
+def load_filter(package_parent: Path, language_key: str, custom_words: list[str]):
     unload_glin_profanity()
     parent = str(package_parent.resolve())
     sys.path = [p for p in sys.path if Path(p).resolve() != package_parent.resolve()]
     sys.path.insert(0, parent)
     from glin_profanity.filters.filter import Filter
 
-    return Filter(FILTER_CONFIG)
+    # languages=[] disables the bundled dictionaries; the saylo words are
+    # injected via custom_words so both packages run on the same vocabulary.
+    config = {**FILTER_CONFIG_BASE, "languages": [], "custom_words": custom_words}
+    return Filter(config)
 
 
 def run_batch(
-    label: str, package_parent: Path, texts: list[str]
-) -> tuple[list[bool], list[str], list[frozenset[str]], list[float]]:
+    label: str,
+    package_parent: Path,
+    texts: list[str],
+    languages: list[str],
+    saylo_dicts: dict[str, list[str]],
+) -> tuple[list[bool], list[str], list[frozenset[str]], list[float], list[str]]:
     print(f"Loading Filter from {package_parent} ({label})...")
-    t0 = time.perf_counter()
-    filt = load_filter(package_parent)
-    init_ms = (time.perf_counter() - t0) * 1000
-    print(f"  init: {init_ms:.1f} ms, words: {filt.get_word_count()}")
+    filters: dict[str, object] = {}
+    mapped_languages: list[str] = []
 
     contains_list: list[bool] = []
     words_list: list[str] = []
@@ -56,9 +156,21 @@ def run_batch(
     time_list: list[float] = []
 
     total = len(texts)
-    for i, text in enumerate(texts):
+    for i, (text, locale) in enumerate(zip(texts, languages, strict=True)):
         if i > 0 and i % 1000 == 0:
             print(f"  [{label}] {i}/{total}...")
+        language = locale_to_language(locale)
+        mapped_languages.append(language)
+        if language not in filters:
+            custom_words = words_for_language_key(saylo_dicts, language)
+            filters[language] = load_filter(package_parent, language, custom_words)
+            filt = filters[language]
+            print(
+                f"  [{label}] cached language={language!r}, "
+                f"words={filt.get_word_count()}"
+            )
+        filt = filters[language]
+
         start = time.perf_counter()
         result = filt.check_profanity(text if isinstance(text, str) else str(text))
         elapsed_ms = (time.perf_counter() - start) * 1000
@@ -69,7 +181,7 @@ def run_batch(
         words_list.append("; ".join(words))
         time_list.append(elapsed_ms)
 
-    return contains_list, words_list, words_sets, time_list
+    return contains_list, words_list, words_sets, time_list, mapped_languages
 
 
 def classify_results_match(
@@ -85,25 +197,31 @@ def classify_results_match(
     return "half"
 
 
-def main() -> None:
-    if not CSV_PATH.exists():
-        raise SystemExit(f"CSV not found: {CSV_PATH}")
+def main(csv_path: Path = CSV_PATH, output_xlsx: Path = OUTPUT_XLSX) -> None:
+    if not csv_path.exists():
+        raise SystemExit(f"CSV not found: {csv_path}")
 
-    print(f"Reading {CSV_PATH}...")
-    df = pd.read_csv(CSV_PATH, encoding="utf-8")
+    print(f"Reading {csv_path}...")
+    df = pd.read_csv(csv_path, encoding="utf-8")
     if "text" not in df.columns:
         raise SystemExit(f"Missing 'text' column. Columns: {list(df.columns)}")
+    if "language" not in df.columns:
+        raise SystemExit(f"Missing 'language' column. Columns: {list(df.columns)}")
 
     texts = df["text"].fillna("").astype(str).tolist()
+    locales = df["language"].fillna("").tolist()
     print(f"Rows: {len(texts)}")
 
-    v340_contains, v340_words, v340_word_sets, v340_times = run_batch(
-        "3.4.0", PACKAGE_V340, texts
+    saylo_dicts = load_saylo_dictionaries()
+
+    v340_contains, v340_words, v340_word_sets, v340_times, dict_langs = run_batch(
+        "3.4.0", PACKAGE_V340, texts, locales, saylo_dicts
     )
-    opt_contains, opt_words, opt_word_sets, opt_times = run_batch(
-        "feat-opt", PACKAGE_OPT, texts
+    opt_contains, opt_words, opt_word_sets, opt_times, _ = run_batch(
+        "feat-opt", PACKAGE_OPT, texts, locales, saylo_dicts
     )
 
+    df["dictionary_language"] = dict_langs
     df["v340_contains_profanity"] = v340_contains
     df["v340_profane_words"] = v340_words
     df["v340_time_ms"] = v340_times
@@ -156,8 +274,8 @@ def main() -> None:
         ]
     )
 
-    print(f"Writing {OUTPUT_XLSX}...")
-    with pd.ExcelWriter(OUTPUT_XLSX, engine="openpyxl") as writer:
+    print(f"Writing {output_xlsx}...")
+    with pd.ExcelWriter(output_xlsx, engine="openpyxl") as writer:
         df.to_excel(writer, sheet_name="明细", index=False)
         summary.to_excel(writer, sheet_name="汇总", index=False)
 
@@ -170,4 +288,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        csv_arg = Path(sys.argv[1])
+        out_arg = Path(sys.argv[2]) if len(sys.argv) > 2 else OUTPUT_XLSX
+        main(csv_arg, out_arg)
+    else:
+        main()
