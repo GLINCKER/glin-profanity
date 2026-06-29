@@ -98,8 +98,28 @@ AGGRESSIVE_VOWEL_SUBSTITUTIONS: dict[str, str] = {
 }
 
 
+# Digit + single Latin letter (e.g. 5m, 10m) — keep digits to avoid 5→s + m → "sm".
+_MEASUREMENT_LIKE = re.compile(r"(?<![A-Za-z])\d+[A-Za-z](?![A-Za-z])")
+
+
+def _digit_substitution_skip_indices(text: str) -> frozenset[int]:
+    skip: set[int] = set()
+    for match in _MEASUREMENT_LIKE.finditer(text):
+        for index in range(match.start(), match.end()):
+            if text[index].isdigit():
+                skip.add(index)
+    return frozenset(skip)
+
+
 def _apply_substitutions(text: str, substitutions: dict[str, str]) -> str:
-    return "".join(substitutions.get(char, char) for char in text)
+    skip = _digit_substitution_skip_indices(text)
+    result: list[str] = []
+    for index, char in enumerate(text):
+        if char in substitutions and index not in skip:
+            result.append(substitutions[char])
+        else:
+            result.append(char)
+    return "".join(result)
 
 
 def _apply_leetspeak_pre_collapse(
@@ -190,10 +210,7 @@ def normalize_leetspeak(
 
     # Step 3: Apply single-character substitutions
     substitutions = _get_substitution_map(level)
-    result = []
-    for char in normalized:
-        result.append(substitutions.get(char, char))
-    normalized = "".join(result)
+    normalized = _apply_substitutions(normalized, substitutions)
 
     # Step 4: Collapse repeated characters (fuuuuck -> fuck)
     if collapse_repeated:

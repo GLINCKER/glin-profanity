@@ -78,3 +78,28 @@ class TestCjkMinLengthBoundary:
         chinese = Filter({"languages": ["chinese"]})
         assert chinese.is_profane("你他妈的") is True
         assert chinese.is_profane("x乳x") is True
+
+
+class TestMeasurementLeetspeakFalsePositive:
+    @classmethod
+    def setup_class(cls) -> None:
+        cls.filter = Filter(
+            {
+                "languages": ["japanese"],
+                "detect_leetspeak": True,
+                "normalize_unicode": True,
+            }
+        )
+
+    def test_distance_5m_not_flagged_as_sm(self) -> None:
+        text = "おい近づくな…5mまでだ"
+        result = self.filter.check_profanity(text)
+        assert result["contains_profanity"] is False
+        assert result["profane_words"] == []
+
+    def test_leetspeak_still_normalizes_embedded_digits(self) -> None:
+        from glin_profanity.utils.leetspeak import normalize_leetspeak
+
+        assert normalize_leetspeak("f4ck") == "fack"
+        assert normalize_leetspeak("…5mまで") == "…5mまで"
+        assert normalize_leetspeak("5ex") == "sex"

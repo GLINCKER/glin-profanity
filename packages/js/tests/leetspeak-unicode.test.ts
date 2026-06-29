@@ -69,6 +69,13 @@ describe('Leetspeak Detection', () => {
       expect(normalizeLeetspeak('f#ck', { level: 'moderate' })).toBe('fhck');
     });
 
+    it('should not treat measurement tokens like 5m as leetspeak', () => {
+      expect(normalizeLeetspeak('…5mまで', { level: 'moderate' })).toBe('…5mまで');
+      expect(normalizeLeetspeak('stay 10m away', { level: 'moderate' })).toBe('stay 10m away');
+      expect(normalizeLeetspeak('f4ck', { level: 'moderate' })).toBe('fack');
+      expect(normalizeLeetspeak('5ex', { level: 'moderate' })).toBe('sex');
+    });
+
     it('should handle aggressive substitutions', () => {
       expect(normalizeLeetspeak('ph4t', { level: 'aggressive' })).toBe('fat');
     });
@@ -265,6 +272,20 @@ describe('Filter with Leetspeak and Unicode', () => {
 
     it('should detect zero-width character obfuscation', () => {
       expect(filter.isProfane('f\u200Buck')).toBe(true);
+    });
+  });
+
+  describe('Measurement false positives', () => {
+    const filter = new Filter({
+      languages: ['japanese'],
+      detectLeetspeak: true,
+      normalizeUnicode: true,
+    });
+
+    it('should not flag distance 5m as Japanese sm', () => {
+      const result = filter.checkProfanity('おい近づくな…5mまでだ');
+      expect(result.containsProfanity).toBe(false);
+      expect(result.profaneWords).toEqual([]);
     });
   });
 

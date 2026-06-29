@@ -1362,10 +1362,13 @@ class Filter {
       contextScore = totalScore / matches.length;
     }
 
-    const flagged =
+    let flagged =
       containsProfanity !== undefined
         ? containsProfanity
         : profaneWordList.length > 0;
+    if (flagged && profaneWordList.length === 0) {
+      flagged = false;
+    }
 
     return {
       containsProfanity: flagged,
@@ -1476,10 +1479,13 @@ class Filter {
       }
     }
 
-    const flagged =
+    let flagged =
       containsProfanity !== undefined
         ? containsProfanity
         : profaneWordList.length > 0;
+    if (flagged && profaneWordList.length === 0) {
+      flagged = false;
+    }
 
     return {
       containsProfanity: flagged,

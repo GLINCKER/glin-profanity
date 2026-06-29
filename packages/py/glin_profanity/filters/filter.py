@@ -838,6 +838,8 @@ class Filter:
             if contains_profanity is not None
             else len(profane_word_list) > 0
         )
+        if flagged and not profane_word_list:
+            flagged = False
         result: CheckProfanityResult = {
             "contains_profanity": flagged,
             "profane_words": profane_word_list,
@@ -1140,6 +1142,8 @@ class Filter:
             if contains_profanity is not None
             else len(profane_word_list) > 0
         )
+        if flagged and not profane_word_list:
+            flagged = False
         result: CheckProfanityResult = {
             "contains_profanity": flagged,
             "profane_words": profane_word_list,

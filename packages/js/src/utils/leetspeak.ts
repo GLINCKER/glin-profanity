@@ -178,14 +178,37 @@ const AGGRESSIVE_VOWEL_SUBSTITUTIONS: Record<string, string> = {
 
 export { MODERATE_SUBSTITUTIONS, AGGRESSIVE_SUBSTITUTIONS };
 
+/** Digit + single Latin letter (e.g. 5m) — keep digits to avoid 5→s + m → "sm". */
+const MEASUREMENT_LIKE = /(?<![A-Za-z])\d+[A-Za-z](?![A-Za-z])/g;
+
+function digitSubstitutionSkipIndices(text: string): Set<number> {
+  const skip = new Set<number>();
+  for (const match of text.matchAll(MEASUREMENT_LIKE)) {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    for (let index = start; index < end; index++) {
+      const char = text[index];
+      if (char !== undefined && char >= '0' && char <= '9') {
+        skip.add(index);
+      }
+    }
+  }
+  return skip;
+}
+
 function applyCharSubstitutionsWithMap(
   text: string,
   substitutions: Record<string, string>,
 ): string {
+  const skip = digitSubstitutionSkipIndices(text);
   const chars: string[] = [];
   for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    chars.push(substitutions[char] ?? char);
+    const char = text[i]!;
+    if (substitutions[char] !== undefined && !skip.has(i)) {
+      chars.push(substitutions[char]!);
+    } else {
+      chars.push(char);
+    }
   }
   return chars.join('');
 }
