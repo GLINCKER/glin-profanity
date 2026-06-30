@@ -8,9 +8,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
-import { Filter } from '../packages/js/dist/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const repoRoot = process.env.GLIN_REPO_ROOT
+  ? join(process.env.GLIN_REPO_ROOT)
+  : join(__dirname, '..');
+const { Filter } = await import(join(repoRoot, 'packages/js/dist/index.js'));
 const label =
   process.argv.includes('--label')
     ? process.argv[process.argv.indexOf('--label') + 1]

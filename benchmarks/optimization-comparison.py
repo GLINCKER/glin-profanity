@@ -9,7 +9,11 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "packages" / "py"))
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if "GLIN_REPO_ROOT" in __import__("os").environ:
+    REPO_ROOT = Path(__import__("os").environ["GLIN_REPO_ROOT"]).resolve()
+
+sys.path.insert(0, str(REPO_ROOT / "packages" / "py"))
 
 from glin_profanity import Filter  # noqa: E402
 

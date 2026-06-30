@@ -1,73 +1,123 @@
-# glin-profanity 优化前后性能对比
+# glin-profanity：release vs feat-performance-opt 完整对比报告
 
-_基线：release @ `a446a8f`（优化前） vs 当前工作区（AC + CJK + Context-aware + Evasion 归一化）_
+_生成时间：2026-06-30T03:35:55.619078+00:00_
 
-_环境：v25.3.0 / Python 3.13.9，每项预热 100 次后计时_
+_基线分支：`release` @ `a446a8f`_
 
-> **吞吐变化** 正数=更快；**延迟变化** 正数=更快（延迟降低）
+_对比分支：`feat-performance-opt` @ `f71542c`_
 
-## JavaScript（packages/js）
+_运行环境：Node v25.3.0 / Python 3.13.9_
 
-| 工作负载 | 优化前 ops/s | 优化后 ops/s | 吞吐变化 | 优化前 µs | 优化后 µs | 延迟变化 |
-|---------|-------------|-------------|---------|----------|----------|----------|
-| init_shootout_config | 31,641 | 119 | -99.6% | 31.6 | 8433.67 | -26588.8% |
-| torture_set_60_batch | 12,980 | 25,608 | +97.3% | 77.04 | 39.05 | +49.3% |
-| basic_clean | 12,335 | 52,338 | +324.3% | 81.07 | 19.11 | +76.4% |
-| shootout_clean | 11,474 | 39,407 | +243.4% | 87.15 | 25.38 | +70.9% |
-| shootout_evasion_mix | 10,232 | 8,586 | -16.1% | 97.73 | 116.47 | -19.2% |
-| context_aware_insult | 29,744 | 10,507 | -64.7% | 33.62 | 95.17 | -183.1% |
-| context_aware_whitelist | 15,247 | 26,453 | +73.5% | 65.59 | 37.8 | +42.4% |
-| cjk_chinese | 16,638 | 17,711 | +6.4% | 60.1 | 56.46 | +6.1% |
-| all_languages_clean | 1,124 | 24,260 | +2058.4% | 889.41 | 41.22 | +95.4% |
-| shootout_legacy_clean | 12,683 | 6,461 | -49.1% | 78.85 | 154.78 | -96.3% |
+> **吞吐变化** 正数表示 feat-opt 更快；**延迟变化** 正数表示 feat-opt 延迟更低。
 
-## Python（packages/py）
+## 1. 分支差异概览
 
-| 工作负载 | 优化前 ops/s | 优化后 ops/s | 吞吐变化 | 优化前 µs | 优化后 µs | 延迟变化 |
-|---------|-------------|-------------|---------|----------|----------|----------|
-| init_shootout_config | 43,799 | 426 | -99.0% | 22.83 | 2348.57 | -10187.2% |
-| torture_set_60_batch | 1,464 | 30,981 | +2016.2% | 682.86 | 32.28 | +95.3% |
-| basic_clean | 487 | 61,736 | +12576.8% | 2054.72 | 16.2 | +99.2% |
-| shootout_clean | 489 | 27,297 | +5482.2% | 2043.97 | 36.63 | +98.2% |
-| shootout_evasion_mix | 372 | 9,159 | +2362.1% | 2689.31 | 109.18 | +95.9% |
-| context_aware_insult | 2,642 | 15,139 | +473.0% | 378.49 | 66.05 | +82.5% |
-| context_aware_whitelist | 821 | 86,661 | +10455.5% | 1217.49 | 11.54 | +99.1% |
-| cjk_chinese | 2,609 | 34,157 | +1209.2% | 383.29 | 29.28 | +92.4% |
-| all_languages_clean | 242 | 58,051 | +23888.0% | 4134.8 | 17.23 | +99.6% |
-| shootout_legacy_clean | 488 | 385 | -21.1% | 2051.08 | 2599.48 | -26.7% |
+| 指标 | 值 |
+|------|----|
+| release SHA | `a446a8f` |
+| feat-performance-opt SHA | `f71542c` |
+| 新增 commit 数 | 8 |
+| 代码变更规模 | 91 files, +8795 / -827 lines（相对 release） |
 
-## Shootout 场景（torture-set，竞品对比）
+<details><summary>feat-performance-opt 相对 release 的 commit 列表（8）</summary>
 
-| 指标 | 优化前 | 优化后 |
-|------|--------|--------|
-| F1 | 80.6% | **100.0%** |
-| Recall | 67.4% | **100.0%** |
-| FPR | 0.0% | 0.0% |
-| Shootout ops/s（20条/轮） | ~2,533 | ~1,894 |
+- f71542c chore: stop tracking local CSV comparison benchmark script
+- 45bf4a5 fix: prevent 5m distance tokens from leetspeak sm false positives
+- 99f3a43 fix: align PY/JS profanity detection across CJK, emoji spans, and scanner edges
+- f817818 fix: harden cache keys, config export, and PY/JS leetspeak parity
+- df6603c fix: populate profane_words on legacy fuzzy and context-aware legacy paths
+- 4936139 fix: align profane_words collection with normalized-first fallback and result parity
+- a09d389 fix: harden variant mapping, context-aware parity, and filter pool exports
+- 82354e2 feat: add AC fast path, evasion normalization, and context-aware parity
 
-## 结论摘要
+</details>
 
-### 运行时检测（稳态，Filter 已构造）
+## 2. 核心能力变更（feat-performance-opt）
 
-- **JS 常规路径**：`shootout_clean` 约 **11.5k → 39.4k ops/s（+243%）**`，得益于 Aho-Corasick 替代全量 regex 扫描
-- **JS torture-set 批量**：**12.9k → 25.6k ops/s（+97%）**，60 条混合用例单条延迟 **77µs → 39µs**
-- **Python 提升更显著**：`shootout_clean` **489 → 27.3k ops/s**，`all_languages` **242 → 58k ops/s**（AC 对多词典场景收益最大）
-- **Evasion 混合文本**：JS 略降约 **16%**（额外 HTML/分隔符/掩码归一化开销）；Python 仍大幅快于优化前
+| 能力 | release | feat-performance-opt |
+|------|---------|---------------------|
+| Aho-Corasick 词典快路径 | 无 | 有（`disable_aho_corasick` 可回退 legacy） |
+| Evasion 归一化（HTML/掩码/分隔符） | 无 | 有 |
+| Context-aware 检测 | 基础 | 与 AC 路径对齐，parity 测试覆盖 |
+| CJK 边界 / 单字策略 | 较弱 | 方向 B 拉丁边界 + 无歧义单字白名单 |
+| Unicode homoglyph 表 | 较小 | Py/JS 189 条完全同步 |
+| Variant span 映射 | 基础 | emoji FE0F / combining class 对齐 |
+| Filter 实例池 | 无 | Py/JS `get_pooled_filter` / `getPooledFilter` |
+| 跨语言 parity 测试 | 无 | `tests/cross_language_parity_test.py` |
 
-### 冷启动 / 初始化
+## 3. 测试套件
 
-- **AC 词典构建**：`new Filter(shootoutConfig)` 初始化 JS **31µs → 8.4ms**，Python **23µs → 2.3ms**
-- 建议生产环境使用 **Filter 实例池**（`getPooledFilter` / `get_pooled_filter`）摊销初始化成本
+| 套件 | release | feat-performance-opt |
+|------|---------|---------------------|
+| Python pytest | ======================== 199 passed, 1 warning in 6.28s ======================== | ======================= 513 passed, 1 warning in 53.04s ======================== |
+| JavaScript jest | 未单独跑 release jest | exit 0 |
+| 跨语言 parity | release 无 parity 测试 | passed (exit 0) |
 
-### 精度 vs 性能权衡
+## 4. Shootout torture-set（glin-profanity 单库精度）
 
-- Shootout 吞吐略降（~2.5k → ~1.9k ops/s），但 **F1 从 80.6% 升至 100%**，零误报保持
-- Context-aware  insult 路径 JS 变慢（旧版 context 实现较轻量）；whitelist 路径仍更快
+| 指标 | release | feat-performance-opt |
+|------|---------|---------------------|
+| Precision | 93.1% | 100.0% |
+| Recall | 62.8% | 97.7% |
+| F1 | 75.0% | 98.8% |
+| FPR | 11.8% | 0.0% |
 
-### 推荐配置
+## 5. 性能对比（Lite 工作负载）
+
+统一预热 100 次后计时；Filter 实例在稳态路径下复用。
+
+### 5.1 JavaScript（packages/js）
+
+| 工作负载 | release ops/s | feat-opt ops/s | 吞吐变化 | release µs | feat-opt µs | 延迟变化 |
+|---------|--------------|---------------|---------|-----------|------------|----------|
+| init_shootout_config | 26,531 | 141 | -99.5% | 37.69 | 7109.93 | -18764.2% |
+| torture_set_60_batch | 12,456 | 26,925 | +116.2% | 80.29 | 37.14 | +53.7% |
+| basic_clean | 10,613 | 49,161 | +363.2% | 94.22 | 20.34 | +78.4% |
+| shootout_clean | 10,061 | 34,002 | +238.0% | 99.39 | 29.41 | +70.4% |
+| shootout_evasion_mix | 7,617 | 14,606 | +91.8% | 131.29 | 68.47 | +47.8% |
+| context_aware_insult | 26,577 | 21,072 | -20.7% | 37.63 | 47.46 | -26.1% |
+| context_aware_whitelist | 11,423 | 60,541 | +430.0% | 87.54 | 16.52 | +81.1% |
+| cjk_chinese | 12,739 | 49,803 | +290.9% | 78.5 | 20.08 | +74.4% |
+| all_languages_clean | 760 | 38,124 | +4916.3% | 1316.15 | 26.23 | +98.0% |
+| shootout_legacy_clean | 9,355 | 7,101 | -24.1% | 106.9 | 140.82 | -31.7% |
+
+### 5.2 Python（packages/py）
+
+| 工作负载 | release ops/s | feat-opt ops/s | 吞吐变化 | release µs | feat-opt µs | 延迟变化 |
+|---------|--------------|---------------|---------|-----------|------------|----------|
+| init_shootout_config | 35,567 | 159 | -99.6% | 28.12 | 6306.1 | -22325.7% |
+| torture_set_60_batch | 1,161 | 8,815 | +659.3% | 861.06 | 113.45 | +86.8% |
+| basic_clean | 314 | 22,083 | +6932.8% | 3189.7 | 45.28 | +98.6% |
+| shootout_clean | 353 | 9,322 | +2540.8% | 2829.93 | 107.27 | +96.2% |
+| shootout_evasion_mix | 265 | 5,852 | +2108.3% | 3773.78 | 170.87 | +95.5% |
+| context_aware_insult | 3,059 | 8,117 | +165.3% | 326.9 | 123.19 | +62.3% |
+| context_aware_whitelist | 582 | 59,273 | +10084.4% | 1718.68 | 16.87 | +99.0% |
+| cjk_chinese | 1,876 | 45,639 | +2332.8% | 533.06 | 21.91 | +95.9% |
+| all_languages_clean | 94 | 39,592 | +42019.1% | 10673.37 | 25.26 | +99.8% |
+| shootout_legacy_clean | 365 | 293 | -19.7% | 2742.49 | 3407.88 | -24.3% |
+
+## 7. 结论与建议
+
+### 7.1 性能
+
+- **JS shootout_clean**：10,061 → 34,002 ops/s（+238.0%）
+- **Python shootout_clean**：353 → 9,322 ops/s（+2540.8%）
+- **JS Filter 初始化（shootout 配置）**：37.69µs → 7109.93µs（AC 构建开销，建议用实例池摊销）
+
+### 7.2 精度 / 行为
+
+- feat-opt 在 torture-set 上目标为 **F1=100%、FPR=0%**（含 word-break / HTML / 掩码 evasion）
+- CJK / emoji / 重音词形等边界 case 与 release 行为差异显著，详见 parity 测试
+
+### 7.3 推荐配置
 
 | 场景 | 建议 |
 |------|------|
-| 高 QPS API | 实例池 + `cacheResults: true` |
+| 高 QPS API | Filter 实例池 + `cacheResults: true` |
 | 最高召回 | shootout 配置（aggressive leetspeak + unicode + evasion） |
-| 低延迟单次 | 复用 Filter 实例，避免重复构造 |
+| 与 release 行为对齐调试 | `disable_aho_corasick: true` 走 legacy 路径 |
+| 跨语言一致性 | 跑 `tests/cross_language_parity_test.py` 作为发布门禁 |
+
+---
+
+_复现：`python benchmarks/run-branch-comparison.py`，结果 JSON 在 `benchmarks/results/`._
