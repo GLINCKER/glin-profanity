@@ -4,20 +4,40 @@
  * @module utils/evasion
  */
 
+const MAX_UNICODE_CODEPOINT = 0x10ffff;
+
+function isValidUnicodeScalar(code: number): boolean {
+  if (!Number.isFinite(code) || code < 0 || code > MAX_UNICODE_CODEPOINT) {
+    return false;
+  }
+  return code < 0xd800 || code > 0xdfff;
+}
+
+function safeCodePoint(code: number, fallback: string): string {
+  if (!isValidUnicodeScalar(code)) {
+    return fallback;
+  }
+  try {
+    return String.fromCodePoint(code);
+  } catch {
+    return fallback;
+  }
+}
+
 /**
  * Removes HTML tags and decodes common numeric/named entities.
  */
 export function stripHtmlAndDecodeEntities(text: string): string {
   let result = text.replace(/<[^>]*>/g, '');
 
-  result = result.replace(/&#(\d+);/g, (_, dec: string) => {
+  result = result.replace(/&#(\d+);/g, (entity, dec: string) => {
     const code = parseInt(dec, 10);
-    return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+    return safeCodePoint(code, entity);
   });
 
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => {
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (entity, hex: string) => {
     const code = parseInt(hex, 16);
-    return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+    return safeCodePoint(code, entity);
   });
 
   return result

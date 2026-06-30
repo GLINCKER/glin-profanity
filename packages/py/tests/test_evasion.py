@@ -18,6 +18,16 @@ class TestEvasionUtilities:
         assert strip_html_and_decode_entities("&#128512;") == "😀"
         assert strip_html_and_decode_entities("&#x1F600;") == "😀"
 
+    def test_invalid_numeric_entities_are_left_unchanged(self) -> None:
+        assert strip_html_and_decode_entities("&#9999999999;") == "&#9999999999;"
+        assert strip_html_and_decode_entities("&#xFFFFFFFF;") == "&#xFFFFFFFF;"
+        assert strip_html_and_decode_entities("&#xD800;") == "&#xD800;"
+        assert normalize_evasion("hello &#9999999999; world") == "hello &#9999999999; world"
+
+    def test_malformed_entities_do_not_crash_filter(self) -> None:
+        assert strip_html_and_decode_entities("&#9999999999;") == "&#9999999999;"
+        assert not Filter({"languages": ["english"]}).is_profane("hello &#9999999999;")
+
     def test_collapse_separated_characters(self) -> None:
         assert collapse_separated_characters("f.u.c.k") == "fuck"
         assert collapse_separated_characters("f_u_c_k") == "fuck"
