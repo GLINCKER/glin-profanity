@@ -15,6 +15,54 @@ import {
   containsUnicodeObfuscation,
   detectCharacterSets,
 } from '../src/utils';
+import {
+  normalizeEvasion,
+  collapseSeparatedCharacters,
+  stripHtmlAndDecodeEntities,
+} from '../src/utils/evasion';
+
+describe('Evasion Normalization', () => {
+  describe('stripHtmlAndDecodeEntities', () => {
+    it('should strip tags and decode numeric entities', () => {
+      expect(stripHtmlAndDecodeEntities('sh&#105;t')).toBe('shit');
+      expect(stripHtmlAndDecodeEntities('f<b>u</b>ck')).toBe('fuck');
+      expect(stripHtmlAndDecodeEntities('a<br>ss')).toBe('ass');
+      expect(stripHtmlAndDecodeEntities('&#128512;')).toBe('😀');
+      expect(stripHtmlAndDecodeEntities('&#x1F600;')).toBe('😀');
+      expect(stripHtmlAndDecodeEntities('&#X1F600;')).toBe('😀');
+      expect(stripHtmlAndDecodeEntities('f&lt;b&gt;u&lt;/b&gt;ck')).toBe('fuck');
+    });
+
+    it('should leave invalid numeric entities unchanged', () => {
+      expect(stripHtmlAndDecodeEntities('&#9999999999;')).toBe('&#9999999999;');
+      expect(stripHtmlAndDecodeEntities('&#xFFFFFFFF;')).toBe('&#xFFFFFFFF;');
+      expect(stripHtmlAndDecodeEntities('&#XFFFFFFFF;')).toBe('&#XFFFFFFFF;');
+      expect(stripHtmlAndDecodeEntities('&#xD800;')).toBe('&#xD800;');
+      expect(stripHtmlAndDecodeEntities('&#XD800;')).toBe('&#XD800;');
+      expect(normalizeEvasion('hello &#9999999999; world')).toBe('hello &#9999999999; world');
+    });
+  });
+
+  describe('collapseSeparatedCharacters', () => {
+    it('should collapse separator obfuscation', () => {
+      expect(collapseSeparatedCharacters('f.u.c.k')).toBe('fuck');
+      expect(collapseSeparatedCharacters('f_u_c_k')).toBe('fuck');
+      expect(collapseSeparatedCharacters('b-i-t-c-h')).toBe('bitch');
+    });
+
+    it('should not collapse normal dotted words', () => {
+      expect(collapseSeparatedCharacters('hello.world')).toBe('hello.world');
+    });
+  });
+
+  describe('normalizeEvasion', () => {
+    it('should expand masked profanity patterns', () => {
+      expect(normalizeEvasion('This is f*cking ridiculous')).toBe('This is fucking ridiculous');
+      expect(normalizeEvasion('holy f*** that was amazing')).toBe('holy fuck that was amazing');
+      expect(normalizeEvasion('go f yourself')).toBe('go fuck yourself');
+    });
+  });
+});
 
 describe('Leetspeak Detection', () => {
   describe('normalizeLeetspeak', () => {
@@ -30,6 +78,13 @@ describe('Leetspeak Detection', () => {
       expect(normalizeLeetspeak('$hit', { level: 'moderate' })).toBe('shit');
       expect(normalizeLeetspeak('b!tch', { level: 'moderate' })).toBe('bitch');
       expect(normalizeLeetspeak('f#ck', { level: 'moderate' })).toBe('fhck');
+    });
+
+    it('should not treat measurement tokens like 5m as leetspeak', () => {
+      expect(normalizeLeetspeak('…5mまで', { level: 'moderate' })).toBe('…5mまで');
+      expect(normalizeLeetspeak('stay 10m away', { level: 'moderate' })).toBe('stay 10m away');
+      expect(normalizeLeetspeak('f4ck', { level: 'moderate' })).toBe('fack');
+      expect(normalizeLeetspeak('5ex', { level: 'moderate' })).toBe('sex');
     });
 
     it('should handle aggressive substitutions', () => {
@@ -95,6 +150,26 @@ describe('Unicode Normalization', () => {
       // Greek letters that look like Latin
       expect(normalizeUnicode('fυck')).toBe('fuck'); // Greek upsilon
       expect(normalizeUnicode('fосk')).toBe('fock'); // Cyrillic о
+      expect(normalizeUnicode('fսck')).toBe('fuck'); // Armenian seh
+    });
+
+    it('normalizes the extended homoglyph categories (kept in sync with Python)', () => {
+      expect(normalizeUnicode('у')).toBe('u'); // Cyrillic small u -> u (not y)
+      expect(normalizeUnicode('к')).toBe('k'); // Cyrillic small ka
+      expect(normalizeUnicode('ℝ')).toBe('R'); // double-struck capital R
+      expect(normalizeUnicode('ⓐ')).toBe('a'); // circled a
+      expect(normalizeUnicode('ʀ')).toBe('R'); // small-cap R
+      expect(normalizeUnicode('ɐ')).toBe('a'); // turned a
+      expect(normalizeUnicode('¢')).toBe('c'); // cent sign
+    });
+
+    it('keeps Japanese dakuten while folding Latin diacritics', () => {
+      // ゾ must not collapse to ソ (that made クソ match ゾクゾク); ビ stays ビ.
+      expect(normalizeUnicode('ゾクゾク')).toBe('ゾクゾク');
+      expect(normalizeUnicode('ビッチ')).toBe('ビッチ');
+      expect(normalizeUnicode('クソゲー')).toBe('クソゲー');
+      expect(normalizeUnicode('café')).toBe('cafe');
+      expect(normalizeUnicode('erección')).toBe('ereccion');
     });
   });
 
@@ -211,10 +286,25 @@ describe('Filter with Leetspeak and Unicode', () => {
     });
   });
 
+  describe('Measurement false positives', () => {
+    const filter = new Filter({
+      languages: ['japanese'],
+      detectLeetspeak: true,
+      normalizeUnicode: true,
+    });
+
+    it('should not flag distance 5m as Japanese sm', () => {
+      const result = filter.checkProfanity('おい近づくな…5mまでだ');
+      expect(result.containsProfanity).toBe(false);
+      expect(result.profaneWords).toEqual([]);
+    });
+  });
+
   describe('Combined Leetspeak and Unicode', () => {
     const filter = new Filter({
       languages: ['english'],
       detectLeetspeak: true,
+      leetspeakLevel: 'aggressive',
       normalizeUnicode: true,
       fuzzyToleranceLevel: 0.7,
     });
@@ -224,6 +314,23 @@ describe('Filter with Leetspeak and Unicode', () => {
       expect(filter.isProfane('fück')).toBe(true);
       expect(filter.isProfane('f\u200Buck')).toBe(true); // zero-width in "fuck"
       expect(filter.isProfane('sh!t')).toBe(true);
+    });
+
+    it('should detect shootout evasion categories', () => {
+      const cases = [
+        'shi7e',
+        'f.u.c.k',
+        'a<br>ss',
+        'sh&#105;t',
+        'This is f*cking ridiculous',
+        'holy f*** that was amazing',
+        'go f yourself',
+        'what a f@cking mess',
+        'fսck',
+      ];
+      for (const text of cases) {
+        expect(filter.isProfane(text)).toBe(true);
+      }
     });
   });
 
@@ -287,5 +394,28 @@ describe('checkProfanity with new options', () => {
     const result = filter.checkProfanity('fück this');
     expect(result.containsProfanity).toBe(true);
     expect(result.profaneWords.length).toBeGreaterThan(0);
+  });
+});
+
+describe('Accent-folded aliases', () => {
+  it('matches an accented entry even when the user drops diacritics', () => {
+    const filter = new Filter({
+      languages: [],
+      customWords: ['erección'],
+      normalizeUnicode: true,
+      detectLeetspeak: true,
+    });
+    expect(filter.checkProfanity('le muerdo la ereccion').containsProfanity).toBe(true);
+    expect(filter.checkProfanity('le muerdo la erección').containsProfanity).toBe(true);
+  });
+
+  it('does not alias short accented words (año -> ano)', () => {
+    const filter = new Filter({
+      languages: [],
+      customWords: ['año'],
+      normalizeUnicode: true,
+      detectLeetspeak: true,
+    });
+    expect(filter.checkProfanity('el ano').containsProfanity).toBe(false);
   });
 });

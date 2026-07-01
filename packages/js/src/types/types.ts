@@ -114,6 +114,19 @@ export interface FilterConfig extends ContextAwareConfig {
    * @default 1000
    */
   maxCacheSize?: number;
+
+  /**
+   * Disable the Aho-Corasick fast path and use regex scanning only.
+   * Intended for tests and parity validation — not for production use.
+   * @internal
+   */
+  disableAhoCorasick?: boolean;
+
+  /**
+   * Apply evasion normalization (HTML/separators/masking) before matching.
+   * @default true
+   */
+  enableEvasionNormalization?: boolean;
 }
 
 /** Result with minimum severity filtering */

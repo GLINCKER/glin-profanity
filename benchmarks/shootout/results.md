@@ -1,12 +1,12 @@
 # Benchmark Results — glin-profanity Shootout
 
-_Generated: 2026-04-20  |  Torture-set: 60 cases  |  Node v22.22.2_
+_Generated: 2026-06-19  |  Torture-set: 60 cases  |  Node v25.3.0_
 
 ## Accuracy
 
 | Library | Precision | Recall | F1 | False-Positive Rate | TP | FP | FN | TN |
 |---------|-----------|--------|----|---------------------|----|----|----|----|
-| glin-profanity | 100.0% | 67.4% | 80.6% | 0.0% | 29 | 0 | 14 | 17 |
+| glin-profanity | 100.0% | 100.0% | 100.0% | 0.0% | 43 | 0 | 0 | 17 |
 | obscenity | 96.7% | 67.4% | 79.5% | 5.9% | 29 | 1 | 14 | 16 |
 | bad-words | 100.0% | 37.2% | 54.2% | 0.0% | 16 | 0 | 27 | 17 |
 | leo-profanity | 100.0% | 20.9% | 34.6% | 0.0% | 9 | 0 | 34 | 17 |
@@ -16,7 +16,7 @@ _Generated: 2026-04-20  |  Torture-set: 60 cases  |  Node v22.22.2_
 
 | Library | clean | false-positive-trap | basic | leetspeak | homoglyph | zero-width | word-break | html-injection | in-sentence | in-sentence-leetspeak | uppercase | mixed-case | extra-spaces | repeated-chars | prompt-injection-not-profanity |
 |---------|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| glin-profanity | OK | OK | 5/5 | 6/7 | 4/5 | 3/3 | 1/6 | 0/3 | 1/4 | 2/3 | 2/2 | 2/2 | 1/1 | 2/2 | OK |
+| glin-profanity | OK | OK | 5/5 | 7/7 | 5/5 | 3/3 | 6/6 | 3/3 | 4/4 | 3/3 | 2/2 | 2/2 | 1/1 | 2/2 | OK |
 | obscenity | OK | 1 FP | 5/5 | 7/7 | 5/5 | 1/3 | 0/6 | 0/3 | 2/4 | 3/3 | 2/2 | 2/2 | 0/1 | 2/2 | OK |
 | bad-words | OK | OK | 5/5 | 2/7 | 0/5 | 1/3 | 2/6 | 0/3 | 1/4 | 1/3 | 2/2 | 2/2 | 0/1 | 0/2 | OK |
 | leo-profanity | OK | OK | 5/5 | 0/7 | 0/5 | 0/3 | 0/6 | 0/3 | 0/4 | 0/3 | 2/2 | 2/2 | 0/1 | 0/2 | OK |
@@ -26,17 +26,17 @@ _Generated: 2026-04-20  |  Torture-set: 60 cases  |  Node v22.22.2_
 
 | Library | ops/sec | avg latency |
 |---------|---------|-------------|
-| glin-profanity | 1,039 | 969.7 µs |
-| obscenity | 5,191 | 194.2 µs |
-| bad-words | 247 | 4054.7 µs |
-| leo-profanity | 336,304 | 3.0 µs |
-| @2toad/profanity 🏆 | 816,827 | 1.2 µs |
+| glin-profanity | 2,203 | 563.4 µs |
+| obscenity | 2,924 | 348.1 µs |
+| bad-words | 162 | 6226.6 µs |
+| leo-profanity | 274,328 | 3.7 µs |
+| @2toad/profanity 🏆 | 608,350 | 1.7 µs |
 
 ## Bundle Size (unminified JS dist)
 
 | Library | Size |
 |---------|------|
-| glin-profanity | 110.7 KB |
+| glin-profanity | 129.2 KB |
 | obscenity | 1.8 KB |
 | bad-words | 2.8 KB |
 | leo-profanity | 12.5 KB |

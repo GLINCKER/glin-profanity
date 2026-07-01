@@ -81,6 +81,27 @@ class TestScanAllSubset:
 
 
 # ---------------------------------------------------------------------------
+# Robustness
+# ---------------------------------------------------------------------------
+
+
+class TestScanAllRobustness:
+    @pytest.mark.parametrize("bad", [None, 123, ["a"], {"x": 1}])
+    def test_non_string_input_does_not_crash(self, bad: object) -> None:
+        results = scan_all(bad)  # type: ignore[arg-type]
+        assert len(results) == 3
+        for r in results:
+            assert r.decision == ScanDecision.ALLOW
+
+    def test_vault_none_does_not_redact(self) -> None:
+        text = "my email is user@example.com"
+        results = scan_all(text, vault=None)
+        pii_result = next(r for r in results if r.scanner == "pii")
+        # No vault provided -> sanitized text must be left untouched.
+        assert pii_result.sanitized == text
+
+
+# ---------------------------------------------------------------------------
 # Vault sharing
 # ---------------------------------------------------------------------------
 

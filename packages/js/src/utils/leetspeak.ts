@@ -171,6 +171,117 @@ const AGGRESSIVE_SUBSTITUTIONS: Record<string, string> = {
  * normalizeLeetspeak('fuuuuck');  // Returns: 'fuck'
  * ```
  */
+const AGGRESSIVE_VOWEL_SUBSTITUTIONS: Record<string, string> = {
+  ...AGGRESSIVE_SUBSTITUTIONS,
+  '@': 'u',
+};
+
+export { MODERATE_SUBSTITUTIONS, AGGRESSIVE_SUBSTITUTIONS };
+
+/** Digit + single Latin letter (e.g. 5m) — keep digits to avoid 5→s + m → "sm". */
+const MEASUREMENT_LIKE = /(?<![A-Za-z])\d+[A-Za-z](?![A-Za-z])/g;
+
+function digitSubstitutionSkipIndices(text: string): Set<number> {
+  const skip = new Set<number>();
+  for (const match of text.matchAll(MEASUREMENT_LIKE)) {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    for (let index = start; index < end; index++) {
+      const char = text[index];
+      if (char !== undefined && char >= '0' && char <= '9') {
+        skip.add(index);
+      }
+    }
+  }
+  return skip;
+}
+
+function applyCharSubstitutionsWithMap(
+  text: string,
+  substitutions: Record<string, string>,
+): string {
+  const skip = digitSubstitutionSkipIndices(text);
+  const chars: string[] = [];
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]!;
+    if (substitutions[char] !== undefined && !skip.has(i)) {
+      chars.push(substitutions[char]!);
+    } else {
+      chars.push(char);
+    }
+  }
+  return chars.join('');
+}
+
+function applyLeetspeakPreCollapseWithMap(
+  text: string,
+  options: Pick<LeetspeakOptions, 'level' | 'removeSpacedChars'>,
+  substitutions: Record<string, string>,
+): string {
+  const { level = 'moderate', removeSpacedChars = true } = options;
+  let normalized = text;
+
+  if (removeSpacedChars) {
+    normalized = collapseSpacedCharacters(normalized);
+  }
+
+  if (level === 'aggressive') {
+    for (const [pattern, replacement] of AGGRESSIVE_MULTI_CHAR) {
+      normalized = normalized.replace(pattern, replacement);
+    }
+  }
+
+  return applyCharSubstitutionsWithMap(normalized, substitutions);
+}
+
+/**
+ * Applies leetspeak steps 1–3 (spacing, multi-char, char substitutions) without
+ * collapsing repeated characters. Used to derive normal/aggressive variants in one pass.
+ */
+function applyLeetspeakPreCollapse(
+  text: string,
+  options: Pick<LeetspeakOptions, 'level' | 'removeSpacedChars'> = {},
+): string {
+  const { level = 'moderate', removeSpacedChars = true } = options;
+  let normalized = text;
+
+  if (removeSpacedChars) {
+    normalized = collapseSpacedCharacters(normalized);
+  }
+
+  if (level === 'aggressive') {
+    for (const [pattern, replacement] of AGGRESSIVE_MULTI_CHAR) {
+      normalized = normalized.replace(pattern, replacement);
+    }
+  }
+
+  return applyCharSubstitutionsWithMap(normalized, getSubstitutionMap(level));
+}
+
+/**
+ * Normalizes leetspeak with both standard and aggressive repeat collapsing in one pass.
+ */
+export function normalizeLeetspeakVariants(
+  text: string,
+  options: Omit<LeetspeakOptions, 'maxRepeated'> = {},
+): { normal: string; aggressive: string } {
+  const { level = 'moderate', collapseRepeated = true } = options;
+  const preCollapsed = applyLeetspeakPreCollapse(text, options);
+  const vowelPreCollapsed =
+    level === 'aggressive'
+      ? applyLeetspeakPreCollapseWithMap(text, options, AGGRESSIVE_VOWEL_SUBSTITUTIONS)
+      : preCollapsed;
+
+  if (!collapseRepeated) {
+    return { normal: preCollapsed, aggressive: vowelPreCollapsed };
+  }
+
+  return {
+    normal: collapseRepeatedCharacters(preCollapsed, 2),
+    aggressive: collapseRepeatedCharacters(vowelPreCollapsed, 1),
+  };
+}
+
 export function normalizeLeetspeak(
   text: string,
   options: LeetspeakOptions = {}
@@ -182,28 +293,8 @@ export function normalizeLeetspeak(
     removeSpacedChars = true,
   } = options;
 
-  let normalized = text;
+  let normalized = applyLeetspeakPreCollapse(text, { level, removeSpacedChars });
 
-  // Step 1: Handle spaced characters (f u c k → fuck)
-  if (removeSpacedChars) {
-    normalized = collapseSpacedCharacters(normalized);
-  }
-
-  // Step 2: Apply multi-character patterns first (aggressive only)
-  if (level === 'aggressive') {
-    for (const [pattern, replacement] of AGGRESSIVE_MULTI_CHAR) {
-      normalized = normalized.replace(pattern, replacement);
-    }
-  }
-
-  // Step 3: Apply single-character substitutions
-  const substitutions = getSubstitutionMap(level);
-  normalized = normalized
-    .split('')
-    .map((char) => substitutions[char] || char)
-    .join('');
-
-  // Step 4: Collapse repeated characters (fuuuuck → fuck)
   if (collapseRepeated) {
     normalized = collapseRepeatedCharacters(normalized, maxRepeated);
   }

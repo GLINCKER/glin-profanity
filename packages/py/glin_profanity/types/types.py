@@ -106,6 +106,12 @@ class FilterConfig(ContextAwareConfig, total=False):
     cache_results: bool  # Cache profanity check results for repeated strings
     max_cache_size: int  # Maximum cache size when caching is enabled
 
+    # Performance options
+    disable_aho_corasick: bool  # Force legacy regex path (testing / debugging)
+
+    # Evasion normalization
+    enable_evasion_normalization: bool  # HTML/separators/masking pipeline
+
 
 class FilteredProfanityResult(TypedDict):
     """Result with minimum severity filtering."""

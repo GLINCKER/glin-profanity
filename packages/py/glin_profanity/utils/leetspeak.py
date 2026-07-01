@@ -32,7 +32,16 @@ MODERATE_SUBSTITUTIONS: dict[str, str] = {
     "{": "c",
     "[": "c",
     "+": "t",
+    "€": "e",
+    "&": "e",
     "#": "h",
+    "¥": "y",
+    "§": "s",
+    "†": "t",
+    "®": "r",
+    "©": "c",
+    "²": "2",
+    "³": "3",
 }
 
 # Aggressive single-character substitutions
@@ -51,19 +60,111 @@ AGGRESSIVE_MULTI_CHAR: list[tuple[str, str]] = [
     (r"\^", "a"),
     (r"\|3", "b"),
     (r"13", "b"),
+    (r"ß", "b"),
     (r"\|\)", "d"),
     (r"\|>", "d"),
+    (r"\[\)", "d"),
     (r"\|=", "f"),
     (r"ph", "f"),
     (r"\|-\|", "h"),
     (r"\}\{", "h"),
     (r"\|<", "k"),
+    (r"\|\{", "k"),
     (r"\|_", "l"),
+    (r"/\\/\\/", "m"),
+    (r"\|V\|", "m"),
+    (r"\[V\]", "m"),
+    (r"/\\/", "n"),
+    (r"\|\\\|", "n"),
+    (r"\|\*", "p"),
+    (r"\|o", "p"),
     (r"\|2", "r"),
+    (r"\|\?", "r"),
     (r"\|_\|", "u"),
+    (r"\\_\\", "u"),
+    (r"/_/", "u"),
     (r"\\/", "v"),
+    (r"\\/\\/", "w"),
     (r"vv", "w"),
+    (r"><", "x"),
+    (r"'/", "y"),
+    (r"7_", "z"),
 ]
+
+
+AGGRESSIVE_VOWEL_SUBSTITUTIONS: dict[str, str] = {
+    **AGGRESSIVE_SUBSTITUTIONS,
+    "@": "u",
+}
+
+
+# Digit + single Latin letter (e.g. 5m, 10m) — keep digits to avoid 5→s + m → "sm".
+_MEASUREMENT_LIKE = re.compile(r"(?<![A-Za-z])\d+[A-Za-z](?![A-Za-z])")
+
+
+def _digit_substitution_skip_indices(text: str) -> frozenset[int]:
+    skip: set[int] = set()
+    for match in _MEASUREMENT_LIKE.finditer(text):
+        for index in range(match.start(), match.end()):
+            if text[index].isdigit():
+                skip.add(index)
+    return frozenset(skip)
+
+
+def _apply_substitutions(text: str, substitutions: dict[str, str]) -> str:
+    skip = _digit_substitution_skip_indices(text)
+    result: list[str] = []
+    for index, char in enumerate(text):
+        if char in substitutions and index not in skip:
+            result.append(substitutions[char])
+        else:
+            result.append(char)
+    return "".join(result)
+
+
+def _apply_leetspeak_pre_collapse(
+    text: str,
+    level: LeetspeakLevel,
+    remove_spaced_chars: bool,
+    substitutions: dict[str, str],
+) -> str:
+    normalized = text
+
+    if remove_spaced_chars:
+        normalized = collapse_spaced_characters(normalized)
+
+    if level == "aggressive":
+        for pattern, replacement in AGGRESSIVE_MULTI_CHAR:
+            normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
+
+    return _apply_substitutions(normalized, substitutions)
+
+
+def normalize_leetspeak_variants(
+    text: str,
+    level: LeetspeakLevel = "moderate",
+    collapse_repeated: bool = True,
+    remove_spaced_chars: bool = True,
+) -> tuple[str, str]:
+    """Return normal and aggressive leetspeak variants in one pass."""
+    pre_collapsed = _apply_leetspeak_pre_collapse(
+        text, level, remove_spaced_chars, _get_substitution_map(level)
+    )
+    vowel_pre_collapsed = (
+        _apply_leetspeak_pre_collapse(
+            text, level, remove_spaced_chars, AGGRESSIVE_VOWEL_SUBSTITUTIONS
+        )
+        if level == "aggressive"
+        else pre_collapsed
+    )
+
+    if not collapse_repeated:
+        return pre_collapsed, vowel_pre_collapsed
+
+    return (
+        collapse_repeated_characters(pre_collapsed, 2),
+        collapse_repeated_characters(vowel_pre_collapsed, 1),
+    )
 
 
 def normalize_leetspeak(
@@ -109,10 +210,7 @@ def normalize_leetspeak(
 
     # Step 3: Apply single-character substitutions
     substitutions = _get_substitution_map(level)
-    result = []
-    for char in normalized:
-        result.append(substitutions.get(char, char))
-    normalized = "".join(result)
+    normalized = _apply_substitutions(normalized, substitutions)
 
     # Step 4: Collapse repeated characters (fuuuuck -> fuck)
     if collapse_repeated:

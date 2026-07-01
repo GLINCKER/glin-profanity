@@ -86,13 +86,13 @@ From the CI shootout gate (`benchmarks/shootout/results.md`), Node.js v22, 20-in
 
 | Library | ops/sec | F1 (accuracy) | False-Positive Rate |
 |---------|---------|---------------|---------------------|
-| glin-profanity | 990 | **80.6%** | **0.0%** |
-| obscenity | 5,112 | 79.5% | 5.9% |
-| bad-words | 241 | 54.2% | 0.0% |
-| leo-profanity | 338,407 | 34.6% | 0.0% |
-| @2toad/profanity | 839,796 | 56.7% | 0.0% |
+| glin-profanity | ~1,900 | **100.0%** | **0.0%** |
+| obscenity | ~2,800 | 79.5% | 5.9% |
+| bad-words | ~160 | 54.2% | 0.0% |
+| leo-profanity | ~270,000 | 34.6% | 0.0% |
+| @2toad/profanity | ~595,000 | 56.7% | 0.0% |
 
-glin-profanity trades raw throughput for zero false positives and the highest F1 in the field. See `benchmarks/shootout/results.md` for the full per-category breakdown.
+glin-profanity achieves 100% F1 on the torture-set with zero false positives — including word-break, HTML-injection, and masked in-sentence evasion. See `benchmarks/shootout/results.md` for the full per-category breakdown.
 
 ---
 

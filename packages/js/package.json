@@ -159,15 +159,15 @@
     }
   },
   "peerDependencies": {
-    "react": ">=16.8.0",
+    "@langchain/core": ">=0.1.0",
     "@tensorflow-models/toxicity": ">=1.2.0",
     "@tensorflow/tfjs": ">=4.0.0",
-    "zod": ">=3.0.0",
-    "openai": ">=4.0.0",
-    "@langchain/core": ">=0.1.0",
-    "ai": ">=3.0.0",
     "@xenova/transformers": ">=2.0.0",
-    "tesseract.js": ">=5.0.0"
+    "ai": ">=3.0.0",
+    "openai": ">=4.0.0",
+    "react": ">=16.8.0",
+    "tesseract.js": ">=5.0.0",
+    "zod": ">=3.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -316,5 +316,8 @@
     "tsup": "^8.2.3",
     "tsx": "^4.21.0",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "modern-ahocorasick": "^2.0.4"
   }
 }

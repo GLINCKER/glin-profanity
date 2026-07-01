@@ -19,6 +19,11 @@ __author__ = "glinr"
 __email__ = "contact@glincker.com"
 
 from .filters.filter import Filter
+from .core.filter_pool import (
+    clear_filter_pool,
+    create_filter_config,
+    get_pooled_filter,
+)
 from .types.types import (
     CheckProfanityResult,
     FilterConfig,
@@ -47,6 +52,9 @@ from .utils import (
 __all__ = [
     # Core
     "Filter",
+    "create_filter_config",
+    "get_pooled_filter",
+    "clear_filter_pool",
     # Types
     "CheckProfanityResult",
     "FilterConfig",

@@ -10,6 +10,16 @@ describe('Context Optimization', () => {
     });
   });
 
+  it('should use Aho-Corasick for candidate discovery', () => {
+    expect(filter['dictionaryMatcher']).toBeTruthy();
+  });
+
+  it('isProfane applies context filtering', () => {
+    expect(filter.isProfane('This movie is the bomb')).toBe(false);
+    expect(filter.isProfane('The bomb exploded and shit happened')).toBe(true);
+    expect(filter.isProfane('You are a fucking idiot')).toBe(true);
+  });
+
   it('should NOT whitelist profanity based on unrelated positive phrases', () => {
     // "the bomb" is a positive phrase for "bomb".
     // "shit" is a profanity.
