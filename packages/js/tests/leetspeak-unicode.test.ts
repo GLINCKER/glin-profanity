@@ -29,12 +29,16 @@ describe('Evasion Normalization', () => {
       expect(stripHtmlAndDecodeEntities('a<br>ss')).toBe('ass');
       expect(stripHtmlAndDecodeEntities('&#128512;')).toBe('😀');
       expect(stripHtmlAndDecodeEntities('&#x1F600;')).toBe('😀');
+      expect(stripHtmlAndDecodeEntities('&#X1F600;')).toBe('😀');
+      expect(stripHtmlAndDecodeEntities('f&lt;b&gt;u&lt;/b&gt;ck')).toBe('fuck');
     });
 
     it('should leave invalid numeric entities unchanged', () => {
       expect(stripHtmlAndDecodeEntities('&#9999999999;')).toBe('&#9999999999;');
       expect(stripHtmlAndDecodeEntities('&#xFFFFFFFF;')).toBe('&#xFFFFFFFF;');
+      expect(stripHtmlAndDecodeEntities('&#XFFFFFFFF;')).toBe('&#XFFFFFFFF;');
       expect(stripHtmlAndDecodeEntities('&#xD800;')).toBe('&#xD800;');
+      expect(stripHtmlAndDecodeEntities('&#XD800;')).toBe('&#XD800;');
       expect(normalizeEvasion('hello &#9999999999; world')).toBe('hello &#9999999999; world');
     });
   });

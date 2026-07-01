@@ -9,8 +9,8 @@ _SEPARATED_CHAR_PATTERN = re.compile(
     r"\b([a-zA-Z0-9@$!#*])(?:[\s._\-]+([a-zA-Z0-9@$!#*])){2,}\b"
 )
 _NUMERIC_ENTITY_PATTERN = re.compile(r"&#(\d+);")
-_HEX_ENTITY_PATTERN = re.compile(r"&#x([0-9a-fA-F]+);")
-_REMAINING_NUMERIC_ENTITY_PATTERN = re.compile(r"&#(?:\d+|x[0-9a-fA-F]+);")
+_HEX_ENTITY_PATTERN = re.compile(r"&#[xX]([0-9a-fA-F]+);")
+_REMAINING_NUMERIC_ENTITY_PATTERN = re.compile(r"&#(?:\d+|[xX][0-9a-fA-F]+);")
 _MASKED_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bf\*+cking\b", re.IGNORECASE), "fucking"),
     (re.compile(r"\bf\*+ck\b", re.IGNORECASE), "fuck"),
@@ -49,18 +49,17 @@ def _escape_remaining_numeric_entities(text: str) -> str:
 
 def strip_html_and_decode_entities(text: str) -> str:
     """Remove HTML tags and decode numeric/named entities."""
-    result = re.sub(r"<[^>]*>", "", text)
-
     result = _NUMERIC_ENTITY_PATTERN.sub(
         lambda match: _safe_codepoint_char(match, 10),
-        result,
+        text,
     )
     result = _HEX_ENTITY_PATTERN.sub(
         lambda match: _safe_codepoint_char(match, 16),
         result,
     )
     result = _escape_remaining_numeric_entities(result)
-    return html.unescape(result)
+    result = html.unescape(result)
+    return re.sub(r"<[^>]*>", "", result)
 
 
 def collapse_separated_characters(text: str) -> str:

@@ -28,24 +28,24 @@ function safeCodePoint(code: number, fallback: string): string {
  * Removes HTML tags and decodes common numeric/named entities.
  */
 export function stripHtmlAndDecodeEntities(text: string): string {
-  let result = text.replace(/<[^>]*>/g, '');
-
-  result = result.replace(/&#(\d+);/g, (entity, dec: string) => {
+  let result = text.replace(/&#(\d+);/g, (entity, dec: string) => {
     const code = parseInt(dec, 10);
     return safeCodePoint(code, entity);
   });
 
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (entity, hex: string) => {
+  result = result.replace(/&#[xX]([0-9a-fA-F]+);/g, (entity, hex: string) => {
     const code = parseInt(hex, 16);
     return safeCodePoint(code, entity);
   });
 
-  return result
+  result = result
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&amp;/gi, '&')
     .replace(/&quot;/gi, '"')
     .replace(/&apos;/gi, "'");
+
+  return result.replace(/<[^>]*>/g, '');
 }
 
 /**

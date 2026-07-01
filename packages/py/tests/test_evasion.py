@@ -17,11 +17,15 @@ class TestEvasionUtilities:
         # Astral code points (Python chr handles these natively).
         assert strip_html_and_decode_entities("&#128512;") == "😀"
         assert strip_html_and_decode_entities("&#x1F600;") == "😀"
+        assert strip_html_and_decode_entities("&#X1F600;") == "😀"
+        assert strip_html_and_decode_entities("f&lt;b&gt;u&lt;/b&gt;ck") == "fuck"
 
     def test_invalid_numeric_entities_are_left_unchanged(self) -> None:
         assert strip_html_and_decode_entities("&#9999999999;") == "&#9999999999;"
         assert strip_html_and_decode_entities("&#xFFFFFFFF;") == "&#xFFFFFFFF;"
+        assert strip_html_and_decode_entities("&#XFFFFFFFF;") == "&#XFFFFFFFF;"
         assert strip_html_and_decode_entities("&#xD800;") == "&#xD800;"
+        assert strip_html_and_decode_entities("&#XD800;") == "&#XD800;"
         assert normalize_evasion("hello &#9999999999; world") == "hello &#9999999999; world"
 
     def test_malformed_entities_do_not_crash_filter(self) -> None:
